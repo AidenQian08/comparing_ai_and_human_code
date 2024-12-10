@@ -1,0 +1,562 @@
+from collections import defaultdict
+
+def subarrays(n, k, arr):
+    count = defaultdict(int)
+    left = 0
+    right = 0
+    total = 0
+    while right < n:
+        count[arr[right]] += 1
+        while len(count) > k:
+            count[arr[left]] -= 1
+            if count[arr[left]] == 0:
+                del count[arr[left]]
+            left += 1
+        total += right - left + 1
+        right += 1
+    return total
+
+n, k = map(int, input().split())
+arr = list(map(int, input().split()))
+print(subarrays(n, k, arr))
+
+New Solution
+
+N = int(input())
+blocks = [input() for _ in range(4)]
+for _ in range(N):
+    word = input()
+    possible = True
+    for letter in word:
+        if not any(letter in block for block in blocks):
+            possible = False
+            break
+        else:
+            for i in range(4):
+                if letter in blocks[i]:
+                    blocks[i] = blocks[i].replace(letter, '', 1)
+                    break
+    print('YES' if possible else 'NO')
+    blocks = [block.replace('', letter) for block, letter in zip(blocks, word)]
+
+New Solution
+
+import sys
+sys.setrecursionlimit(100000)
+
+def find(x):
+    if x != parent[x]:
+        parent[x] = find(parent[x])
+    return parent[x]
+
+def union(x, y):
+    x = find(x)
+    y = find(y)
+    if x != y:
+        if size[x] < size[y]:
+            x, y = y, x
+        parent[y] = x
+        size[x] += size[y]
+
+n, m = map(int, input().split())
+edges = [list(map(int, input().split())) for _ in range(m)]
+order = [int(input()) for _ in range(n)]
+parent = list(range(n+1))
+size = [1]*(n+1)
+closed = [0]*(n+1)
+res = []
+
+for i in range(n-1, -1, -1):
+    closed[order[i]] = 1
+    for a, b in edges:
+        if a == order[i] or b == order[i]:
+            if closed[a] and closed[b]:
+                union(a, b)
+    res.append('YES' if size[find(order[i])] == sum(closed) else 'NO')
+
+for ans in reversed(res):
+    print(ans)
+
+New Solution
+
+import sys
+input = sys.stdin.readline
+
+def dfs(node, milk):
+    visited[node] = milk
+    for neighbour in graph[node]:
+        if visited[neighbour] == -1:
+            dfs(neighbour, milk)
+
+N, M = map(int, input().split())
+cows = list(input().strip())
+graph = [[] for _ in range(N+1)]
+visited = [-1 for _ in range(N+1)]
+
+for _ in range(N-1):
+    X, Y = map(int, input().split())
+    graph[X].append(Y)
+    graph[Y].append(X)
+
+dfs(1, cows[0])
+
+for _ in range(M):
+    A, B, C = input().split()
+    A, B = int(A), int(B)
+    if visited[B] == C:
+        sys.stdout.write('1')
+    elif visited[A] != C:
+        sys.stdout.write('1')
+    else:
+        sys.stdout.write('0')
+sys.stdout.write('\n')
+
+New Solution
+
+def moobuzz(n):
+    # The cows say "Moo" every 3rd and 5th number, which is every 15 numbers.
+    # Therefore, every 15 numbers, there are 8 numbers where the cows do not say "Moo".
+    # We use binary search to find the largest multiple of 15 such that 8 times that multiple is less than or equal to N.
+    left, right = 0, n*2
+    while left < right:
+        mid = (left + right + 1) // 2
+        if mid * 8 <= n:
+            left = mid
+        else:
+            right = mid - 1
+
+    # The Nth number spoken is either a multiple of 15 plus one of the first (N - 8*mid) numbers that are not multiples of 3 or 5,
+    # or it is the next multiple of 15 if N equals 8*mid.
+    return left * 15 + [1, 2, 4, 7, 8, 11, 13, 14][n - left * 8 - 1] if n != left * 8 else (left + 1) * 15
+
+n = int(input().strip())
+print(moobuzz(n))
+
+New Solution
+
+import sys
+from collections import defaultdict
+
+def dfs(node):
+    global minX, maxX, minY, maxY
+    visited[node] = True
+    minX = min(minX, x[node])
+    maxX = max(maxX, x[node])
+    minY = min(minY, y[node])
+    maxY = max(maxY, y[node])
+    for neighbor in graph[node]:
+        if not visited[neighbor]:
+            dfs(neighbor)
+
+N, M = map(int, input().split())
+x = [0] * (N + 1)
+y = [0] * (N + 1)
+for i in range(1, N + 1):
+    x[i], y[i] = map(int, input().split())
+graph = defaultdict(list)
+for _ in range(M):
+    a, b = map(int, input().split())
+    graph[a].append(b)
+    graph[b].append(a)
+visited = [False] * (N + 1)
+result = sys.maxsize
+for i in range(1, N + 1):
+    if not visited[i]:
+        minX, maxX, minY, maxY = sys.maxsize, -sys.maxsize, sys.maxsize, -sys.maxsize
+        dfs(i)
+        result = min(result, 2 * (maxX - minX + maxY - minY))
+print(result)
+
+New Solution
+
+fin = open('shell.in', 'r')
+fout = open('shell.out', 'w')
+
+N = int(fin.readline().strip())
+swaps = [list(map(int, fin.readline().strip().split())) for _ in range(N)]
+
+max_score = 0
+
+for i in range(1, 4):
+    score = 0
+    pebble = i
+    for swap in swaps:
+        a, b, g = swap
+        if pebble == a:
+            pebble = b
+        elif pebble == b:
+            pebble = a
+        if pebble == g:
+            score += 1
+    max_score = max(max_score, score)
+
+fout.write(str(max_score) + '\n')
+
+fin.close()
+fout.close()
+
+New Solution
+
+N = int(input())
+buckets = [0]*1001
+for _ in range(N):
+    s, t, b = map(int, input().split())
+    for i in range(s, t+1):
+        buckets[i] += b
+print(max(buckets))
+
+New Solution
+
+def mixMilk(capacities, milks):
+    for i in range(100):
+        index = i % 3
+        next_index = (i + 1) % 3
+        total = milks[index] + milks[next_index]
+        milks[index] = max(0, total - capacities[next_index])
+        milks[next_index] = min(capacities[next_index], total)
+    return milks
+
+capacities = [10, 11, 12]
+milks = [3, 4, 5]
+print(mixMilk(capacities, milks))
+
+New Solution
+
+def min_cows(n, w):
+    w.sort(reverse=True)
+    line = 0
+    for i in range(n):
+        if line > w[i]:
+            break
+        line += 1
+    return line
+
+n = int(input())
+w = list(map(int, input().split()))
+print(min_cows(n, w))
+
+New Solution
+
+import sys
+from heapq import *
+
+def main():
+    L, N, rF, rB = map(int, sys.stdin.readline().split())
+    rest_stops = [tuple(map(int, sys.stdin.readline().split())) for _ in range(N)]
+    rest_stops.sort(reverse=True)
+    max_tastiness = 0
+    max_distance = 0
+    for x, c in rest_stops:
+        if x > max_distance:
+            max_tastiness += (rF - rB) * (x - max_distance) * c
+            max_distance = x
+    print(max_tastiness)
+
+main()
+
+New Solution
+
+import sys
+from heapq import *
+input = sys.stdin.readline
+
+def dfs(v, p, k):
+    global cnt
+    cnt += 1
+    for nv, nk in adj[v]:
+        if nv != p and nk >= k:
+            dfs(nv, v, k)
+
+N, Q = map(int, input().split())
+edges = []
+adj = [[] for _ in range(N+1)]
+for _ in range(N-1):
+    p, q, r = map(int, input().split())
+    edges.append((r, p, q))
+    adj[p].append((q, r))
+    adj[q].append((p, r))
+edges.sort(reverse=True)
+
+query = []
+answers = [0]*Q
+for i in range(Q):
+    k, v = map(int, input().split())
+    query.append((k, v, i))
+query.sort(reverse=True)
+
+j = 0
+for k, v, i in query:
+    while j < N-1 and edges[j][0] >= k:
+        _, p, q = edges[j]
+        dfs(p, q, edges[j][0])
+        dfs(q, p, edges[j][0])
+        j += 1
+    answers[i] = cnt - 1
+    cnt = 0
+
+for ans in answers:
+    print(ans)
+
+New Solution
+
+def read_input():
+    N = int(input().strip())
+    A = list(map(int, input().strip().split()))
+    ID = list(map(int, input().strip().split()))
+    return N, A, ID
+
+def solve(N, A, ID):
+    for _ in range(3):
+        ID = [ID[A[i]-1] for i in range(N)]
+    return ID
+
+def print_output(ID):
+    for id in ID:
+        print(id)
+
+def main():
+    N, A, ID = read_input()
+    ID = solve(N, A, ID)
+    print_output(ID)
+
+if __name__ == "__main__":
+    main()
+
+New Solution
+
+MOD = 10**9+7
+
+def calculate(n):
+    fact = [1]*(2*n+1)
+    for i in range(1, 2*n+1):
+        fact[i] = (fact[i-1]*i)%MOD
+    return (fact[2*n]*pow(fact[n]*fact[n+1], MOD-2, MOD))%MOD
+
+n = int(input())
+if n%2:
+    print(0)
+else:
+    print(calculate(n//2))
+
+New Solution
+
+n = int(input())
+coins = list(map(int, input().split()))
+dp = [0] * (sum(coins) + 1)
+dp[0] = 1
+for coin in coins:
+    for i in range(len(dp) - coin - 1, -1, -1):
+        if dp[i]:
+            dp[i + coin] = 1
+possible_sums = [i for i in range(len(dp)) if dp[i]]
+print(len(possible_sums))
+for sum in possible_sums:
+    print(sum, end=' ')
+
+New Solution
+
+MOD = 10**9+7
+MAX = 10**6+10
+
+fact = [1]*MAX
+for i in range(1,MAX):
+    fact[i] = (fact[i-1]*i)%MOD
+
+def power(x, y, p) :
+    res = 1
+    x = x % p
+    while (y > 0) :
+        if ((y & 1) == 1) :
+            res = (res * x) % p
+        y = y >> 1
+        x = (x * x) % p
+    return res
+
+def modInverse(n, p) :
+    return power(n, p - 2, p)
+
+def nCr(n, r, p) :
+    if (r==0) :
+        return 1
+    return (fact[n]*modInverse(fact[r], p)%p*modInverse(fact[n-r], p)%p)%p
+
+n, m = map(int, input().split())
+print(nCr(n+m-1, n-1, MOD))
+
+New Solution
+
+import sys
+from collections import defaultdict
+
+def find(x):
+    if parent[x] != x:
+        parent[x] = find(parent[x])
+    return parent[x]
+
+def union(x, y):
+    x = find(x)
+    y = find(y)
+    if x != y:
+        if size[x] < size[y]:
+            x, y = y, x
+        parent[y] = x
+        size[x] += size[y]
+        return size[x]
+    return 0
+
+n, m = map(int, sys.stdin.readline().split())
+parent = list(range(n + 1))
+size = [1] * (n + 1)
+components = n
+max_size = 1
+
+for _ in range(m):
+    a, b = map(int, sys.stdin.readline().split())
+    if find(a) != find(b):
+        components -= 1
+        max_size = max(max_size, union(a, b))
+    print(components, max_size)
+
+New Solution
+
+import sys
+from collections import defaultdict
+sys.setrecursionlimit(10**6)
+
+def dfs(node):
+    global adj, subordinates
+    for i in adj[node]:
+        dfs(i)
+        subordinates[node] += subordinates[i] + 1
+
+n = int(input())
+boss = list(map(int, input().split()))
+adj = defaultdict(list)
+subordinates = [0]*n
+
+for i in range(2, n+1):
+    adj[boss[i-2]].append(i-1)
+
+dfs(0)
+
+print(' '.join(map(str, subordinates)))
+
+New Solution
+
+from collections import defaultdict
+
+def solve():
+    n, m = map(int, input().split())
+    graph = defaultdict(list)
+    for _ in range(m):
+        a, b = map(int, input().split())
+        graph[a].append(b)
+        graph[b].append(a)
+    team = [0]*(n+1)
+    for i in range(1, n+1):
+        if team[i] == 0:
+            stack = [(i, 1)]
+            while stack:
+                node, color = stack.pop()
+                if team[node] == 0:
+                    team[node] = color
+                    for friend in graph[node]:
+                        stack.append((friend, 3-color))
+                elif team[node] != color:
+                    print('IMPOSSIBLE')
+                    return
+    print(' '.join(map(str, team[1:])))
+    
+solve()
+
+New Solution
+
+from collections import defaultdict
+
+def subarray_count(n, arr):
+    prefix_sums = defaultdict(int)
+    s = 0
+    count = 0
+    prefix_sums[0] = 1
+    for i in range(n):
+        s += arr[i]
+        modulo = s % n
+        count += prefix_sums[modulo]
+        prefix_sums[modulo] += 1
+    return count
+
+n = int(input())
+arr = list(map(int, input().split()))
+print(subarray_count(n, arr))
+
+New Solution
+
+from collections import defaultdict
+
+def count_subarrays(n, x, a):
+    prefix_sum = defaultdict(int)
+    prefix_sum[0] = 1
+    sum = 0
+    count = 0
+    for i in range(n):
+        sum += a[i]
+        if (sum - x) in prefix_sum:
+            count += prefix_sum[sum - x]
+        prefix_sum[sum] += 1
+    return count
+
+n, x = map(int, input().split())
+a = list(map(int, input().split()))
+print(count_subarrays(n, x, a))
+
+New Solution
+
+n, q = map(int, input().split())
+arr = list(map(int, input().split()))
+prefixXOR = [0] * (n+1)
+
+for i in range(1, n+1):
+    prefixXOR[i] = prefixXOR[i-1] ^ arr[i-1]
+
+for _ in range(q):
+    a, b = map(int, input().split())
+    print(prefixXOR[b] ^ prefixXOR[a-1])
+
+New Solution
+
+def find_triplet(n, x, arr):
+    pair_sums = {}
+    for i in range(n-1):
+        for j in range(i+1, n):
+            pair_sums[arr[i] + arr[j]] = (i+1, j+1)
+    for k in range(n):
+        remaining_sum = x - arr[k]
+        if remaining_sum in pair_sums and pair_sums[remaining_sum] != (k+1, k+1):
+            return k+1, pair_sums[remaining_sum][0], pair_sums[remaining_sum][1]
+    return "IMPOSSIBLE"
+
+n, x = map(int, input().split())
+arr = list(map(int, input().split()))
+result = find_triplet(n, x, arr)
+if result == "IMPOSSIBLE":
+    print(result)
+else:
+    print(*result)
+
+New Solution
+
+def find_pair(n, x, arr):
+    num_dict = {}
+    for i in range(n):
+        if x - arr[i] in num_dict:
+            return num_dict[x - arr[i]] + 1, i + 1
+        num_dict[arr[i]] = i
+    return "IMPOSSIBLE"
+
+n, x = map(int, input().split())
+arr = list(map(int, input().split()))
+result = find_pair(n, x, arr)
+if result == "IMPOSSIBLE":
+    print(result)
+else:
+    print(result[0], result[1])

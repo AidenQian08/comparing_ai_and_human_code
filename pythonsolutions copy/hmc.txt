@@ -1,0 +1,887 @@
+n = int(input())
+
+low = 1
+high = n**2
+
+# binary search to find the median
+while low < high:
+	mid = (low + high) // 2
+	leq = 0
+
+	for i in range(0, n):
+		leq += min(n, mid // (i + 1))
+
+	if leq >= (n**2 + 1) / 2:
+		high = mid
+	else:
+		low = mid + 1
+
+print(high)
+
+New Solution
+
+from typing import List, Set
+
+n, m = map(int, input().split())
+
+forward_graph = [[] for _ in range(n)]
+reverse_graph = [[] for _ in range(n)]
+
+for _ in range(m):
+	a, b = map(int, input().split())
+	forward_graph[a - 1].append(b - 1)
+	reverse_graph[b - 1].append(a - 1)
+
+
+def dfs(graph: List[List[int]]) -> Set[int]:
+	"""
+	Performs a depth-first traversal of a graph starting from node 0. Removes
+	each node reached from a set of all nodes. Once complete, the set will only
+	contain unvisited nodes and is then returned.
+
+	:param graph: An adjacency list representing a graph.
+	:return: A set containing all unvisited nodes in the depth-first traversal.
+	"""
+	unvisited = set(range(1, n))
+	stack = [0]
+	while stack:
+		curr = stack.pop()
+
+		for adj in graph[curr]:
+			if adj in unvisited:
+				stack.append(adj)
+				unvisited.remove(adj)
+
+	return unvisited
+
+
+# These will be empty if there are no unvisited nodes
+unvisited_fwd = dfs(forward_graph)
+unvisited_rev = dfs(reverse_graph)
+
+if unvisited_fwd:
+	print("NO")
+	print(f"1 {unvisited_fwd.pop() + 1}")
+elif unvisited_rev:
+	print("NO")
+	print(f"{unvisited_rev.pop() + 1} 1")
+else:
+	print("YES")
+
+New Solution
+
+from itertools import permutations
+
+DIM = 8
+
+blocked = [[False] * DIM for _ in range(DIM)]
+for r in range(DIM):
+	row = input()
+	for c in range(DIM):
+		blocked[r][c] = row[c] == "*"
+
+valid_num = 0
+for queens in permutations(range(DIM)):
+	works = True
+
+	# Check if any cells have been blocked off by the input
+	for c in range(DIM):
+		if blocked[queens[c]][c]:
+			works = False
+			break
+
+	# Check the diagonals from the top-left to the bottom-right
+	taken = [False] * (DIM * 2 - 1)
+	for c in range(DIM):
+		# Check if the diagonal with sum has been taken
+		if taken[c + queens[c]]:
+			works = False
+			break
+		taken[c + queens[c]] = True
+
+	# Check the diagonals from the top-right to the bottom-left
+	taken = [False] * (DIM * 2 - 1)
+	for c in range(DIM):
+		# queens[c] - c can be negative; the DIM - 1 offsets that
+		if taken[queens[c] - c + DIM - 1]:
+			works = False
+			break
+		taken[queens[c] - c + DIM - 1] = True
+
+	if works:
+		valid_num += 1
+
+print(valid_num)
+
+New Solution
+
+MOD = 10**9 + 7
+MAX_VAL = 10**5
+
+two_pows = [1]
+for _ in range(1, MAX_VAL + 1):
+	two_pows.append((two_pows[-1] * 2) % MOD)
+
+pref_sums = [0]
+for i in range(1, MAX_VAL + 1):
+	if i % 2 == 0:
+		nonpal_num = (two_pows[i - 1] - two_pows[i // 2]) % MOD
+	else:
+		nonpal_num = (two_pows[i - 1] - two_pows[(i - 1) // 2]) % MOD
+	pref_sums.append((pref_sums[-1] + nonpal_num) % MOD)
+
+for _ in range(int(input())):
+	lo, hi = [int(i) for i in input().split()]
+	print((pref_sums[hi] - pref_sums[lo - 1]) % MOD)
+
+New Solution
+
+n = int(input()) * 2
+people = sorted(int(i) for i in input().split())
+assert len(people) == n
+
+min_instability = float("inf")
+for i in range(n):
+	for j in range(i + 1, n):
+		new_people = [people[p] for p in range(n) if p != i and p != j]
+		total_instability = 0
+		for p in range(0, n - 2, 2):
+			total_instability += new_people[p + 1] - new_people[p]
+		min_instability = min(min_instability, total_instability)
+
+print(min_instability)
+
+New Solution
+
+n = int(input().strip())
+numbers = [int(x) for x in input().strip().split()]
+
+sequences = []
+for num in numbers:
+	l = 0
+	r = len(sequences)
+	while l != r:
+		mid = (l + r) // 2
+		if sequences[mid][-1] < num:
+			r = mid
+		else:
+			l = mid + 1
+	if l == len(sequences):
+		sequences.append([num])
+	else:
+		sequences[l].append(num)
+
+for sub in sequences:
+	print(*sub)
+
+New Solution
+
+mark_num, remember_num = [int(i) for i in input().split()]
+
+# All net changes in the score
+changes = [0] + [int(i) for i in input().split()]
+scores = {int(i) for i in input().split()}
+assert mark_num == len(changes) - 1 and len(scores) == remember_num
+
+for i in range(1, len(changes)):
+	changes[i] += changes[i - 1]
+
+poss_starts = set()
+random_score = next(iter(scores))
+for c in range(1, len(changes)):
+	poss_starts.add(random_score - changes[c])
+
+valid_starts = 0
+for s in poss_starts:
+	# What all the scores are going to now be given the starting score
+	resulting_scores = set()
+	for c in range(1, len(changes)):
+		resulting_scores.add(s + changes[c])
+
+	valid_starts += scores.issubset(resulting_scores)
+
+print(valid_starts)
+
+New Solution
+
+num_friends = int(input())
+friend_coords = list(map(int, input().split()))
+friend_veloci = list(map(int, input().split()))
+
+
+def all_friends_converge(seconds: int) -> bool:
+	"""
+	Checks whether all friends can converge on one point in the specified time interval.
+
+	:param seconds: Amount of seconds given for friends to converge.
+	:return: If the friends can converge to a single point.
+	"""
+
+	overlap_lower, overlap_upper = 1, 10**9
+	for i in range(num_friends):
+		lower_bound = friend_coords[i] - (friend_veloci[i] * seconds)
+		upper_bound = friend_coords[i] + (friend_veloci[i] * seconds)
+		if lower_bound > overlap_upper or upper_bound < overlap_lower:
+			return False
+		if lower_bound > overlap_lower:
+			overlap_lower = lower_bound
+		if upper_bound < overlap_upper:
+			overlap_upper = upper_bound
+	return True
+
+
+left, right = 0, 10**9
+diff = 10**-6
+
+while left + diff < right:
+	mid = (left + right) / 2
+	last_comparison = all_friends_converge(mid)
+	if last_comparison:
+		right = mid
+	else:
+		left = mid + diff
+
+# We make our output slightly more accurate
+print(((left + mid) / 2) if last_comparison else ((mid + right) / 2))
+
+New Solution
+
+for _ in range(int(input())):
+	n = int(input())
+	a = list(map(int, input().split()))
+	pref = [0] * n
+	suff = [0] * n
+
+	for i in range(n):
+		pref[i] = a[i] + i
+		suff[i] = a[i] - i
+
+	for i in range(1, n):
+		pref[i] = max(pref[i], pref[i - 1])
+	for i in range(n - 2, -1, -1):
+		suff[i] = max(suff[i], suff[i + 1])
+
+	ans = 0
+	for i in range(1, n - 1):
+		ans = max(ans, pref[i - 1] + suff[i + 1] + a[i])
+
+	print(ans)
+
+New Solution
+
+for _ in range(int(input())):
+	n, q = map(int, input().split())
+
+	pref_sum = [0] * (n + 1)
+	pref_xor = [0] * (n + 1)
+
+	cost = lambda l, r: (pref_sum[r] - pref_sum[l - 1]) - (
+		pref_xor[r] ^ pref_xor[l - 1]
+	)
+
+	a = list(map(int, input().split()))
+	for i in range(n):
+		pref_sum[i + 1] = a[i] + pref_sum[i]
+		pref_xor[i + 1] = a[i] ^ pref_xor[i]
+
+	_, _ = map(int, input().split())
+
+	# binary search on length
+	best_cost = cost(1, n)
+
+	lo = 1
+	hi = n
+
+	while lo < hi:
+		mid = lo + (hi - lo) // 2
+		possible = False
+
+		for i in range(1, n - mid + 2):
+			# if this segment has the most optimal cost
+			if cost(i, i + mid - 1) == best_cost:
+				possible = True
+				break
+
+		if possible:
+			hi = mid
+		else:
+			lo = mid + 1
+
+	for i in range(1, n - lo + 2):
+		# this was the segment we found
+		if cost(i, i + lo - 1) == best_cost:
+			print(i, i + lo - 1)
+			break
+
+New Solution
+
+from collections import defaultdict
+
+for _ in range(int(input())):
+	arr_len = int(input())
+	arr = [ord(i) - ord("0") for i in input()]
+
+	pref_arr = [0] + arr
+	for i in range(1, len(pref_arr)):
+		pref_arr[i] += pref_arr[i - 1]
+
+	sum_dist = defaultdict(int)
+	for i in range(len(pref_arr)):
+		sum_dist[pref_arr[i] - i] += 1
+
+	good_arrays = 0
+	for f in sum_dist.values():
+		# calculate # of possible unordered pairs with f values of i
+		good_arrays += f * (f - 1) // 2
+	print(good_arrays)
+
+New Solution
+
+MAX_BIT = 20
+
+n = int(input())
+a = list(map(int, input().split()))
+
+# Count the number of active bits at each position.
+num_bits = [0] * MAX_BIT
+for i in range(MAX_BIT):
+	for j in range(n):
+		if a[j] & (1 << i):
+			num_bits[i] += 1
+
+# Create the optimal array and calculate
+# the sum of the squares of the new array.
+ans = 0
+for i in range(n):
+	curr = 0
+	for j in range(MAX_BIT):
+		if num_bits[j]:
+			curr |= 1 << j
+			num_bits[j] -= 1
+	ans += curr * curr
+
+print(ans)
+
+New Solution
+
+from math import gcd
+
+for _ in range(int(input())):
+	ticket_num = int(input())
+	tickets = sorted([int(i) for i in input().split()], reverse=True)
+	prog1 = [int(i) for i in input().split()]
+	prog2 = [int(i) for i in input().split()]
+	min_revenue = int(input())
+	# the frequency of both programs including a single ticket
+	combo_freq = prog1[1] * prog2[1] // gcd(prog1[1], prog2[1])
+
+	lo = 0
+	hi = ticket_num
+	valid = -1
+	while lo <= hi:
+		mid = (lo + hi) // 2
+		# all the possible tickets that can be used to save the nature
+		help_chances = sorted(
+			[
+				[prog1[0] + prog2[0], mid // combo_freq],
+				[prog1[0], mid // prog1[1] - mid // combo_freq],
+				[prog2[0], mid // prog2[1] - mid // combo_freq],
+			],
+			reverse=True,
+		)
+
+		ticket_at = 0
+		revenue = 0
+		"""
+		sell the tickets, with the most expensive ticket
+		and the greatest percentage going first to maximize revenue
+		"""
+		for ch in help_chances:
+			for _ in range(ch[1]):
+				revenue += tickets[ticket_at] * ch[0] // 100
+				ticket_at += 1
+
+		if revenue >= min_revenue:
+			valid = mid
+			hi = mid - 1
+		else:
+			lo = mid + 1
+	print(valid)
+
+New Solution
+
+from typing import List
+
+
+def reachable(start: List[int], end: List[int], wind: str, time: int) -> bool:
+	start = start.copy()
+	# count the net changes after one wind cycle
+	wind_x = wind.count("R") - wind.count("L")
+	wind_y = wind.count("U") - wind.count("D")
+	cycle_num = time // len(wind)
+	# speed this up by multiplying by the amount of complete cycles in the time
+	wind_x *= cycle_num
+	wind_y *= cycle_num
+
+	remainder = time % len(wind)
+	wind = wind[:remainder]  # account for the remaining wind
+	wind_x += wind.count("R") - wind.count("L")
+	wind_y += wind.count("U") - wind.count("D")
+
+	# apply the changes and see if the manhattan distance is less than the time
+	start[0] += wind_x
+	start[1] += wind_y
+	return abs(start[0] - end[0]) + abs(start[1] - end[1]) <= time
+
+
+at_pos = [int(i) for i in input().split()]
+destination = [int(i) for i in input().split()]
+input()
+wind_cycle = input()
+
+
+lo = 0
+hi = 2 * 10**14
+valid = -1
+while lo <= hi:
+	mid = (lo + hi) // 2
+	if reachable(at_pos, destination, wind_cycle, mid):
+		valid = mid
+		hi = mid - 1
+	else:
+		lo = mid + 1
+
+print(valid)
+
+New Solution
+
+n, k = map(int, input().split())
+l = []
+for i in range(n):
+	l.append(int(input()))
+
+dp = [-1] * n
+dp[0] = l[0]
+for i in range(n):
+	# by not joining it to a team, the default value is just l[i]
+	mx = l[i]
+	for j in range(i, -1, -1):
+		cr = i - j + 1
+		if cr > k:
+			break
+		mx = max(mx, l[j])
+		# update answer: dp[i] = max(dp[i],the skill of joining this cow to a team + all of the previous sums)
+		if j == 0:
+			dp[i] = max(dp[i], mx * cr)
+		else:
+			dp[i] = max(dp[i], dp[j - 1] + (mx * cr))
+print(dp[n - 1])
+
+New Solution
+
+from collections import deque
+
+with open("atlarge.in", "r") as infile:
+	n, k = map(int, infile.readline().split())
+	graph = [[] for _ in range(n)]
+	for _ in range(n - 1):
+		f, t = map(lambda i: int(i) - 1, infile.readline().split())
+		graph[f].append(t)
+		graph[t].append(f)
+
+# store all the nodes which are an exit node
+exits = [node for node, adj_list in enumerate(graph) if len(adj_list) == 1]
+
+# stores minimum steps for a farmer or bessie to reach the node of index = node
+dist_bessie = [float("inf")] * n
+dist_farmer = [float("inf")] * n
+
+"""
+Multi-source BFS from all the exits to calculate, for all nodes, the minimum
+number of steps needed for a farmer to reach that node
+"""
+queue = deque(exits)
+for exit_node in exits:
+	dist_farmer[exit_node] = 0
+
+while queue:
+	curr = queue.pop()
+
+	for adj in graph[curr]:
+		if dist_farmer[curr] + 1 < dist_farmer[adj]:
+			dist_farmer[adj] = dist_farmer[curr] + 1
+			queue.appendleft(adj)
+
+"""
+BFS from node k to trace all of Bessie's paths. Increment the farmers needed
+when dist_bessie[i] = dist_farmer[i], where the additional farmer will cover
+all of Bessie's escape paths containing node i
+"""
+farmers_needed = 0
+queue = deque([k - 1])
+dist_bessie[k - 1] = 0
+while queue:
+	curr = queue.pop()
+
+	if dist_bessie[curr] >= dist_farmer[curr]:
+		farmers_needed += 1
+		continue
+
+	for adj in graph[curr]:
+		if dist_bessie[adj] == float("inf"):
+			dist_bessie[adj] = dist_bessie[curr] + 1
+			queue.appendleft(adj)
+
+print(farmers_needed, file=open("atlarge.out", "w"))
+
+New Solution
+
+from collections import defaultdict, deque
+
+
+class Fencepost:
+	def __init__(self, x: int, y: int):
+		self.x = x
+		self.y = y
+
+
+with open("lasers.in", "r") as infile:
+	n, xl, yl, xb, yb = map(int, infile.readline().split())
+
+	fenceposts = [Fencepost(xl, yl)]
+	x_lines = defaultdict(list)  # stores indices of fenceposts on line x = key
+	y_lines = defaultdict(list)  # stores indices of fenceposts on line y = key
+
+	for i in range(n):
+		xi, yi = map(int, infile.readline().split())
+		fenceposts.append(Fencepost(xi, yi))
+		x_lines[xi].append(i + 1)
+		y_lines[yi].append(i + 1)
+
+	dist = [-1] * (n + 1)
+	dist[0] = 0
+
+min_dist = -1
+
+# queue stores (idx of fencepost, beam direction) where True is a horizontal
+# beam and False is a vertical beam
+queue = deque([(0, True), (0, False)])
+
+while queue:
+
+	curr_idx, curr_direction = queue.pop()
+	curr_fp = fenceposts[curr_idx]
+
+	if curr_fp.x == xb or curr_fp.y == yb:
+		min_dist = dist[curr_idx]
+		break
+
+	# Change direction
+	if curr_direction:  # is horizontal
+		for fp_i in y_lines[curr_fp.y]:
+			if dist[fp_i] == -1:
+				queue.appendleft((fp_i, not curr_direction))
+				dist[fp_i] = dist[curr_idx] + 1
+	else:  # is vertical
+		for fp_i in x_lines[curr_fp.x]:
+			if dist[fp_i] == -1:
+				queue.appendleft((fp_i, not curr_direction))
+				dist[fp_i] = dist[curr_idx] + 1
+
+print(min_dist, file=open("lasers.out", "w"))
+
+New Solution
+
+with open("split.in") as read:
+	n = int(read.readline())
+	cows = [list(map(int, read.readline().split())) for _ in range(n)]
+
+ans = 0
+
+
+def search():
+	"""
+	returns the maximum area saved by testing splits along cows[i].first
+	"""
+	global ans
+
+	cows.sort()
+
+	upd = lambda x, y: (min(x[0], y), max(x[1], y))
+
+	# compute prefix/suffix minimums and maximums
+	pref = [(cows[0][1], cows[0][1])]
+	for i in range(1, n):
+		pref.append(upd(pref[-1], cows[i][1]))
+
+	suf = [(cows[-1][1], cows[-1][1])]
+	for i in range(n - 2, -1, -1):
+		suf.append(upd(suf[-1], cows[i][1]))
+	suf.reverse()
+
+	# initial area with one enclosure
+	area = (cows[-1][0] - cows[0][0]) * (pref[-1][1] - pref[-1][0])
+	best = float("inf")
+
+	for i in range(n - 1):
+		# if it's possible to split
+		if cows[i][0] != cows[i + 1][0]:
+			first_rect = (cows[i][0] - cows[0][0]) * (pref[i][1] - pref[i][0])
+			second_rect = (cows[-1][0] - cows[i + 1][0]) * (
+				suf[i + 1][1] - suf[i + 1][0]
+			)
+
+			best = min(best, first_rect + second_rect)
+
+	return area - best
+
+
+# try all splits on x-axis
+ans = max(ans, search())
+
+cows = [(y, x) for x, y in cows]
+
+# try all splits on y-axis
+ans = max(ans, search())
+
+print(ans, file=open("split.out", "w"))
+
+New Solution
+
+with open("berries.in") as read:
+	n, k = map(int, read.readline().split())
+	berries = [*map(int, read.readline().split())]
+
+ans = 0
+for i in range(1, max(berries) + 1):
+	mod = i
+	full = 0  # number of full baskets
+	tmp = 0
+
+	# sum of leftovers
+	for j in range(n):
+		full += berries[j] // mod
+
+	# if the amount isn't enough for k / 2 baskets, it is invalid
+	if full < k / 2:
+		break
+
+	"""
+	if there are greater than or equal to k sections for Bessie and Elsie,
+	Bessie can be allocated to (k / 2) * i berries
+	"""
+	if full >= k:
+		ans = max(ans, (k // 2) * i)
+		continue
+	idx = (full - k // 2) * i
+
+	# sorts berries list by mod so Bessie can get the maximum amount of leftovers
+	berries.sort(key=lambda x: (x % mod), reverse=True)
+
+	# calculates maximum amount of leftovers Bessie can take
+	while tmp < (k - full):
+		if tmp < len(berries):
+			idx += berries[tmp] % mod
+			tmp += 1
+		else:
+			break
+
+	ans = max(ans, idx)
+
+print(ans, file=open("berries.out", "w"))
+
+New Solution
+
+with open("herding.in") as read:
+	n = int(read.readline())
+	herd = sorted(int(read.readline()) for _ in range(n))
+
+min_moves = float("inf")
+if herd[n - 2] - herd[0] == n - 2 and herd[n - 1] - herd[n - 2] > 2:
+	min_moves = 2
+elif herd[n - 1] - herd[1] == n - 2 and herd[1] - herd[0] > 2:
+	min_moves = 2
+else:
+	# min is the patch of length n that has the least # of gaps
+	farthest_cow = 0
+	for curr_cow in range(n):
+		while farthest_cow + 1 < n and herd[farthest_cow + 1] - herd[curr_cow] < n:
+			farthest_cow += 1
+		min_moves = min(min_moves, n - (farthest_cow - curr_cow + 1))
+
+# calculate the number of empty cells
+gap_num = 0
+for curr_cow in range(1, n):
+	gap_num += herd[curr_cow] - herd[curr_cow - 1] - 1
+# max is the maximum of the total gap minus either the first or last gap
+max_moves = max(
+	gap_num - (herd[1] - herd[0] - 1), gap_num - (herd[n - 1] - herd[n - 2] - 1)
+)
+
+print(min_moves, max_moves, sep="\n", file=open("herding.out", "w"))
+
+New Solution
+
+class Mountain:
+	def __init__(self, start: int, end: int):
+		self.start = start
+		self.end = end
+
+	def __lt__(self, other: "Mountain"):
+		# sort by start and tiebreak by putting the larger mountains first
+		if self.start == other.start:
+			return self.end > other.end
+		return self.start < other.start
+
+
+with open("mountains.in") as read:
+	mountain_num = int(read.readline())
+	mountains = []
+	for _ in range(mountain_num):
+		x, y = [int(i) for i in read.readline().split()]
+		# store the mountains by the interval they cover
+		mountains.append(Mountain(x - y, x + y))
+
+mountains.sort()
+
+rightmost = -1
+visible_num = 0
+for m in mountains:
+	if m.end > rightmost:
+		visible_num += 1
+		rightmost = m.end
+
+print(visible_num, file=open("mountains.out", "w"))
+
+New Solution
+
+with open("planting.in") as read:
+	field_num = int(read.readline())
+	deg = [0 for _ in range(field_num + 1)]  # 1-indexed
+	for _ in range(field_num - 1):
+		field1, field2 = [int(i) for i in read.readline().split()]
+		deg[field1] += 1
+		deg[field2] += 1
+
+max_deg = max(deg)
+print(max_deg + 1, file=open("planting.out", "w"))
+
+New Solution
+
+from typing import List
+
+# list of cows, in alphabetical order
+COWS = ["Beatrice", "Belinda", "Bella", "Bessie", "Betsy", "Blue", "Buttercup", "Sue"]
+
+orderings = []
+
+
+def build(ordering: List[str]):
+	# finished building permutation
+	if len(ordering) == 8:
+		orderings.append(ordering.copy())
+		return
+
+	for cow in COWS:
+		if cow not in ordering:
+			ordering.append(cow)
+			build(ordering)
+			ordering.pop()
+
+
+with open("lineup.in") as read:
+	n = int(read.readline())
+	restrictions = []
+	for _ in range(n):
+		line = read.readline().split()
+		cow1 = line[0]
+		cow2 = line[-1]
+		restrictions.append((cow1, cow2))
+
+# build all possible orderings of cows
+build([])
+for order in orderings:
+	for rule in restrictions:
+		if abs(order.index(rule[0]) - order.index(rule[1])) > 1:
+			break
+	else:
+		with open("lineup.out", "w") as written:
+			for cow in order:
+				print(cow, file=written)
+		break
+
+New Solution
+
+with open("gymnastics.in") as read:
+	session_num, cow_num = [int(i) for i in read.readline().split()]
+	sessions = []
+	for _ in range(session_num):
+		sessions.append([int(c) - 1 for c in read.readline().split()])
+
+better_pairs = 0
+for c1 in range(cow_num):
+	for c2 in range(cow_num):
+		if c1 == c2:
+			continue
+
+		for s in sessions:
+			if s.index(c1) < s.index(c2):
+				break
+		else:
+			better_pairs += 1
+
+print(better_pairs, file=open("gymnastics.out", "w"))
+
+New Solution
+
+with open("traffic.in") as read:
+	num_miles = int(read.readline())
+
+	segment_type = []
+	start = []
+	end = []
+
+	for m in range(num_miles):
+		curr_type, s, e = read.readline().split()
+		segment_type.append(curr_type)
+		start.append(int(s))
+		end.append(int(e))
+
+low = 0
+high = float("inf")
+
+for m in range(num_miles - 1, -1, -1):
+	if segment_type[m] == "none":
+		# Set a new range based on sensor reading.
+		low = max(low, start[m])
+		high = min(high, end[m])
+	elif segment_type[m] == "off":
+		# Update range of possible traffic flows
+		low += start[m]
+		high += end[m]
+	elif segment_type[m] == "on":
+		low -= end[m]
+		high -= start[m]
+		# Set to zero if low becomes negative
+		low = max(0, low)
+
+write = open("traffic.out", "w")
+print(low, high, file=write)
+
+low = 0
+high = float("inf")
+
+# Process again, this time scanning the other way
+for m in range(num_miles):
+	if segment_type[m] == "none":
+		low = max(low, start[m])
+		high = min(high, end[m])
+	elif segment_type[m] == "on":
+		low += start[m]
+		high += end[m]
+	elif segment_type[m] == "off":
+		low -= end[m]
+		high -= start[m]
+		low = max(0, low)
+
+print(low, high, file=write)

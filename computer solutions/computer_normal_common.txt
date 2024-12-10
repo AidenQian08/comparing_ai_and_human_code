@@ -1,0 +1,1305 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<int> a(N), b(N), pos(N+1), dp(N);
+    
+    for (int i = 0; i < N; ++i) {
+        cin >> a[i];
+    }
+    
+    for (int i = 0; i < N; ++i) {
+        cin >> b[i];
+        pos[b[i]] = i;  // Store the position of elements in permutation b
+    }
+
+    // Replace elements in 'a' with their positions in 'b'
+    for (int i = 0; i < N; ++i) {
+        a[i] = pos[a[i]];
+    }
+
+    // Longest Increasing Subsequence (LIS) approach to find the LCS length
+    vector<int> lis;
+    
+    for (int i = 0; i < N; ++i) {
+        auto it = lower_bound(lis.begin(), lis.end(), a[i]);
+        if (it == lis.end()) {
+            lis.push_back(a[i]);
+        } else {
+            *it = a[i];
+        }
+    }
+    
+    cout << lis.size() << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int T;
+    cin >> T;
+    
+    while (T--) {
+        int R, C;
+        cin >> R >> C;
+        vector<vector<int>> grid(R, vector<int>(C));
+        
+        for (int i = 0; i < R; ++i) {
+            for (int j = 0; j < C; ++j) {
+                cin >> grid[i][j];
+            }
+        }
+
+        long long result = 0;
+
+        // Track the height of contiguous subrectangles for each column
+        vector<vector<int>> height(R, vector<int>(C, 1));
+
+        // Fill height array for each column
+        for (int j = 0; j < C; ++j) {
+            for (int i = 1; i < R; ++i) {
+                if (grid[i][j] == grid[i - 1][j]) {
+                    height[i][j] = height[i - 1][j] + 1;
+                }
+            }
+        }
+
+        // Calculate the number of valid subrectangles
+        for (int i = 0; i < R; ++i) {
+            int width = 0;
+            for (int j = 0; j < C; ++j) {
+                if (j == 0 || grid[i][j] != grid[i][j - 1]) {
+                    width = 1;
+                } else {
+                    width++;
+                }
+                
+                int min_height = height[i][j];
+                for (int k = j; k >= j - width + 1; --k) {
+                    min_height = min(min_height, height[i][k]);
+                    result += min_height;
+                }
+            }
+        }
+
+        cout << result << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <functional>
+
+using namespace std;
+
+typedef pair<int, int> pii;
+const int MAXN = 200000;
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<int> a(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+
+    vector<bool> visited(n, false);
+    priority_queue<pii, vector<pii>, greater<pii>> pq;
+
+    // Start Prim's algorithm from vertex 0
+    for (int i = 1; i < n; ++i) {
+        pq.push({a[0] ^ a[i], i});
+    }
+    visited[0] = true;
+
+    long long mst_weight = 0;
+    int edges_used = 0;
+
+    while (edges_used < n - 1 && !pq.empty()) {
+        auto [weight, v] = pq.top();
+        pq.pop();
+
+        if (visited[v]) continue;
+
+        visited[v] = true;
+        mst_weight += weight;
+        edges_used++;
+
+        // Add new edges to the priority queue
+        for (int i = 0; i < n; ++i) {
+            if (!visited[i]) {
+                pq.push({a[v] ^ a[i], i});
+            }
+        }
+    }
+
+    cout << mst_weight << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<int> weights(2 * n);
+    for (int i = 0; i < 2 * n; ++i) {
+        cin >> weights[i];
+    }
+    
+    // Sort the weights
+    sort(weights.begin(), weights.end());
+    
+    int min_instability = INT_MAX;
+
+    // Try all combinations of two people to use single kayaks
+    for (int i = 0; i < 2 * n; ++i) {
+        for (int j = i + 1; j < 2 * n; ++j) {
+            // Make a temporary vector for remaining people
+            vector<int> remaining;
+            for (int k = 0; k < 2 * n; ++k) {
+                if (k != i && k != j) {
+                    remaining.push_back(weights[k]);
+                }
+            }
+            
+            // Calculate the instability for this configuration
+            int current_instability = 0;
+            for (int k = 0; k < remaining.size(); k += 2) {
+                current_instability += abs(remaining[k] - remaining[k + 1]);
+            }
+            
+            // Update the minimum instability
+            min_instability = min(min_instability, current_instability);
+        }
+    }
+    
+    // Output the minimum instability
+    cout << min_instability << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<int> arr(n);
+    vector<bool> used(n, false);
+    
+    for (int i = 0; i < n; ++i) {
+        cin >> arr[i];
+    }
+
+    // Keep iterating until all numbers are used
+    while (true) {
+        vector<int> sequence;
+        int prev = -1;
+
+        // Go through the array and form an increasing subsequence
+        for (int i = 0; i < n; ++i) {
+            if (!used[i] && (sequence.empty() || arr[i] > prev)) {
+                sequence.push_back(arr[i]);
+                prev = arr[i];
+                used[i] = true;
+            }
+        }
+
+        // If no numbers were added, we're done
+        if (sequence.empty()) {
+            break;
+        }
+
+        // Print the current sequence
+        for (int num : sequence) {
+            cout << num << " ";
+        }
+        cout << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    int k, n;
+    cin >> k >> n;
+    
+    vector<int> a(k);
+    vector<int> b(n);
+    
+    for (int i = 0; i < k; ++i) {
+        cin >> a[i];
+    }
+    
+    for (int i = 0; i < n; ++i) {
+        cin >> b[i];
+    }
+    
+    set<int> possible_initial_scores;
+    
+    for (int i = 0; i < k; ++i) {
+        int initial_score = b[0] - a[i];
+        bool valid = true;
+        set<int> seen;
+        
+        int current_score = initial_score;
+        
+        for (int j = 0; j < k; ++j) {
+            current_score += a[j];
+            seen.insert(current_score);
+        }
+        
+        for (int j = 0; j < n; ++j) {
+            if (seen.find(b[j]) == seen.end()) {
+                valid = false;
+                break;
+            }
+        }
+        
+        if (valid) {
+            possible_initial_scores.insert(initial_score);
+        }
+    }
+    
+    cout << possible_initial_scores.size() << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    string s;
+    cin >> s;
+
+    int q;
+    cin >> q;
+
+    vector<vector<int>> prefix_sum(26, vector<int>(n + 1, 0));
+
+    // Precompute prefix sums for each character in the alphabet
+    for (int i = 0; i < n; ++i) {
+        for (int c = 0; c < 26; ++c) {
+            prefix_sum[c][i + 1] = prefix_sum[c][i] + (s[i] == ('a' + c) ? 1 : 0);
+        }
+    }
+
+    while (q--) {
+        int m;
+        char c;
+        cin >> m >> c;
+
+        int char_idx = c - 'a';
+        int max_len = 0;
+
+        // Try all possible subarrays
+        for (int l = 0; l < n; ++l) {
+            for (int r = l; r < n; ++r) {
+                int len = r - l + 1;
+                int current_char_count = prefix_sum[char_idx][r + 1] - prefix_sum[char_idx][l];
+                int changes_needed = len - current_char_count;
+
+                if (changes_needed <= m) {
+                    max_len = max(max_len, len);
+                }
+            }
+        }
+
+        cout << max_len << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <iomanip>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+bool canMeetInTime(const vector<int>& x, const vector<int>& v, int n, double t) {
+    double left = -1e18, right = 1e18;
+    for (int i = 0; i < n; ++i) {
+        left = max(left, x[i] - v[i] * t);
+        right = min(right, x[i] + v[i] * t);
+    }
+    return left <= right;
+}
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<int> x(n), v(n);
+    for (int i = 0; i < n; ++i) cin >> x[i];
+    for (int i = 0; i < n; ++i) cin >> v[i];
+
+    double low = 0, high = 1e18, mid;
+    while (high - low > 1e-7) {
+        mid = (low + high) / 2.0;
+        if (canMeetInTime(x, v, n, mid)) {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+
+    cout << fixed << setprecision(9) << low << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+
+int countLessOrEqual(int n, int mid) {
+    int count = 0;
+    for (int i = 1; i <= n; ++i) {
+        count += min(mid / i, n); // Count how many numbers <= mid in each row
+    }
+    return count;
+}
+
+int main() {
+    int n;
+    cin >> n;
+
+    int low = 1, high = n * n, mid;
+    int target = (n * n) / 2 + 1; // We want the (n^2 // 2 + 1)-th smallest element
+
+    while (low < high) {
+        mid = (low + high) / 2;
+        if (countLessOrEqual(n, mid) < target) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    cout << low << endl; // low will be the middle element
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <stack>
+
+using namespace std;
+
+void dfs(int node, vector<vector<int>>& adj, vector<bool>& visited) {
+    stack<int> s;
+    s.push(node);
+    while (!s.empty()) {
+        int v = s.top();
+        s.pop();
+        for (int u : adj[v]) {
+            if (!visited[u]) {
+                visited[u] = true;
+                s.push(u);
+            }
+        }
+    }
+}
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    
+    vector<vector<int>> adj(n + 1), rev_adj(n + 1);
+    for (int i = 0; i < m; ++i) {
+        int a, b;
+        cin >> a >> b;
+        adj[a].push_back(b);
+        rev_adj[b].push_back(a);
+    }
+
+    vector<bool> visited(n + 1, false);
+    dfs(1, adj, visited);
+    for (int i = 1; i <= n; ++i) {
+        if (!visited[i]) {
+            cout << "NO\n" << 1 << " " << i << endl;
+            return 0;
+        }
+    }
+
+    fill(visited.begin(), visited.end(), false);
+    dfs(1, rev_adj, visited);
+    for (int i = 1; i <= n; ++i) {
+        if (!visited[i]) {
+            cout << "NO\n" << i << " " << 1 << endl;
+            return 0;
+        }
+    }
+
+    cout << "YES\n";
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <map>
+#include <algorithm>
+
+using namespace std;
+
+string target = "123456789";
+vector<int> directions = {-1, 1, -3, 3}; // move left, right, up, down
+
+bool isValidMove(int pos, int dir) {
+    if (dir == -1 && pos % 3 == 0) return false; // Can't move left from the leftmost column
+    if (dir == 1 && pos % 3 == 2) return false;  // Can't move right from the rightmost column
+    return true;
+}
+
+int bfs(string start) {
+    queue<string> q;
+    map<string, int> distance;
+    q.push(start);
+    distance[start] = 0;
+
+    while (!q.empty()) {
+        string current = q.front();
+        q.pop();
+
+        if (current == target) return distance[current];
+
+        int zeroPos = current.find('9'); // Find the position of '9' (which represents the empty space)
+
+        for (int dir : directions) {
+            if (isValidMove(zeroPos, dir)) {
+                string next = current;
+                swap(next[zeroPos], next[zeroPos + dir]);
+                if (distance.find(next) == distance.end()) {
+                    distance[next] = distance[current] + 1;
+                    q.push(next);
+                }
+            }
+        }
+    }
+    return -1; // Should never reach here
+}
+
+int main() {
+    string start = "";
+    int x;
+
+    for (int i = 0; i < 9; ++i) {
+        cin >> x;
+        start += (x == 9 ? '9' : char(x + '0'));
+    }
+
+    cout << bfs(start) << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <climits>
+
+using namespace std;
+
+int main() {
+    int n, x;
+    cin >> n >> x;
+
+    vector<int> w(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> w[i];
+    }
+
+    int total_combinations = 1 << n; // 2^n combinations
+    vector<pair<int, int>> dp(total_combinations, {n + 1, 0}); // (number of rides, weight in current ride)
+
+    dp[0] = {1, 0}; // No people, 1 ride with 0 weight
+
+    for (int mask = 1; mask < total_combinations; ++mask) {
+        for (int i = 0; i < n; ++i) {
+            if (mask & (1 << i)) {
+                int previous_mask = mask ^ (1 << i);
+                auto [rides, current_weight] = dp[previous_mask];
+                if (current_weight + w[i] <= x) {
+                    dp[mask] = min(dp[mask], {rides, current_weight + w[i]});
+                } else {
+                    dp[mask] = min(dp[mask], {rides + 1, w[i]});
+                }
+            }
+        }
+    }
+
+    cout << dp[total_combinations - 1].first << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <deque>
+#include <vector>
+#include <climits>
+
+using namespace std;
+
+int main() {
+    int n, a, b;
+    cin >> n >> a >> b;
+
+    vector<long long> x(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> x[i];
+    }
+
+    vector<long long> prefix_sum(n + 1, 0);
+    for (int i = 1; i <= n; ++i) {
+        prefix_sum[i] = prefix_sum[i - 1] + x[i - 1];
+    }
+
+    deque<int> dq;
+    long long max_sum = LLONG_MIN;
+
+    for (int i = a; i <= n; ++i) {
+        if (!dq.empty() && dq.front() < i - b) {
+            dq.pop_front();
+        }
+
+        while (!dq.empty() && prefix_sum[dq.back()] >= prefix_sum[i - a]) {
+            dq.pop_back();
+        }
+
+        dq.push_back(i - a);
+
+        max_sum = max(max_sum, prefix_sum[i] - prefix_sum[dq.front()]);
+    }
+
+    cout << max_sum << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+
+using namespace std;
+
+int main() {
+    int n, x;
+    cin >> n >> x;
+
+    vector<int> a(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+
+    // Hash map to store pair sums and their indices
+    unordered_map<int, pair<int, int>> pair_sum;
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = i + 1; j < n; ++j) {
+            int current_sum = a[i] + a[j];
+
+            // Check if (x - current_sum) exists in the map
+            if (pair_sum.find(x - current_sum) != pair_sum.end()) {
+                auto p = pair_sum[x - current_sum];
+                // Ensure all indices are distinct
+                if (p.first != i && p.second != i && p.first != j && p.second != j) {
+                    cout << p.first + 1 << " " << p.second + 1 << " " << i + 1 << " " << j + 1 << endl;
+                    return 0;
+                }
+            }
+        }
+
+        // Insert all pair sums involving the current index i
+        for (int k = 0; k < i; ++k) {
+            pair_sum[a[i] + a[k]] = {k, i};
+        }
+    }
+
+    cout << "IMPOSSIBLE" << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+
+using namespace std;
+
+int main() {
+    int n, k;
+    cin >> n >> k;
+
+    vector<pair<int, int>> movies(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> movies[i].first >> movies[i].second;
+    }
+
+    // Sort movies by their ending times
+    sort(movies.begin(), movies.end(), [](pair<int, int>& a, pair<int, int>& b) {
+        return a.second < b.second;
+    });
+
+    multiset<int> members;
+    for (int i = 0; i < k; ++i) {
+        members.insert(0); // All members are initially free at time 0
+    }
+
+    int total_movies = 0;
+
+    for (auto movie : movies) {
+        auto it = members.upper_bound(movie.first);
+        if (it != members.begin()) {
+            --it;
+            members.erase(it);
+            members.insert(movie.second);
+            total_movies++;
+        }
+    }
+
+    cout << total_movies << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int main() {
+    int n;
+    long long k;
+    cin >> n >> k;
+    
+    vector<long long> x(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> x[i];
+    }
+
+    int subarrays = 1;  // At least one subarray is required
+    long long current_sum = 0;
+
+    for (int i = 0; i < n; ++i) {
+        if (current_sum + x[i] > k) {
+            subarrays++;  // Start a new subarray
+            current_sum = x[i];  // Reset the sum to the current element
+        } else {
+            current_sum += x[i];
+        }
+    }
+
+    // Check if the first and last subarrays (due to cyclic nature) can be merged
+    long long first_sum = x[0];
+    for (int i = 1; i < n && first_sum <= k; ++i) {
+        if (current_sum + first_sum > k) {
+            break;
+        }
+        first_sum += x[i];
+    }
+
+    cout << subarrays << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+void simulate(int milk, vector<int> barn1, vector<int> barn2, set<int>& results, int day) {
+    if (day == 5) {
+        results.insert(milk); // Store the result after the 5th day
+        return;
+    }
+
+    if (day % 2 == 1) { // Odd days, transfer from barn2 to barn1
+        for (int i = 0; i < barn2.size(); ++i) {
+            int bucket = barn2[i];
+            barn2.erase(barn2.begin() + i);
+            barn1.push_back(bucket);
+            simulate(milk + bucket, barn1, barn2, results, day + 1);
+            barn1.pop_back();
+            barn2.insert(barn2.begin() + i, bucket);
+        }
+    } else { // Even days, transfer from barn1 to barn2
+        for (int i = 0; i < barn1.size(); ++i) {
+            int bucket = barn1[i];
+            barn1.erase(barn1.begin() + i);
+            barn2.push_back(bucket);
+            simulate(milk - bucket, barn1, barn2, results, day + 1);
+            barn2.pop_back();
+            barn1.insert(barn1.begin() + i, bucket);
+        }
+    }
+}
+
+int main() {
+    vector<int> barn1(10), barn2(10);
+
+    for (int i = 0; i < 10; ++i) {
+        cin >> barn1[i];
+    }
+
+    for (int i = 0; i < 10; ++i) {
+        cin >> barn2[i];
+    }
+
+    set<int> results;
+    simulate(1000, barn1, barn2, results, 1);
+
+    cout << results.size() << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <climits>
+
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<int> r(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> r[i];
+    }
+
+    int min_distance = INT_MAX;
+
+    for (int start = 0; start < n; ++start) {
+        int total_distance = 0;
+        
+        for (int i = 0; i < n; ++i) {
+            int distance = (i + n - start) % n;
+            total_distance += distance * r[i];
+        }
+
+        min_distance = min(min_distance, total_distance);
+    }
+
+    cout << min_distance << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    int N, K;
+    cin >> N >> K;
+    vector<int> B(N);
+
+    for (int i = 0; i < N; ++i) {
+        cin >> B[i];
+    }
+
+    int maxBerries = 0;
+
+    for (int limit = 1; limit <= 1000; ++limit) {
+        vector<int> baskets;
+        
+        // Try to fill baskets with berries
+        for (int i = 0; i < N; ++i) {
+            int fullBaskets = B[i] / limit;
+            for (int j = 0; j < fullBaskets; ++j) {
+                baskets.push_back(limit);
+            }
+            if (B[i] % limit != 0) {
+                baskets.push_back(B[i] % limit);
+            }
+        }
+
+        // Sort the baskets in descending order
+        sort(baskets.rbegin(), baskets.rend());
+
+        // Ensure we only have K baskets
+        while (baskets.size() > K) {
+            baskets.pop_back();
+        }
+
+        // Calculate the total berries Bessie can get (the smaller half)
+        int bessieBerries = 0;
+        for (int i = K / 2; i < baskets.size(); ++i) {
+            bessieBerries += baskets[i];
+        }
+
+        maxBerries = max(maxBerries, bessieBerries);
+    }
+
+    cout << maxBerries << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+// A structure to represent a mountain
+struct Mountain {
+    int x, y;
+};
+
+// Comparator to sort mountains by base (x - y) in ascending order, 
+// and then by peak height (y) in descending order
+bool compare(const Mountain& a, const Mountain& b) {
+    if (a.x - a.y == b.x - b.y)
+        return a.y > b.y;
+    return (a.x - a.y) < (b.x - b.y);
+}
+
+int main() {
+    int N;
+    cin >> N;
+    vector<Mountain> mountains(N);
+
+    for (int i = 0; i < N; ++i) {
+        cin >> mountains[i].x >> mountains[i].y;
+    }
+
+    // Sort mountains by base, then by height
+    sort(mountains.begin(), mountains.end(), compare);
+
+    int visibleCount = 0;
+    int maxY = 0;  // Keep track of the maximum height encountered so far
+
+    // Iterate over sorted mountains and count visible ones
+    for (int i = 0; i < N; ++i) {
+        if (mountains[i].y > maxY) {
+            visibleCount++;
+            maxY = mountains[i].y;
+        }
+    }
+
+    cout << visibleCount << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <cstring>
+
+using namespace std;
+
+int N, K;
+vector<string> board;
+bool visited[100][10];
+vector<pair<int, int>> region;
+
+int dx[] = {1, -1, 0, 0};
+int dy[] = {0, 0, 1, -1};
+
+// BFS to find all connected cells of the same color
+void bfs(int x, int y, char color) {
+    queue<pair<int, int>> q;
+    q.push({x, y});
+    visited[x][y] = true;
+    region.push_back({x, y});
+
+    while (!q.empty()) {
+        int cx = q.front().first;
+        int cy = q.front().second;
+        q.pop();
+
+        for (int i = 0; i < 4; ++i) {
+            int nx = cx + dx[i];
+            int ny = cy + dy[i];
+            if (nx >= 0 && nx < N && ny >= 0 && ny < 10 && !visited[nx][ny] && board[nx][ny] == color) {
+                visited[nx][ny] = true;
+                region.push_back({nx, ny});
+                q.push({nx, ny});
+            }
+        }
+    }
+}
+
+// Apply gravity to the board
+void applyGravity() {
+    for (int col = 0; col < 10; ++col) {
+        int emptyRow = N - 1;
+        for (int row = N - 1; row >= 0; --row) {
+            if (board[row][col] != '0') {
+                board[emptyRow][col] = board[row][col];
+                if (emptyRow != row) board[row][col] = '0';
+                emptyRow--;
+            }
+        }
+    }
+}
+
+int main() {
+    cin >> N >> K;
+    board.resize(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> board[i];
+    }
+
+    bool found = true;
+    while (found) {
+        found = false;
+        memset(visited, false, sizeof(visited));
+
+        // Find all regions of size >= K and mark them for removal
+        for (int i = 0; i < N; ++i) {
+            for (int j = 0; j < 10; ++j) {
+                if (board[i][j] != '0' && !visited[i][j]) {
+                    region.clear();
+                    bfs(i, j, board[i][j]);
+
+                    if (region.size() >= K) {
+                        found = true;
+                        for (auto& cell : region) {
+                            board[cell.first][cell.second] = '0';
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply gravity to the board
+        if (found) {
+            applyGravity();
+        }
+    }
+
+    // Print the final board state
+    for (int i = 0; i < N; ++i) {
+        cout << board[i] << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+
+    int N, Q;
+    cin >> N >> Q;
+    vector<int> A(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> A[i];
+    }
+
+    vector<vector<int>> count3sum(N, vector<int>(N, 0));
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = i + 1; j < N; ++j) {
+            unordered_map<int, int> freq;
+            for (int k = j + 1; k < N; ++k) {
+                if (freq.count(-(A[i] + A[j]))) {
+                    count3sum[i][k]++;
+                }
+                freq[A[k]]++;
+            }
+        }
+    }
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = i + 1; j < N; ++j) {
+            count3sum[i][j] += count3sum[i][j - 1];
+        }
+    }
+
+    while (Q--) {
+        int a, b;
+        cin >> a >> b;
+        a--, b--;
+        cout << count3sum[a][b] << "\n";
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <climits>
+#include <functional>
+
+using namespace std;
+
+const int MOD = 2019201997;
+const int A = 2019201913;
+const int B = 2019201949;
+
+int N, K;
+
+int dist(int x, int y) {
+    if (x > y) swap(x, y);
+    return (A * x + B * y) % MOD;
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+
+    cin >> N >> K;
+
+    vector<int> minDist(N + 1, INT_MAX);
+    vector<bool> inMST(N + 1, false);
+
+    minDist[1] = 0;
+    int totalComponents = N;
+
+    int maxMinDist = 0;
+
+    for (int i = 1; i <= N; ++i) {
+        int u = -1;
+        for (int j = 1; j <= N; ++j) {
+            if (!inMST[j] && (u == -1 || minDist[j] < minDist[u])) {
+                u = j;
+            }
+        }
+
+        if (i > 1) {
+            maxMinDist = max(maxMinDist, minDist[u]);
+        }
+
+        inMST[u] = true;
+        --totalComponents;
+
+        for (int v = 1; v <= N; ++v) {
+            if (!inMST[v]) {
+                minDist[v] = min(minDist[v], dist(u, v));
+            }
+        }
+    }
+
+    cout << maxMinDist << "\n";
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <map>
+#include <algorithm>
+
+#define MOD 1000000007
+
+using namespace std;
+
+int main() {
+    int N, M, K;
+    cin >> N >> M >> K;
+
+    vector<int> syllables(N), rhyme_class(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> syllables[i] >> rhyme_class[i];
+    }
+
+    vector<char> rhyme_scheme(M);
+    map<char, int> rhyme_count;
+    for (int i = 0; i < M; ++i) {
+        cin >> rhyme_scheme[i];
+        rhyme_count[rhyme_scheme[i]]++;
+    }
+
+    vector<long long> dp(K + 1, 0);
+    dp[0] = 1;
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = K; j >= syllables[i]; --j) {
+            dp[j] = (dp[j] + dp[j - syllables[i]]) % MOD;
+        }
+    }
+
+    vector<long long> rhyme_class_count(N + 1, 0);
+
+    for (int i = 0; i < N; ++i) {
+        rhyme_class_count[rhyme_class[i]] = (rhyme_class_count[rhyme_class[i]] + dp[K - syllables[i]]) % MOD;
+    }
+
+    vector<long long> powers(M + 1, 1);
+
+    for (int i = 1; i <= M; ++i) {
+        powers[i] = powers[i - 1] * i % MOD;
+    }
+
+    long long result = 1;
+    for (const auto& [rhyme, count] : rhyme_count) {
+        long long sum_powers = 0;
+        for (int i = 1; i <= N; ++i) {
+            if (rhyme_class_count[i] > 0) {
+                long long temp = 1;
+                for (int j = 0; j < count; ++j) {
+                    temp = temp * rhyme_class_count[i] % MOD;
+                }
+                sum_powers = (sum_powers + temp) % MOD;
+            }
+        }
+        result = result * sum_powers % MOD;
+    }
+
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+const int INF = 1e9;
+
+int n, k;
+vector<int> cows;
+
+// Function to compute the minimum travel distance when `k` doors are opened
+int compute_min_distance(vector<vector<int>>& dp, vector<int>& sum, int n, int k) {
+    for (int i = 1; i <= n; ++i) {
+        dp[i][1] = 0;
+        for (int j = 1; j <= i; ++j) {
+            dp[i][1] += cows[j - 1] * (i - j);
+        }
+    }
+
+    for (int doors = 2; doors <= k; ++doors) {
+        for (int i = 1; i <= n; ++i) {
+            dp[i][doors] = INF;
+            for (int j = 1; j < i; ++j) {
+                int current_distance = dp[j][doors - 1];
+                for (int l = j + 1; l <= i; ++l) {
+                    current_distance += cows[l - 1] * (l - j - 1);
+                }
+                dp[i][doors] = min(dp[i][doors], current_distance);
+            }
+        }
+    }
+
+    return dp[n][k];
+}
+
+int main() {
+    cin >> n >> k;
+    cows.resize(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> cows[i];
+    }
+
+    vector<vector<int>> dp(n + 1, vector<int>(k + 1, INF));
+    vector<int> sum(n + 1, 0);
+
+    for (int i = 1; i <= n; ++i) {
+        sum[i] = sum[i - 1] + cows[i - 1];
+    }
+
+    int result = INF;
+    for (int start = 0; start < n; ++start) {
+        vector<int> rotated_cows(n);
+        for (int i = 0; i < n; ++i) {
+            rotated_cows[i] = cows[(start + i) % n];
+        }
+        dp = vector<vector<int>>(n + 1, vector<int>(k + 1, INF));
+        result = min(result, compute_min_distance(dp, sum, n, k));
+    }
+
+    cout << result << endl;
+
+    return 0;
+}

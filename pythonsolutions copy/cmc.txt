@@ -1,0 +1,845 @@
+def find_middle_element(n):
+    def count_less_equal(x):
+        count = 0
+        for i in range(1, n+1):
+            count += min(x // i, n)
+        return count
+
+    low, high = 1, n * n
+    target = (n * n + 1) // 2
+    
+    while low < high:
+        mid = (low + high) // 2
+        if count_less_equal(mid) < target:
+            low = mid + 1
+        else:
+            high = mid
+            
+    return low
+
+n = int(input())
+print(find_middle_element(n))
+
+New Solution
+
+def dfs(graph, node, visited):
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if not visited[current]:
+            visited[current] = True
+            for neighbor in graph[current]:
+                if not visited[neighbor]:
+                    stack.append(neighbor)
+
+def solve(n, m, flights):
+    graph = [[] for _ in range(n+1)]
+    reverse_graph = [[] for _ in range(n+1)]
+    
+    for a, b in flights:
+        graph[a].append(b)
+        reverse_graph[b].append(a)
+    
+    # Check reachability from the first city
+    visited = [False] * (n + 1)
+    dfs(graph, 1, visited)
+    
+    if not all(visited[1:]):
+        for i in range(1, n + 1):
+            if not visited[i]:
+                print("NO")
+                print(1, i)
+                return
+    
+    # Check reachability in the reverse graph
+    visited = [False] * (n + 1)
+    dfs(reverse_graph, 1, visited)
+    
+    if not all(visited[1:]):
+        for i in range(1, n + 1):
+            if not visited[i]:
+                print("NO")
+                print(i, 1)
+                return
+    
+    print("YES")
+
+# Input example
+n, m = map(int, input().split())
+flights = [tuple(map(int, input().split())) for _ in range(m)]
+solve(n, m, flights)
+
+New Solution
+
+def solve(n, board):
+    def is_safe(row, col):
+        return not cols[col] and not diag1[row + col] and not diag2[row - col + n - 1]
+    
+    def place_queen(row):
+        if row == n:
+            return 1
+        count = 0
+        for col in range(n):
+            if board[row][col] == '.' and is_safe(row, col):
+                cols[col] = diag1[row + col] = diag2[row - col + n - 1] = True
+                count += place_queen(row + 1)
+                cols[col] = diag1[row + col] = diag2[row - col + n - 1] = False
+        return count
+    
+    cols = [False] * n
+    diag1 = [False] * (2 * n - 1)
+    diag2 = [False] * (2 * n - 1)
+    return place_queen(0)
+
+# Input
+n = 8
+board = [input().strip() for _ in range(n)]
+
+# Output
+print(solve(n, board))
+
+New Solution
+
+MOD = 1000000007
+
+def count_jeopardized(l, r):
+    # Precompute results
+    max_r = 100000
+    dp = [0] * (max_r + 1)
+    
+    # DP to count all sequences
+    for i in range(1, max_r + 1):
+        for j in range(i, max_r + 1):
+            dp[j] += dp[j - i] + 1
+            dp[j] %= MOD
+    
+    # Calculate prefix sums for quick range queries
+    prefix = [0] * (max_r + 1)
+    for i in range(1, max_r + 1):
+        prefix[i] = prefix[i - 1] + dp[i]
+        prefix[i] %= MOD
+    
+    # Answer each query
+    results = []
+    for i in range(len(l)):
+        res = (prefix[r[i]] - prefix[l[i] - 1]) % MOD
+        results.append(res)
+    
+    return results
+
+# Input reading
+t = int(input())
+l = []
+r = []
+for _ in range(t):
+    x, y = map(int, input().split())
+    l.append(x)
+    r.append(y)
+
+# Output results
+results = count_jeopardized(l, r)
+for result in results:
+    print(result)
+
+New Solution
+
+from itertools import combinations
+
+def minimum_instability(n, weights):
+    weights.sort()
+    min_instability = float('inf')
+    
+    # Check all combinations of choosing 2 people to go in single kayaks
+    for singles in combinations(range(2 * n), 2):
+        remaining = [weights[i] for i in range(2 * n) if i not in singles]
+        instability = sum(abs(remaining[i] - remaining[i + 1]) for i in range(0, len(remaining) - 1, 2))
+        min_instability = min(min_instability, instability)
+    
+    return min_instability
+
+# Input reading
+n = int(input())
+weights = list(map(int, input().split()))
+
+# Output the result
+print(minimum_instability(n, weights))
+
+New Solution
+
+def find_increasing_sequences(n, arr):
+    used = [False] * n
+    sequences = []
+
+    while not all(used):
+        current_sequence = []
+        last_number = -float('inf')
+        for i in range(n):
+            if not used[i] and arr[i] > last_number:
+                current_sequence.append(arr[i])
+                last_number = arr[i]
+                used[i] = True
+        sequences.append(current_sequence)
+
+    return sequences
+
+# Input reading
+n = int(input())
+arr = list(map(int, input().split()))
+
+# Process and output the sequences
+sequences = find_increasing_sequences(n, arr)
+for seq in sequences:
+    print(" ".join(map(str, seq)))
+
+New Solution
+
+def count_initial_scores(k, n, a, b):
+    possible_initial_scores = set()
+    
+    # Try all possible initial scores based on the first remembered score
+    for i in range(k):
+        initial_score = b[0] - sum(a[:i+1])
+        possible_initial_scores.add(initial_score)
+    
+    valid_count = 0
+    
+    # Check each candidate initial score
+    for initial_score in possible_initial_scores:
+        generated_scores = []
+        current_score = initial_score
+        for points in a:
+            current_score += points
+            generated_scores.append(current_score)
+        
+        # Validate this sequence
+        if all(score in generated_scores for score in b):
+            valid_count += 1
+    
+    return valid_count
+
+# Input reading
+k, n = map(int, input().split())
+a = list(map(int, input().split()))
+b = list(map(int, input().split()))
+
+# Output the result
+print(count_initial_scores(k, n, a, b))
+
+New Solution
+
+def can_meet_in_time(T, positions, speeds):
+    min_pos = float('-inf')
+    max_pos = float('inf')
+    
+    for i in range(len(positions)):
+        left_bound = positions[i] - speeds[i] * T
+        right_bound = positions[i] + speeds[i] * T
+        min_pos = max(min_pos, left_bound)
+        max_pos = min(max_pos, right_bound)
+        
+        if min_pos > max_pos:
+            return False
+    
+    return True
+
+def find_min_time(n, positions, speeds):
+    low, high = 0, 1e9
+    
+    while high - low > 1e-7:  # Tolerance to ensure precision
+        mid = (low + high) / 2
+        if can_meet_in_time(mid, positions, speeds):
+            high = mid
+        else:
+            low = mid
+    
+    return low
+
+# Input reading
+n = int(input())
+positions = list(map(int, input().split()))
+speeds = list(map(int, input().split()))
+
+# Output the result
+print(f"{find_min_time(n, positions, speeds):.9f}")
+
+New Solution
+
+def max_beauty(t, test_cases):
+    results = []
+    for i in range(t):
+        n = test_cases[i][0]
+        beauties = test_cases[i][1]
+        # Sort the beauties
+        sorted_beauties = sorted(beauties, reverse=True)
+        max_beauty_sum = sum(sorted_beauties[:3])
+        # The best we can do is take the three largest beauties, and the smallest distance, which is 2
+        max_value = max_beauty_sum - 2
+        results.append(max_value)
+    return results
+
+# Input
+t = int(input())
+test_cases = []
+for _ in range(t):
+    n = int(input())
+    beauties = list(map(int, input().split()))
+    test_cases.append((n, beauties))
+
+# Output results
+results = max_beauty(t, test_cases)
+for result in results:
+    print(result)
+
+New Solution
+
+def find_optimal_subsegment(n, a):
+    prefix_sum = [0] * (n + 1)
+    prefix_xor = [0] * (n + 1)
+    
+    for i in range(1, n + 1):
+        prefix_sum[i] = prefix_sum[i - 1] + a[i - 1]
+        prefix_xor[i] = prefix_xor[i - 1] ^ a[i - 1]
+    
+    max_value = 0
+    best_l = 1
+    best_r = 1
+    seen = {}
+    
+    for r in range(1, n + 1):
+        sum_value = prefix_sum[r]
+        xor_value = prefix_xor[r]
+        current_value = sum_value - xor_value
+        
+        if current_value > max_value:
+            max_value = current_value
+            best_l = 1
+            best_r = r
+        elif current_value == max_value and r < best_r:
+            best_r = r
+            
+        for l in range(1, r):
+            current_value = (prefix_sum[r] - prefix_sum[l - 1]) - (prefix_xor[r] ^ prefix_xor[l - 1])
+            
+            if current_value > max_value:
+                max_value = current_value
+                best_l = l + 1
+                best_r = r
+            elif current_value == max_value and (r - l + 1) < (best_r - best_l + 1):
+                best_l = l + 1
+                best_r = r
+
+    return best_l, best_r
+
+# Input processing
+t = int(input())
+for _ in range(t):
+    n, q = map(int, input().split())
+    a = list(map(int, input().split()))
+    Li, Ri = map(int, input().split())
+    
+    l, r = find_optimal_subsegment(n, a)
+    print(l, r)
+
+New Solution
+
+def count_good_subarrays(n, a):
+    prefix_sum = 0
+    count_map = {0: 1}  # To handle the case where the sum equals the index directly
+    good_subarrays = 0
+    
+    for i in range(n):
+        prefix_sum += int(a[i])
+        adjusted_sum = prefix_sum - (i + 1)
+        
+        if adjusted_sum in count_map:
+            good_subarrays += count_map[adjusted_sum]
+        
+        if adjusted_sum in count_map:
+            count_map[adjusted_sum] += 1
+        else:
+            count_map[adjusted_sum] = 1
+            
+    return good_subarrays
+
+# Input processing
+t = int(input())
+for _ in range(t):
+    n = int(input())
+    a = input().strip()
+    print(count_good_subarrays(n, a))
+
+
+New Solution
+
+def max_sum_of_squares(n, a):
+    total_or = 0
+    for num in a:
+        total_or |= num
+    
+    result = n * (total_or ** 2)
+    return result
+
+# Input processing
+n = int(input())
+a = list(map(int, input().split()))
+print(max_sum_of_squares(n, a))
+
+New Solution
+
+def minimum_tickets(n, prices, x, a, y, b, k):
+    prices.sort(reverse=True)
+    # Calculate contributions from highest prices
+    contribution = 0
+    tickets = 0
+    
+    i = j = 0
+    for p in prices:
+        tickets += 1
+        if (tickets % a == 0) and (tickets % b == 0):
+            contribution += p * (x + y) / 100
+        elif tickets % a == 0:
+            contribution += p * x / 100
+        elif tickets % b == 0:
+            contribution += p * y / 100
+        if contribution >= k:
+            return tickets
+    
+    return -1
+
+# Read input and process queries
+q = int(input())
+for _ in range(q):
+    n = int(input())
+    prices = list(map(int, input().split()))
+    x, a = map(int, input().split())
+    y, b = map(int, input().split())
+    k = int(input())
+    
+    print(minimum_tickets(n, prices, x, a, y, b, k))
+
+New Solution
+
+def minimal_days_to_reach(x1, y1, x2, y2, n, s):
+    dx = s.count('R') - s.count('L')
+    dy = s.count('U') - s.count('D')
+    
+    def position_after_days(t):
+        cycles = t // n
+        remainder = t % n
+        final_x = x1 + cycles * dx
+        final_y = y1 + cycles * dy
+        
+        for i in range(remainder):
+            if s[i] == 'R':
+                final_x += 1
+            elif s[i] == 'L':
+                final_x -= 1
+            elif s[i] == 'U':
+                final_y += 1
+            elif s[i] == 'D':
+                final_y -= 1
+        
+        return final_x, final_y
+    
+    def can_reach_in_days(t):
+        final_x, final_y = position_after_days(t)
+        return abs(final_x - x2) + abs(final_y - y2) <= t
+    
+    lo, hi = 0, 2 * 10**9
+    
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if can_reach_in_days(mid):
+            hi = mid
+        else:
+            lo = mid + 1
+    
+    return lo if can_reach_in_days(lo) else -1
+
+# Input
+x1, y1 = map(int, input().split())
+x2, y2 = map(int, input().split())
+n = int(input())
+s = input()
+
+# Output
+print(minimal_days_to_reach(x1, y1, x2, y2, n, s))
+
+New Solution
+
+def max_skill_sum(N, K, skills):
+    dp = [0] * (N + 1)
+    
+    for i in range(1, N + 1):
+        max_skill = 0
+        for j in range(1, min(K, i) + 1):
+            max_skill = max(max_skill, skills[i - j])
+            dp[i] = max(dp[i], dp[i - j] + j * max_skill)
+    
+    return dp[N]
+
+# Input reading
+N, K = map(int, input().split())
+skills = [int(input()) for _ in range(N)]
+
+# Calculating the result
+result = max_skill_sum(N, K, skills)
+print(result)
+
+New Solution
+
+from collections import deque, defaultdict
+
+def bfs_distance(start, graph, n):
+    dist = [-1] * (n + 1)
+    queue = deque([start])
+    dist[start] = 0
+    while queue:
+        node = queue.popleft()
+        for neighbor in graph[node]:
+            if dist[neighbor] == -1:  # unvisited
+                dist[neighbor] = dist[node] + 1
+                queue.append(neighbor)
+    return dist
+
+def min_farmers(n, k, graph):
+    exits = [i for i in range(1, n+1) if len(graph[i]) == 1 and i != k]
+    
+    dist_bessie = bfs_distance(k, graph, n)
+    
+    min_farmers_needed = 0
+    dist_farmer = [float('inf')] * (n + 1)
+    
+    for exit_barn in exits:
+        exit_dist = bfs_distance(exit_barn, graph, n)
+        for i in range(1, n+1):
+            dist_farmer[i] = min(dist_farmer[i], exit_dist[i])
+    
+    for i in range(1, n+1):
+        if dist_bessie[i] <= dist_farmer[i] and dist_bessie[i] != -1:
+            min_farmers_needed += 1
+    
+    return min_farmers_needed
+
+# Input Reading
+n, k = map(int, input().split())
+graph = defaultdict(list)
+for _ in range(n - 1):
+    u, v = map(int, input().split())
+    graph[u].append(v)
+    graph[v].append(u)
+
+# Calculating the result
+result = min_farmers(n, k, graph)
+print(result)
+
+New Solution
+
+from collections import deque, defaultdict
+
+def bfs_min_mirrors(n, laser, barn, fence_posts):
+    # Mapping x or y coordinates to fence posts
+    x_map = defaultdict(list)
+    y_map = defaultdict(list)
+    
+    for x, y in fence_posts:
+        x_map[x].append((x, y))
+        y_map[y].append((x, y))
+    
+    queue = deque([(laser[0], laser[1], 0)])  # (x, y, mirrors_count)
+    visited = set()
+    visited.add((laser[0], laser[1]))
+
+    while queue:
+        x, y, mirrors = queue.popleft()
+        
+        # Check if we've reached the barn
+        if (x, y) == barn:
+            return mirrors
+        
+        # Explore the same row
+        for nx, ny in x_map[x]:
+            if (nx, ny) not in visited:
+                visited.add((nx, ny))
+                queue.append((nx, ny, mirrors + 1))
+        x_map[x].clear()  # Prevent re-processing
+        
+        # Explore the same column
+        for nx, ny in y_map[y]:
+            if (nx, ny) not in visited:
+                visited.add((nx, ny))
+                queue.append((nx, ny, mirrors + 1))
+        y_map[y].clear()  # Prevent re-processing
+    
+    return -1  # If no path is found
+
+# Input reading
+N, xL, yL, xB, yB = map(int, input().split())
+fence_posts = [tuple(map(int, input().split())) for _ in range(N)]
+
+# Call the function and print the result
+result = bfs_min_mirrors(N, (xL, yL), (xB, yB), fence_posts)
+print(result)
+
+New Solution
+
+def calculate_area(cows):
+    min_x = min(cow[0] for cow in cows)
+    max_x = max(cow[0] for cow in cows)
+    min_y = min(cow[1] for cow in cows)
+    max_y = max(cow[1] for cow in cows)
+    return (max_x - min_x) * (max_y - min_y)
+
+def min_area_difference(cows):
+    cows.sort()
+    n = len(cows)
+    
+    left_min_y, left_max_y = [0] * n, [0] * n
+    right_min_y, right_max_y = [0] * n, [0] * n
+    
+    left_min_y[0] = left_max_y[0] = cows[0][1]
+    for i in range(1, n):
+        left_min_y[i] = min(left_min_y[i-1], cows[i][1])
+        left_max_y[i] = max(left_max_y[i-1], cows[i][1])
+    
+    right_min_y[n-1] = right_max_y[n-1] = cows[-1][1]
+    for i in range(n-2, -1, -1):
+        right_min_y[i] = min(right_min_y[i+1], cows[i][1])
+        right_max_y[i] = max(right_max_y[i+1], cows[i][1])
+    
+    min_combined_area = float('inf')
+    for i in range(n-1):
+        area_left = (cows[i][0] - cows[0][0]) * (left_max_y[i] - left_min_y[i])
+        area_right = (cows[-1][0] - cows[i+1][0]) * (right_max_y[i+1] - right_min_y[i+1])
+        min_combined_area = min(min_combined_area, area_left + area_right)
+    
+    return min_combined_area
+
+n = int(input())
+cows = [tuple(map(int, input().split())) for _ in range(n)]
+
+# Calculate the area with a single enclosure
+total_area = calculate_area(cows)
+
+# Try splitting along the x-axis
+min_combined_area = min_area_difference(cows)
+
+# Try splitting along the y-axis
+cows = [(y, x) for x, y in cows]  # Swap x and y
+min_combined_area = min(min_combined_area, min_area_difference(cows))
+
+# Output the difference
+print(total_area - min_combined_area)
+
+New Solution
+
+def maximize_berries(N, K, berries):
+    max_berries = 0
+    
+    for x in range(1, max(berries) + 1):
+        baskets = []
+        
+        for b in berries:
+            baskets += [x] * (b // x)  # Full baskets of size x
+            if b % x > 0:
+                baskets.append(b % x)  # Remaining berries as additional baskets
+        
+        baskets.sort(reverse=True)  # Sort baskets by size descending
+        
+        if len(baskets) < K:
+            continue
+        
+        # Bessie's berries are the sum of the first K//2 smallest baskets
+        bessies_berries = sum(baskets[K//2:K])
+        max_berries = max(max_berries, bessies_berries)
+    
+    return max_berries
+
+# Input
+N, K = 5, 4
+berries = [3, 6, 8, 4, 2]
+
+# Output the maximum number of berries Bessie can collect
+print(maximize_berries(N, K, berries))
+
+New Solution
+
+def herding_cows(positions):
+    positions.sort()
+    n = len(positions)
+
+    # Calculate maximum moves
+    max_moves = max(positions[-1] - positions[1], positions[-2] - positions[0]) - (n - 2)
+    
+    # Calculate minimum moves
+    min_moves = float('inf')
+    j = 0
+    for i in range(n):
+        while j + 1 < n and positions[j + 1] - positions[i] + 1 <= n:
+            j += 1
+        current_min = n - (j - i + 1)
+        if current_min == 1 and (positions[j] - positions[i] + 1 == n - 1):
+            current_min = 2
+        min_moves = min(min_moves, current_min)
+
+    return min_moves, max_moves
+
+# Input
+N = 3
+positions = [7, 4, 9]
+
+# Output
+min_moves, max_moves = herding_cows(positions)
+print(min_moves)  # Output: 1
+print(max_moves)  # Output: 2
+
+New Solution
+
+def count_visible_mountains(mountains):
+    # Sort mountains by (left boundary, -height)
+    mountains.sort(key=lambda x: (x[0] - x[1], -(x[1])))
+
+    count = 0
+    max_right = -1
+    
+    for x, y in mountains:
+        right = x + y
+        if right > max_right:
+            count += 1
+            max_right = right
+    
+    return count
+
+# Input
+n = int(input())
+mountains = [tuple(map(int, input().split())) for _ in range(n)]
+
+# Output
+print(count_visible_mountains(mountains))
+
+New Solution
+
+def min_grass_types(N, connections):
+    # Build adjacency list
+    adjacency_list = [[] for _ in range(N + 1)]
+    for a, b in connections:
+        adjacency_list[a].append(b)
+        adjacency_list[b].append(a)
+    
+    # Find the maximum degree
+    max_degree = max(len(neighbors) for neighbors in adjacency_list)
+    
+    # The minimum number of grass types required is max_degree + 1
+    return max_degree + 1
+
+# Input
+N = int(input())
+connections = [tuple(map(int, input().split())) for _ in range(N - 1)]
+
+# Output
+print(min_grass_types(N, connections))
+
+New Solution
+
+import itertools
+
+def check_constraints(order, constraints):
+    for cow1, cow2 in constraints:
+        pos1 = order.index(cow1)
+        pos2 = order.index(cow2)
+        if abs(pos1 - pos2) != 1:
+            return False
+    return True
+
+def find_cow_order(N, constraints):
+    cows = ["Bessie", "Buttercup", "Belinda", "Beatrice", "Bella", "Blue", "Betsy", "Sue"]
+    constraints = [(pair[0], pair[1]) for pair in constraints]
+    
+    for order in itertools.permutations(cows):
+        if check_constraints(order, constraints):
+            return order
+
+# Input
+N = int(input())
+constraints = []
+for _ in range(N):
+    constraint = input().split()
+    constraints.append((constraint[0], constraint[-1]))
+
+# Find and print the correct order
+order = find_cow_order(N, constraints)
+for cow in order:
+    print(cow)
+
+New Solution
+
+def count_consistent_pairs(K, N, rankings):
+    consistent_pairs = 0
+    
+    for cow1 in range(1, N + 1):
+        for cow2 in range(1, N + 1):
+            if cow1 != cow2:
+                consistent = True
+                for session in range(K):
+                    cow1_better = rankings[session].index(cow1) < rankings[session].index(cow2)
+                    if not cow1_better:
+                        consistent = False
+                        break
+                if consistent:
+                    consistent_pairs += 1
+    
+    return consistent_pairs
+
+# Read input
+K, N = map(int, input().split())
+rankings = [list(map(int, input().split())) for _ in range(K)]
+
+# Output the number of consistent pairs
+print(count_consistent_pairs(K, N, rankings))
+
+New Solution
+
+def calculate_traffic(N, segments):
+    low, high = 0, 1000  # Start with the full possible range
+    
+    # Forward calculation (from mile 1 to N)
+    for i in range(N):
+        action, l, h = segments[i]
+        if action == "on":
+            low += l
+            high += h
+        elif action == "off":
+            low -= h
+            high -= l
+        low = max(0, low)  # Traffic can't be negative
+        high = max(0, high)
+
+    initial_low, initial_high = low, high
+    
+    low, high = 0, 1000  # Reset for backward calculation
+
+    # Backward calculation (from mile N to 1)
+    for i in range(N-1, -1, -1):
+        action, l, h = segments[i]
+        if action == "on":
+            low -= h
+            high -= l
+        elif action == "off":
+            low += l
+            high += h
+        low = max(0, low)
+        high = max(0, high)
+
+    final_low, final_high = low, high
+    
+    return initial_low, initial_high, final_low, final_high
+
+# Input handling
+N = int(input())
+segments = [input().split() for _ in range(N)]
+segments = [(s[0], int(s[1]), int(s[2])) for s in segments]
+
+initial_low, initial_high, final_low, final_high = calculate_traffic(N, segments)
+
+print(initial_low, initial_high)
+print(final_low, final_high)

@@ -1,0 +1,1869 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+const int N = 1e5 + 5;
+int n, a[N], b[N], c[N], pos[N];
+vector<int> lis;
+
+int main() {
+	cin.tie(0)->sync_with_stdio(0);
+	cin >> n;
+	for (int i = 1; i <= n; ++i) {
+		cin >> a[i];
+		// pos is the inverse of a
+		pos[a[i]] = i;
+	}
+	for (int i = 1; i <= n; ++i) { cin >> b[i]; }
+	for (int i = 1; i <= n; ++i) { c[i] = pos[b[i]]; }
+
+	for (int i = 1; i <= n; ++i) {
+		int p = lower_bound(begin(lis), end(lis), c[i]) - begin(lis);
+		if (p == lis.size()) lis.push_back(c[i]);
+		else lis[p] = c[i];
+	}
+	cout << lis.size() << '\n';
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 5e5 + 1;  // use indexing starting from 1
+vector<int> edge_by_weight[MAXN];
+// query_by_weight[weight][index of query] = {index of edges}
+map<int, vector<int>> query_by_weight[MAXN];
+
+struct DSU {
+	vector<int> p, sz;
+	// stores previous unites
+	vector<pair<int &, int>> psnap, szsnap;
+
+	DSU(int n) {
+		p.resize(n);
+		sz.resize(n, 1);
+		iota(p.begin(), p.end(), 0);
+	}
+
+	int get(int x) { return x == p[x] ? x : get(p[x]); }
+
+	void unite(int a, int b) {
+		a = get(a);
+		b = get(b);
+		if (sz[a] < sz[b]) { swap(a, b); }
+		if (a != b) {
+			// save this unite operation
+			szsnap.push_back({sz[a], sz[a]});
+			psnap.push_back({p[b], p[b]});
+
+			p[b] = a;
+			sz[a] += sz[b];
+		}
+	}
+
+	bool sameset(int a, int b) { return get(a) == get(b); }
+
+	int current() { return psnap.size(); }
+
+	void rollback(int until) {
+		while (szsnap.size() > until) {
+			szsnap.back().first = szsnap.back().second;
+			szsnap.pop_back();
+			psnap.back().first = psnap.back().second;
+			psnap.pop_back();
+		}
+	}
+};
+
+struct Edge {
+	int u, v, w;
+};
+
+int main() {
+	cin.tie(0)->sync_with_stdio(0);
+	int n, m;
+	cin >> n >> m;
+	vector<Edge> edges;
+	for (int i = 0; i < m; i++) {
+		int u, v, w;
+		cin >> u >> v >> w;
+		--u;
+		--v;
+		edges.push_back({u, v, w});
+		edge_by_weight[w].push_back(i);
+	}
+
+	int q;
+	cin >> q;
+	vector<bool> ans(q, true);
+	for (int i = 0; i < q; i++) {
+		int k;
+		cin >> k;
+		for (int j = 0; j < k; j++) {
+			int x;
+			cin >> x;
+			x--;
+			query_by_weight[edges[x].w][i].push_back(x);
+		}
+	}
+
+	DSU dsu(n);
+	for (int weight = 1; weight < MAXN; weight++) {
+		for (auto &query : query_by_weight[weight]) {
+			int index = query.first;
+			int snapshot = dsu.current();
+			// try merging each these edges with same weight
+			for (int edge : query.second) {
+				if (dsu.sameset(edges[edge].u, edges[edge].v)) {
+					/*
+					 * the vertices have already been in the partial MST
+					 * so this query is invalidated
+					 */
+					ans[index] = false;
+				}
+				dsu.unite(edges[edge].u, edges[edge].v);
+			}
+			// revert all merges to prepare for next query
+			dsu.rollback(snapshot);
+		}
+
+		/*
+		 * now that all queries have been processed,
+		 * keep building the partial MST with these edges
+		 */
+		for (int edge : edge_by_weight[weight]) {
+			dsu.unite(edges[edge].u, edges[edge].v);
+		}
+	}
+
+	for (int i = 0; i < q; i++) { cout << (ans[i] ? "YES" : "NO") << "\n"; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+#define f first
+#define s second
+
+using ll = long long;
+using pll = pair<ll, ll>;
+
+const int MAXN = 1e5 + 1;
+const ll MOD = 1e9 + 7;
+
+// BeginCodeSnip{Matrix Operations}
+using Matrix = array<array<ll, 2>, 2>;
+
+// multiplies two two-by-two matricies
+Matrix multiply(const Matrix &a, const Matrix &b) {
+	return {(a[0][0] * b[0][0] + a[0][1] * b[1][0]) % MOD,
+	        (a[0][0] * b[0][1] + a[0][1] * b[1][1]) % MOD,
+	        (a[1][0] * b[0][0] + a[1][1] * b[1][0]) % MOD,
+	        (a[1][0] * b[0][1] + a[1][1] * b[1][1]) % MOD};
+}
+
+// multiplies a one-by-two matrix with a two-by-two matrix
+pll multiply(const pll &a, const Matrix &b) {
+	return {(a.f * b[0][0] + a.s * b[1][0]) % MOD,
+	        (a.f * b[0][1] + a.s * b[1][1]) % MOD};
+}
+
+// returns {0, 1, 1, 1,} to the power of n
+Matrix pow(ll n) {
+	Matrix res = {1, 0, 0, 1};   // identity matrix
+	Matrix base = {0, 1, 1, 1};  // fibonacci matrix
+	for (; n; n >>= 1) {         // binary exponentiation (log n)
+		if (n & 1) { res = multiply(res, base); }
+		base = multiply(base, base);
+	}
+	return res;
+}
+// EndCodeSnip
+
+int N, Q;
+pll tree[MAXN * 4];
+ll lazy[MAXN * 4];
+
+// returns the pair-sum of a and b
+pll merge(const pll &a, const pll &b) { return {(a.f + b.f) % MOD, (a.s + b.s) % MOD}; }
+
+// pushes lazy update in t to its children
+void pushdown(int t) {
+	if (lazy[t] == 0) return;
+	tree[t << 1] = multiply(tree[t << 1], pow(lazy[t]));
+	lazy[t << 1] += lazy[t];
+	tree[t << 1 | 1] = multiply(tree[t << 1 | 1], pow(lazy[t]));
+	lazy[t << 1 | 1] += lazy[t];
+	lazy[t] = 0;
+}
+
+// cycle range from l to r by v
+void update(int l, int r, ll v, int t = 1, int tl = 1, int tr = N) {
+	if (r < tl || tr < l) { return; }
+	if (l <= tl && tr <= r) {
+		tree[t] = multiply(tree[t], pow(v));
+		lazy[t] += v;
+		return;
+	}
+	pushdown(t);
+
+	int tm = (tl + tr) >> 1;
+	update(l, r, v, t << 1, tl, tm);
+	update(l, r, v, t << 1 | 1, tm + 1, tr);
+	tree[t] = merge(tree[t << 1], tree[t << 1 | 1]);
+}
+
+// query sum from l to r
+ll query(int l, int r, int t = 1, int tl = 1, int tr = N) {
+	if (r < tl || tr < l) { return 0; }
+	if (l <= tl && tr <= r) { return tree[t].f; }
+	pushdown(t);
+
+	int tm = (tl + tr) >> 1;
+	return (query(l, r, t << 1, tl, tm) + query(l, r, t << 1 | 1, tm + 1, tr)) % MOD;
+}
+
+int main() {
+	cin >> N >> Q;
+	fill_n(tree, MAXN * 4, pll{0, 1});
+	for (int i = 1; i <= N; i++) {
+		ll a;
+		cin >> a;
+		update(i, i, a);
+	}
+
+	while (Q--) {
+		int t;
+		cin >> t;
+		if (t == 1) {
+			int l, r;
+			ll v;
+			cin >> l >> r >> v;
+			update(l, r, v);
+		} else if (t == 2) {
+			int l, r;
+			cin >> l >> r;
+			cout << query(l, r) << '\n';
+		}
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+// BeginCodeSnip{Line Container}
+template <typename T> T floor_div(T a, T b) { return a / b - ((a ^ b) < 0 && a % b); }
+
+struct LineContainerLine {
+	mutable long long m, b, p;
+	bool operator<(const LineContainerLine &o) const { return m < o.m; }
+	bool operator<(long long x) const { return p < x; }
+};
+
+class LineContainer : multiset<LineContainerLine, less<>> {
+	bool isect(iterator x, iterator y) {
+		if (y == end()) {
+			x->p = LLONG_MAX;
+			return false;
+		}
+		if (x->m == y->m) {
+			x->p = x->b > y->b ? LLONG_MAX : LLONG_MIN;
+		} else {
+			x->p = floor_div(y->b - x->b, x->m - y->m);
+		}
+		return x->p >= y->p;
+	}
+
+  public:
+	void add(long long m, long long b) {
+		auto z = insert({m, b, 0});
+		auto y = z++;
+		auto x = y;
+		while (isect(y, z)) { z = erase(z); }
+		if (x != begin() && isect(--x, y)) { isect(x, y = erase(y)); }
+		while ((y = x) != begin() && (--x)->p >= y->p) { isect(x, erase(y)); }
+	}
+
+	long long query(long long x) {
+		assert(!empty());
+		auto l = *lower_bound(x);
+		return l.m * x + l.b;
+	}
+};
+// EndCodeSnip
+
+const int MAXN = 2e5 + 1;
+
+int N;
+long long A[MAXN], pre[MAXN], ips[MAXN];
+
+int main() {
+	cin >> N;
+	for (int i = 1; i <= N; i++) {
+		cin >> A[i];
+		pre[i] = pre[i - 1] + A[i];
+		ips[i] = ips[i - 1] + A[i] * i;
+	}
+
+	LineContainer lc;
+	long long ans = 0;
+	for (int i = 1; i <= N; i++) {
+		lc.add(-i, (i - 1) * pre[i - 1] - ips[i - 1]);
+		ans = max(ans, lc.query(pre[i]) + pre[i] + ips[i]);
+	}
+
+	cout << ans << '\n';
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+using ll = long long;
+
+const int MAX_N = 1e5;
+
+array<ll, MAX_N> color;
+array<ll, MAX_N> ans;
+vector<int> g[MAX_N];
+
+// col_count[i][j] = number of occurrences of color j in i
+map<ll, ll> col_count[MAX_N];
+// sum_occur[i][j] = sum of colors having occurrence j in subtree i
+map<ll, ll> sum_occur[MAX_N];
+
+void dfs(int node, int p) {
+	// initialize this node
+	col_count[node][color[node]] += 1;
+	sum_occur[node][1] += color[node];
+
+	for (int i : g[node]) {
+		if (i == p) { continue; }
+		dfs(i, node);
+
+		// retrieve the biggest map so we have less to merge
+		if (col_count[node].size() < col_count[i].size()) {
+			col_count[node].swap(col_count[i]);
+			sum_occur[node].swap(sum_occur[i]);
+		}
+		// update bigger map with information from smaller map
+		for (auto [col, cnt] : col_count[i]) {
+			// remove old occurrences
+			if (col_count[node].count(col)) {
+				sum_occur[node][col_count[node][col]] -= col;
+			}
+			// add new occurrences
+			col_count[node][col] += cnt;
+			sum_occur[node][col_count[node][col]] += col;
+		}
+	}
+
+	// retrieve the sum with the biggest j
+	ans[node] = sum_occur[node].rbegin()->second;
+}
+
+int main() {
+	int n;
+	cin >> n;
+	for (int i = 0; i < n; i++) { cin >> color[i]; }
+	for (int i = 0; i < n - 1; i++) {
+		int u, v;
+		cin >> u >> v;
+		g[--u].push_back(--v);
+		g[v].push_back(u);
+	}
+
+	dfs(0, 0);
+
+	for (int i = 0; i < n; i++) { cout << ans[i] << " "; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const long double EPSILON = 1e-7;
+int main() {
+	int n;
+	cin >> n;
+	vector<int> x(n);
+	for (int i = 0; i < n; i++) { cin >> x[i]; }
+	sort(x.begin(), x.end());
+
+	auto test = [&](long double d) -> optional<array<long double, 3>> {
+		int used = 0;
+		array<long double, 3> pos = {x[0] + d};
+		// Checks if each house is within range of the most recently placed
+		// station, if not, builds a new one (unless there are none left)
+		for (int i = 1; i < n; i++) {
+			if (x[i] - pos[used] > d) {
+				used++;
+				if (used == 3) { return nullopt; }
+				pos[used] = x[i] + d;
+			}
+		}
+		return pos;
+	};
+
+	auto midpoint = [&](long double x, long double y) -> long double {
+		return (x + y) / 2;
+	};
+
+	long double lo = 0, hi = 1e9;
+	array<long double, 3> ans;
+	while (hi - lo > EPSILON) {
+		long double mid = midpoint(lo, hi);
+		if (auto res = test(mid); res) {
+			hi = mid;
+			ans = *res;
+		} else {
+			lo = mid;
+		}
+	}
+
+	cout << fixed << lo << "\n";
+	printf("%.6Lf %.6Lf %.6Lf\n", ans[0], ans[1], ans[2]);
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+
+int main() {
+	int tc;
+	cin >> tc;
+
+	for (int _ = 0; _ < tc; _++) {
+		int n, q;
+		cin >> n >> q;
+		vector<ll> pref_sum(n + 1);
+		vector<ll> pref_xor(n + 1);
+
+		auto cost = [&](int l, int r) {
+			return (pref_sum[r] - pref_sum[l - 1]) - (pref_xor[r] ^ pref_xor[l - 1]);
+		};
+
+		for (int i = 0; i < n; i++) {
+			int x;
+			cin >> x;
+
+			pref_sum[i + 1] = x + pref_sum[i];
+			pref_xor[i + 1] = x ^ pref_xor[i];
+		}
+
+		int L, R;
+		cin >> L >> R;
+
+		// binary search on length
+		ll best_cost = cost(1, n);
+
+		int lo = 1, hi = n;
+		while (lo < hi) {
+			int mid = lo + (hi - lo) / 2;
+			bool possible = 0;
+
+			for (int i = 1; i + mid - 1 <= n; i++) {
+				// if this segment has the most optimal cost
+				if (cost(i, i + mid - 1) == best_cost) {
+					possible = 1;
+					break;
+				}
+			}
+
+			if (possible) {
+				hi = mid;
+			} else {
+				lo = mid + 1;
+			}
+		}
+
+		for (int i = 1; i + lo - 1 <= n; i++) {
+			// this was the segment we found
+			if (cost(i, i + lo - 1) == best_cost) {
+				cout << i << ' ' << i + lo - 1 << endl;
+				break;
+			}
+		}
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	int tc;
+	cin >> tc;
+	for (int i = 0; i < tc; i++) {
+		int total_width, total_height;
+		cin >> total_width >> total_height;
+
+		int x1, y1, x2, y2;
+		cin >> x1 >> y1 >> x2 >> y2;
+
+		int w1 = x2 - x1;
+		int h1 = y2 - y1;
+
+		int w2, h2;
+		cin >> w2 >> h2;
+
+		// Calculating min and max X and Y values needed to fit in their places
+		int left_place = w2;
+		int right_place = total_width - w2;
+		int top_place = total_height - h2;
+		int bottom_place = h2;
+
+		// Calculating distance needed to move first rectangle
+		int amount_needed_left = max(left_place - x1, 0);
+		int amount_needed_right = max(x2 - right_place, 0);
+		int amount_needed_top = max(y2 - top_place, 0);
+		int amount_needed_bottom = max(bottom_place - y1, 0);
+
+		// Checking bounds of the rectangles
+		if (w1 + w2 > total_width) {
+			amount_needed_left = INT32_MAX;
+			amount_needed_right = INT32_MAX;
+		}
+
+		if (h1 + h2 > total_height) {
+			amount_needed_top = INT32_MAX;
+			amount_needed_bottom = INT32_MAX;
+		}
+
+		// neat trick to get the min out of multiple elements
+		int ans = min({amount_needed_left, amount_needed_right, amount_needed_top,
+		               amount_needed_bottom});
+
+		// if the rectangles can't fit in the bigger rectangles in any way,
+		// print -1
+		cout << (ans == INT32_MAX ? -1 : ans) << endl;
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+
+int main() {
+	ll n, k;
+	cin >> n >> k;
+	vector<ll> a(k);
+	for (int i = 0; i < k; i++) cin >> a[i];
+
+	ll ans = 0;
+	for (ll i = 1; i < (1 << k); i++) {
+		ll prime_product = 1;
+		for (ll j = 0; j < k; j++) {
+			// check if we are using a[j] in this number
+			if (i & (1 << j)) {
+				// check to not overflow, if we do set prime_product to N+1 so
+				// ans doesn't change
+				if (prime_product > n / a[j]) {
+					prime_product = n + 1;
+					break;
+				}
+				prime_product *= a[j];
+			}
+		}
+
+		//__builtin_popcount gives the number of 1's in binary representation,
+		// which is also the number of primes we have multiplied
+		if (__builtin_popcount(i) % 2) {
+			ans += n / prime_product;
+		} else {
+			ans -= n / prime_product;
+		}
+	}
+
+	cout << ans << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+// BeginCodeSnip{BIT}
+struct BIT {
+	int size;
+	vector<int> bit;
+	BIT(int n) : size(n), bit(n + 1) {}
+	void update(int x, int v) {
+		x++;
+		for (; x <= size; x += x & (-x)) { bit[x] += v; }
+	}
+	/** @return sum of the values in [0,b] */
+	int query(int b) {
+		b++;
+		int result = 0;
+		for (; b > 0; b -= b & (-b)) { result += bit[b]; }
+		return result;
+	}
+};
+// EndCodeSnip
+
+int main() {
+	int n, q;
+	cin >> n >> q;
+
+	vector<int> arr(n);
+	vector<vector<pair<int, int>>> queries(n);
+	for (int i = 0; i < n; i++) { cin >> arr[i]; }
+	for (int i = 0; i < q; i++) {
+		int a, b;
+		cin >> a >> b;
+		a--, b--;
+		queries[a].push_back({b, i});
+	}
+
+	BIT bit(n);
+	// last_index[val] is the left-most index where arr[last_index[val]] = val.
+	map<int, int> last_index;
+	vector<int> solution(q, -1);
+	// Update the indices and answer queries from right to left.
+	for (int i = n - 1; i >= 0; i--) {
+		int val = arr[i];
+		/*
+		 * If val already appeared earlier, then the saved value is no
+		 * longer the left-most index, so erase it from our BIT.
+		 */
+		if (last_index.count(val) > 0) bit.update(last_index[val], -1);
+		// i becomes the left-most index.
+		last_index[val] = i;
+		bit.update(i, 1);
+
+		// Answer all queires with a == i.
+		for (auto &qr : queries[i]) {
+			/*
+			 * The solution for this query is bit[i,b].
+			 * This equals bit[0,b] since bit[0,i-1] = 0.
+			 */
+			solution[qr.second] = bit.query(qr.first);
+		}
+	}
+
+	for (auto &a : solution) { cout << a << "\n"; }
+}
+
+New Solution
+
+#include <algorithm>
+#include <cstring>
+#include <iostream>
+#include <queue>
+#include <vector>
+
+using namespace std;
+
+const int maxn = 2510;
+const int inf = 1000000007;
+
+int n, m;
+vector<int> adj[maxn];
+
+int cycle_len(int start) {
+	int ans = inf;
+
+	vector<int> dist(n, -1);
+	queue<int> bfs;
+
+	dist[start] = 0;
+	bfs.push(start);
+
+	while (!bfs.empty()) {
+		int node = bfs.front();
+		bfs.pop();
+
+		for (int adj_node : adj[node]) {
+			if (dist[adj_node] == -1) {
+				dist[adj_node] = dist[node] + 1;
+				bfs.push(adj_node);
+			} else if (dist[adj_node] >= dist[node]) {
+				ans = min(ans, 1 + dist[adj_node] + dist[node]);
+			}
+		}
+	}
+
+	return ans;
+}
+
+int main() {
+	cin >> n >> m;
+	for (int i = 0; i < m; i++) {
+		int a, b;
+		cin >> a >> b;
+		a--;
+		b--;
+		adj[a].push_back(b);
+		adj[b].push_back(a);
+	}
+
+	int res = inf;
+	for (int i = 0; i < n; i++) { res = min(res, cycle_len(i)); }
+
+	if (res == inf) {
+		cout << -1 << endl;
+		return 0;
+	}
+
+	cout << res << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	ios::sync_with_stdio(false);
+	cin.tie(NULL);
+
+	int street_len;
+	int light_num;
+	cin >> street_len >> light_num;
+
+	set<int> lights{0, street_len};
+	multiset<int> dist{street_len};
+	for (int l = 0; l < light_num; l++) {
+		int pos;
+		cin >> pos;
+
+		auto it1 = lights.upper_bound(pos);
+		auto it2 = it1;
+		--it2;
+
+		dist.erase(dist.find(*it1 - *it2));
+		dist.insert(pos - *it2);
+		dist.insert(*it1 - pos);
+		lights.insert(pos);
+
+		auto ans = dist.end();
+		--ans;
+		cout << *ans << " ";
+	}
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <set>
+#include <vector>
+using namespace std;
+
+int main() {
+	int n, k;
+	cin >> n >> k;
+	vector<pair<int, int>> v(n);
+	for (int i = 0; i < n; i++)  // read start time, end time
+		cin >> v[i].second >> v[i].first;
+	sort(begin(v), end(v));  // sort by end time
+
+	int maxMovies = 0;
+	multiset<int> end_times;  // times when members will finish watching movies
+	for (int i = 0; i < k; ++i) end_times.insert(0);
+
+	for (int i = 0; i < n; i++) {
+		auto it = end_times.upper_bound(v[i].second);
+		if (it == begin(end_times)) continue;
+		// assign movie to be watched by member in multiset who finishes at time
+		// *prev(it)
+		end_times.erase(--it);
+		// member now finishes watching at time v[i].first
+		end_times.insert(v[i].first);
+		++maxMovies;
+	}
+
+	cout << maxMovies;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int N, M;
+// {s, t, c}
+vector<array<int, 3>> cows;
+// {a, b, p, m}
+vector<array<int, 4>> air_conditioners;
+// uses[i] == true: the i-th air conditioner is used
+vector<bool> uses;
+// the minimum amount of money needed to keep all cows comfortable
+int min_cost = numeric_limits<int>().max();
+
+/**
+ * Based on 'uses', determine if the current subset of air conditioners suffices
+ * the constraints, and if so, update the minimum cost
+ */
+void update() {
+	bool is_feasible = true;
+
+	// iterate through all positions to check if the current subset is feasible
+	for (int i = 1; i <= 100; i++) {
+		// iterate through air conditioners to find the current cooling units
+		int cooling = 0;
+		for (int j = 0; j < M; j++) {
+			if (!uses[j]) { continue; }
+			auto &[a, b, p, m] = air_conditioners[j];
+			if (a <= i && i <= b) { cooling += p; }
+		}
+
+		// iterate through cows to find the current cow
+		int cow_requirement = 0;
+		for (int j = 0; j < N; j++) {
+			auto &[s, t, c] = cows[j];
+			if (s <= i && i <= t) {
+				cow_requirement = c;
+				break;
+			}
+		}
+
+		// For each position, the requirement of the cow must be met
+		if (cooling < cow_requirement) {
+			is_feasible = false;
+			break;
+		}
+	}
+
+	if (is_feasible) {
+		int cost = 0;
+		for (int i = 0; i < M; i++) {
+			if (uses[i]) { cost += air_conditioners[i][3]; }
+		}
+		min_cost = min(min_cost, cost);
+	}
+}
+
+/**
+ * Expand the subset, represented by 'uses', by choosing to (not) use the i-th
+ * air conditioner
+ */
+void search(int i) {
+	if (i == M) {
+		update();
+	} else {
+		uses[i] = false;
+		search(i + 1);
+		uses[i] = true;
+		search(i + 1);
+	}
+}
+
+int main() {
+	cin >> N >> M;
+
+	for (int i = 0; i < N; i++) {
+		int s, t, c;
+		cin >> s >> t >> c;
+		cows.push_back({s, t, c});
+	}
+
+	for (int i = 0; i < M; i++) {
+		int a, b, p, m;
+		cin >> a >> b >> p >> m;
+		air_conditioners.push_back({a, b, p, m});
+	}
+
+	uses.assign(M, false);
+	search(0);
+
+	cout << min_cost << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAX_N = 10000;
+
+// FastIO: see General -> Fast Input and Output
+void setIO(string name = "") {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	if (!name.empty()) {
+		freopen((name + ".in").c_str(), "r", stdin);
+		freopen((name + ".out").c_str(), "w", stdout);
+	}
+}
+
+vector<int> grass_type;
+vector<vector<int>> neighbors;
+
+void process_fields(int at, int prev) {
+	// Start with grass type 1.
+	int type_num = 1;
+	for (int n : neighbors[at]) {
+		if (n == prev) { continue; }
+		// While the current grass type is being used, increment it.
+		while (type_num == grass_type[at] || type_num == grass_type[prev]) {
+			type_num++;
+		}
+
+		// Set the grass type for the neighboring field.
+		grass_type[n] = type_num;
+
+		// Recursively color the other fields.
+		process_fields(n, at);
+
+		// We can't use this grass type again.
+		type_num++;
+	}
+}
+
+int main() {
+	setIO("planting");
+
+	int field_num;
+	cin >> field_num;
+
+	grass_type = vector<int>(field_num);
+	neighbors = vector<vector<int>>(field_num);
+	for (int f = 0; f < field_num - 1; f++) {
+		int field1, field2;
+		cin >> field1 >> field2;
+		neighbors[--field1].push_back(--field2);
+		neighbors[field2].push_back(field1);
+	}
+
+	// Set our starting field to be type 1.
+	grass_type[0] = 1;
+	process_fields(0, 0);
+
+	int min_type = 0;
+	for (int t : grass_type) { min_type = max(min_type, t); }
+
+	cout << min_type << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	int c, n;
+	cin >> c >> n;
+
+	vector<int> teams(n);
+	vector<int> min_edits(1 << c, INT32_MAX);
+
+	for (int i = 0; i < n; i++) {
+		string breeds;
+		cin >> breeds;
+
+		// convert teams to bitmasks
+		for (int j = 0; j < c; j++) {
+			if (breeds[j] == 'G') { teams[i] += 1 << (c - j - 1); }
+		}
+
+		min_edits[teams[i]] = 0;
+	}
+
+	for (int edit = 0; edit < c; edit++) {
+		for (int mask = 0; mask < (1 << c); mask++) {
+			// mask ^ (1 << edit) flips the edit-th bit of mask
+			if (min_edits[mask] != INT32_MAX) {
+				min_edits[mask ^ (1 << edit)] =
+				    min(min_edits[mask ^ (1 << edit)], min_edits[mask] + 1);
+			}
+		}
+	}
+
+	for (int i = 0; i < n; i++) {
+		// teams[i] ^ ((1 << c) - 1) flips all the bits of teams[i]
+		cout << c - min_edits[teams[i] ^ ((1 << c) - 1)] << endl;
+	}
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+ 
+const int mx = 5000005;
+int min_turns[mx] = {0, 1};
+bool composite[mx] = {false};
+int max_mod4[4] = {2, 1, 2, 3};
+ 
+int main() {
+	for(int i = 2; i < mx; i++) {
+		if(!composite[i]) {
+			for(int j = i; j < mx; j += i) {
+				composite[j] = true;
+			}
+			max_mod4[i % 4] = i;
+		}
+		min_turns[i] = (i - max_mod4[i % 4]) / 2 + 1;
+	}
+ 
+	int t; cin >> t;
+	while(t--) {
+		int n; cin >> n;
+		int ans = mx;
+		for(int i = 0; i < n; i++) {
+			int a_i; cin >> a_i;
+			if(min_turns[a_i] / 2 < ans / 2) ans = min_turns[a_i];
+		}
+		if(ans & 1) cout << "Farmer John" << endl;
+		else cout << "Farmer Nhoj" << endl;
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int N;
+vector<int> edges[100000];
+int A[100000];
+int sum0, sum1, nodes0, nodes1;
+
+void dfs(int i, int color, int par) {
+	// update color/sum
+	if (color == 0) {
+		nodes0++;
+		sum0 += A[i];
+	} else {
+		nodes1++;
+		sum1 += A[i];
+	}
+
+	for (int j : edges[i]) {
+		if (j != par) {
+			// swap colors for the child
+			dfs(j, 1 - color, i);
+		}
+	}
+}
+
+int main() {
+	freopen("clocktree.in", "r", stdin);
+	freopen("clocktree.out", "w", stdout);
+
+	cin >> N;
+
+	for (int i = 0; i < N; i++) { cin >> A[i]; }
+
+	for (int i = 1; i < N; i++) {
+		int a, b;
+		cin >> a >> b;
+		a--, b--;
+		edges[a].push_back(b);
+		edges[b].push_back(a);
+	}
+
+	dfs(0, 0, -1);
+
+	// same mod means you can start anywhere
+	if ((sum0 % 12) == (sum1 % 12)) {
+		cout << N;
+	}
+	// if group0 is 1 smaller than group1, we must start from group1
+	else if ((sum0 + 1) % 12 == (sum1 % 12)) {
+		cout << nodes1;
+	}
+	// if group1 is 1 smaller than group0, we must start from group0
+	else if ((sum0 % 12) == ((sum1 + 1) % 12)) {
+		cout << nodes0;
+	}
+	// no way to get all clocks pointing to 12
+	else {
+		cout << 0;
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int FLAVORS = 5;
+
+int main() {
+	freopen("cowpatibility.in", "r", stdin);
+	freopen("cowpatibility.out", "w", stdout);
+
+	long long n;
+	cin >> n;
+
+	vector<array<int, FLAVORS>> cows(n);
+
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < FLAVORS; j++) { cin >> cows[i][j]; }
+
+		// sort flavors to avoid double counting
+		sort(cows[i].begin(), cows[i].end());
+	}
+
+	// common[i][j] = the number of cows that share i flavors (j) in common
+	vector<map<array<int, FLAVORS>, int>> common(FLAVORS);
+
+	for (int i = 0; i < n; i++) {
+		common[4][cows[i]]++;
+
+		// iterate over all subsets
+		for (int a = 0; a < FLAVORS; a++) {
+			common[0][{cows[i][a]}]++;
+			for (int b = a + 1; b < FLAVORS; b++) {
+				common[1][{cows[i][a], cows[i][b]}]++;
+				for (int c = b + 1; c < FLAVORS; c++) {
+					common[2][{cows[i][a], cows[i][b], cows[i][c]}]++;
+					for (int d = c + 1; d < FLAVORS; d++) {
+						common[3][{cows[i][a], cows[i][b], cows[i][c], cows[i][d]}]++;
+					}
+				}
+			}
+		}
+	}
+
+	long long compatible = 0;
+	// use PIE to count the number of compatible pairs
+	// (see explanation above)
+	for (int i = 0; i < FLAVORS; i++) {
+		for (auto &[k, v] : common[i]) {
+			if (i % 2 == 0) {
+				compatible += (long long)v * (v - 1) / 2;
+			} else {
+				compatible -= (long long)v * (v - 1) / 2;
+			}
+		}
+	}
+
+	cout << (n * (n - 1) / 2) - compatible << endl;
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+using ll = long long;
+
+const int A = 1e6 + 1;
+const int M = 1e9 + 7;
+const int N = 1e5;
+ll fact[A], inv_fact[A], a[N];
+
+// binary exponentiation:
+// https://usaco.guide/gold/modular#modular-exponentiation
+ll exp(ll x, ll n) {
+	x %= M;
+	ll res = 1;
+	while (n > 0) {
+		if (n % 2 == 1) { res = res * x % M; }
+		x = x * x % M;
+		n /= 2;
+	}
+	return res;
+}
+
+// https://usaco.guide/gold/combo#method-2-factorial-definition-modular-inverses---mathcalon--log-mod
+ll C(ll n, ll k) { return fact[n] * inv_fact[n - k] % M * inv_fact[k] % M; }
+
+int main() {
+	// precompute factorials and inverses
+	fact[0] = inv_fact[0] = 1;
+	// fact[i] = i!, inv_fact[i] = inverse of i!
+	for (int i = 1; i < A; i++) {
+		fact[i] = fact[i - 1] * i % M;
+		// inverse of x mod M = x^(M - 2) when M is prime
+		inv_fact[i] = exp(fact[i], M - 2);
+	}
+
+	int n;
+	cin >> n;
+	for (int i = 0; i < n; i++) {
+		cin >> a[i];
+		// convert a[i] to b[i]
+		a[i] /= 2;
+	}
+
+	ll ans = 1;  // base case: C_{n - 1} = 1
+	for (int i = n - 2; i >= 0; i--) {
+		// calculate C_i
+		if (a[i] > a[i + 1]) {
+			ans = ans * C(a[i], a[i + 1]) % M;
+		} else {
+			ans = ans * C(a[i + 1] - 1, a[i] - 1) % M;
+		}
+	}
+
+	cout << ans << endl;
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <string>
+#include <utility>
+typedef long long ll;
+using namespace std;
+
+const ll INF = 1e18;
+
+struct Node {
+    char value;
+    ll size;
+    Node *l, *r;
+
+    void print_substring(ll start, ll end) {
+        start = max(start, 1ll);
+        end = min(end, size);
+        if (start > end) {
+            return;
+        }
+        if (value != '.') {
+            cout << value;
+        } else {
+            l->print_substring(start, end);
+            r->print_substring(start - l->size, end - l->size);
+        }
+    }
+};
+
+Node* current[26];
+pair<char, string> operations[200000];
+
+int main() {
+    cin.tie(0)->sync_with_stdio(0);
+    ll l, r;
+    int n;
+    cin >> l >> r >> n;
+    for (int i = n - 1; i >= 0; i--) {
+        cin >> operations[i].first >> operations[i].second;
+    }
+
+    for (char c = 'a'; c <= 'z'; c++) {
+        current[c - 'a'] = new Node{c, 1};
+    }
+    for (int i = 0; i < n; i++) {
+        Node* result = nullptr;
+        for (char c : operations[i].second) {
+            Node* to_merge = current[c - 'a'];
+            if (result == nullptr) {
+                result = to_merge;
+            } else {
+                result = new Node{
+                    '.',
+                    min(INF, result->size + to_merge->size),
+                    result,
+                    to_merge
+                };
+            }
+        }
+        current[operations[i].first - 'a'] = result;
+    }
+
+    current[0]->print_substring(l, r);
+    cout << '\n';
+    return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+using vi = vector<int>;
+using vl = vector<ll>;
+
+const ll MOD = 1e9 + 7;
+
+int main() {
+	freopen("help.in", "r", stdin);
+	int n;
+	cin >> n;
+	// Mark the points where a segment opened or closed
+	vi a(2 * n + 1, 0);
+	for (int i = 0; i < n; i++) {
+		int x, y;
+		cin >> x >> y;
+		a[x]++;
+		a[y]--;
+	}
+
+	// Precalculate powers of 2
+	vl pow(n);
+	pow[0] = 1;
+	for (int i = 1; i <= n - 1; i++) { pow[i] = pow[i - 1] * 2 % MOD; }
+
+	int open_segs_num = 0;
+	ll ans = 0;
+	for (int i = 1; i <= 2 * n; i++) {
+		// Update the number of open segments
+		open_segs_num += a[i];
+		/*
+		 * If a new segment is opened, count the number of subsets
+		 * where this new segment is the beginning of a connected component
+		 */
+		if (a[i] == 1) { ans = (ans + pow[n - open_segs_num]) % MOD; }
+	}
+	freopen("help.out", "w", stdout);
+	cout << ans << endl;
+}
+
+New Solution
+
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <cstdio>
+using namespace std;
+#define MAXN 100000
+ 
+int N;
+long long f[MAXN+2];
+int l[MAXN+2];
+int r[MAXN+2];
+ 
+int main()
+{
+	cin >> N;
+	for(int i=1;i<=N;i++)
+		cin >> f[i];
+	f[0] = f[N+1] = 0;
+	vector<int> hull;
+	hull.push_back(0);
+	for(int k=1;k<=N+1;k++)
+	{
+		while(hull.size() >= 2)
+		{
+			int i = hull[hull.size()-2];
+			int j = hull[hull.size()-1];
+			if((k-i)*f[j] < (j-i)*f[k] + (k-j)*f[i])
+				hull.pop_back();
+			else
+				break;
+		}
+		hull.push_back(k);
+	}
+	for(int j=0;j<hull.size()-1;j++)
+	{
+		for(int i=hull[j]+1;i<hull[j+1];i++)
+		{
+			l[i] = hull[j];
+			r[i] = hull[j+1];
+		}
+		l[hull[j]] = r[hull[j]] = hull[j];
+	}
+	l[N+1] = r[N+1] = N+1;
+	for(int i=1;i<=N;i++)
+	{
+		if(l[i]==r[i]) cout << 100000LL*f[i] << '\n';
+                else cout << (100000ULL*(((unsigned long long)(r[i]-i))*((unsigned long long)f[l[i]]) + ((unsigned long long)(i - l[i]))*((unsigned long long)f[r[i]])))/((unsigned long long)(r[i]-l[i])) << '\n';
+        }
+	return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+#define MAXN 100000
+#define SEG (1<<18)
+#define INF 1000000000000000LL
+ 
+int N,Q;
+long long x[MAXN], y[MAXN], t[MAXN];
+int cx[MAXN],cy[MAXN];
+int cid[MAXN];
+ 
+long long qx[MAXN],qy[MAXN],qt[MAXN];
+int qcx[MAXN],qcy[MAXN];
+int qid[MAXN];
+ 
+class SegTree
+{
+public:
+	long long seg[2*SEG];
+	int l[2*SEG],r[2*SEG];
+	int low,high;
+	
+	void init()
+	{
+		for(int i=SEG;i<2*SEG;i++)
+		{
+			seg[i] = -INF;
+			l[i] = r[i] = i-SEG;
+		}
+		for(int i=SEG-1;i>0;i--)
+		{
+			seg[i] = -INF;
+			l[i] = l[2*i], r[i] = r[2*i+1];
+		}
+	}
+	void update(int i,long long v)
+	{
+		i += SEG;
+		for(;i>0;i/=2)
+			seg[i] = max(seg[i],v);
+	}
+	long long getMax(int i)
+	{
+		if((l[i]>high)||(r[i]<low)) return -INF;
+		if((l[i]>=low)&&(r[i]<=high)) return seg[i];
+		return max(getMax(2*i),getMax(2*i+1));
+	}
+};
+ 
+bool cmp(int a,int b)
+{
+	return x[a]<x[b];
+}
+ 
+bool qcmp(int a,int b)
+{
+	return qx[a]<qx[b];
+}
+ 
+long long ansLeft[MAXN];
+long long ansRight[MAXN];
+ 
+int main()
+{
+	cin >> N >> Q;
+	vector<long long> vx,vy;
+	for(int i=0;i<N;i++)
+	{
+		cin >> x[i] >> y[i] >> t[i];
+		vx.push_back(x[i]);
+		vy.push_back(y[i]);
+		cid[i] = i;
+	}
+	sort(cid,cid+N,cmp);
+	for(int i=0;i<Q;i++)
+	{
+		cin >> qx[i] >> qy[i];
+		vx.push_back(qx[i]);
+		vy.push_back(qy[i]);
+		qid[i] = i;
+	}
+	sort(qid,qid+Q,qcmp);
+	
+	sort(vx.begin(),vx.end());
+	sort(vy.begin(),vy.end());
+	vx.resize(distance(vx.begin(),unique(vx.begin(),vx.end())));
+	vy.resize(distance(vy.begin(),unique(vy.begin(),vy.end())));
+	for(int i=0;i<N;i++)
+	{
+		cx[i] = lower_bound(vx.begin(),vx.end(),x[i]) - vx.begin();
+		cy[i] = lower_bound(vy.begin(),vy.end(),y[i]) - vy.begin();
+	}
+	for(int i=0;i<Q;i++)
+	{
+		qcx[i] = lower_bound(vx.begin(),vx.end(),qx[i]) - vx.begin();
+		qcy[i] = lower_bound(vy.begin(),vy.end(),qy[i]) - vy.begin();		
+	}
+	
+	SegTree up, down;
+	up.init();
+	down.init();
+	int j = 0;
+	for(int i=0;i<Q;i++)
+	{
+		int cur = qid[i];
+		while(j < N && x[cid[j]] <= qx[cur])
+		{
+			down.update(cy[cid[j]], x[cid[j]]+y[cid[j]]-t[cid[j]]);
+			up.update(cy[cid[j]], x[cid[j]]-y[cid[j]]-t[cid[j]]);
+			j++;
+		}
+		down.low = 0, down.high = qcy[cur];
+		up.low = qcy[cur], up.high = vy.size()-1;
+		ansLeft[cur] = min(qx[cur] + qy[cur] - down.getMax(1), qx[cur] - qy[cur] - up.getMax(1));
+	}
+	up.init();
+	down.init();
+	j = N-1;
+	for(int i=Q-1;i>=0;i--)
+	{
+		int cur = qid[i];
+		while(j>=0 && x[cid[j]] >= qx[cur])
+		{
+			down.update(cy[cid[j]], -x[cid[j]]+y[cid[j]]-t[cid[j]]);
+			up.update(cy[cid[j]], -x[cid[j]]-y[cid[j]]-t[cid[j]]);
+			j--;			
+		}
+		down.low = 0, down.high = qcy[cur];
+		up.low = qcy[cur], up.high = vy.size()-1;
+		ansRight[cur] = min(-qx[cur] + qy[cur] - down.getMax(1), -qx[cur] - qy[cur] - up.getMax(1));
+	}
+	for(int i=0;i<Q;i++)
+		cout << min(min(ansLeft[i],ansRight[i]),(long long)abs(qx[i]-qy[i])) << '\n';
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+using ld = long double;
+using db = double;
+using str = string;  // yay python!
+
+using pi = pair<int, int>;
+using pl = pair<ll, ll>;
+using pd = pair<db, db>;
+
+using vi = vector<int>;
+using vb = vector<bool>;
+using vl = vector<ll>;
+using vd = vector<db>;
+using vs = vector<str>;
+using vpi = vector<pi>;
+using vpl = vector<pl>;
+using vpd = vector<pd>;
+
+#define tcT template <class T
+#define tcTU tcT, class U
+// ^ lol this makes everything look weird but I'll try it
+tcT > using V = vector<T>;
+tcT, size_t SZ > using AR = array<T, SZ>;
+tcT > using PR = pair<T, T>;
+
+// pairs
+#define mp make_pair
+#define f first
+#define s second
+
+// vectors
+// oops size(x), rbegin(x), rend(x) need C++17
+#define sz(x) int((x).size())
+#define bg(x) begin(x)
+#define all(x) bg(x), end(x)
+#define rall(x) x.rbegin(), x.rend()
+#define sor(x) sort(all(x))
+#define rsz resize
+#define ins insert
+#define ft front()
+#define bk back()
+#define pb push_back
+#define eb emplace_back
+#define pf push_front
+
+#define lb lower_bound
+#define ub upper_bound
+tcT > int lwb(V<T> &a, const T &b) { return int(lb(all(a), b) - bg(a)); }
+
+// loops
+#define FOR(i, a, b) for (int i = (a); i < (b); ++i)
+#define F0R(i, a) FOR(i, 0, a)
+#define ROF(i, a, b) for (int i = (b) - 1; i >= (a); --i)
+#define R0F(i, a) ROF(i, 0, a)
+#define trav(a, x) for (auto &a : x)
+
+const int MOD = 1e9 + 7;  // 998244353;
+const int MX = 2e5 + 5;
+const ll INF = 1e18;  // not too close to LLONG_MAX
+const ld PI = acos((ld)-1);
+const int dx[4] = {1, 0, -1, 0}, dy[4] = {0, 1, 0, -1};  // for every grid problem!!
+mt19937 rng((uint32_t)chrono::steady_clock::now().time_since_epoch().count());
+template <class T> using pqg = priority_queue<T, vector<T>, greater<T>>;
+
+// bitwise ops
+// also see https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+constexpr int pct(int x) { return __builtin_popcount(x); }  // # of bits set
+constexpr int bits(int x) {  // assert(x >= 0); // make C++11 compatible until
+	                         // USACO updates ...
+	return x == 0 ? 0 : 31 - __builtin_clz(x);
+}  // floor(log2(x))
+constexpr int p2(int x) { return 1 << x; }
+constexpr int msk2(int x) { return p2(x) - 1; }
+
+ll cdiv(ll a, ll b) {
+	return a / b + ((a ^ b) > 0 && a % b);
+}  // divide a by b rounded up
+ll fdiv(ll a, ll b) {
+	return a / b - ((a ^ b) < 0 && a % b);
+}  // divide a by b rounded down
+
+tcT > bool ckmin(T &a, const T &b) { return b < a ? a = b, 1 : 0; }  // set a = min(a,b)
+tcT > bool ckmax(T &a, const T &b) { return a < b ? a = b, 1 : 0; }
+
+tcTU > T fstTrue(T lo, T hi, U f) {
+	hi++;
+	assert(lo <= hi);  // assuming f is increasing
+	while (lo < hi) {  // find first index such that f is true
+		T mid = lo + (hi - lo) / 2;
+		f(mid) ? hi = mid : lo = mid + 1;
+	}
+	return lo;
+}
+tcTU > T lstTrue(T lo, T hi, U f) {
+	lo--;
+	assert(lo <= hi);  // assuming f is decreasing
+	while (lo < hi) {  // find first index such that f is true
+		T mid = lo + (hi - lo + 1) / 2;
+		f(mid) ? lo = mid : hi = mid - 1;
+	}
+	return lo;
+}
+tcT > void remDup(vector<T> &v) {  // sort and remove duplicates
+	sort(all(v));
+	v.erase(unique(all(v)), end(v));
+}
+tcTU > void erase(T &t, const U &u) {  // don't erase
+	auto it = t.find(u);
+	assert(it != end(t));
+	t.erase(it);
+}  // element that doesn't exist from (multi)set
+
+// INPUT
+#define tcTUU tcT, class... U
+tcT > void re(complex<T> &c);
+tcTU > void re(pair<T, U> &p);
+tcT > void re(V<T> &v);
+tcT, size_t SZ > void re(AR<T, SZ> &a);
+
+tcT > void re(T &x) { cin >> x; }
+void re(db &d) {
+	str t;
+	re(t);
+	d = stod(t);
+}
+void re(ld &d) {
+	str t;
+	re(t);
+	d = stold(t);
+}
+tcTUU > void re(T &t, U &...u) {
+	re(t);
+	re(u...);
+}
+
+tcT > void re(complex<T> &c) {
+	T a, b;
+	re(a, b);
+	c = {a, b};
+}
+tcTU > void re(pair<T, U> &p) { re(p.f, p.s); }
+tcT > void re(V<T> &x) { trav(a, x) re(a); }
+tcT, size_t SZ > void re(AR<T, SZ> &x) { trav(a, x) re(a); }
+tcT > void rv(int n, V<T> &x) {
+	x.rsz(n);
+	re(x);
+}
+
+// TO_STRING
+#define ts to_string
+str ts(char c) { return str(1, c); }
+str ts(const char *s) { return (str)s; }
+str ts(str s) { return s; }
+str ts(bool b) {
+#ifdef LOCAL
+	return b ? "true" : "false";
+#else
+	return ts((int)b);
+#endif
+}
+tcT > str ts(complex<T> c) {
+	stringstream ss;
+	ss << c;
+	return ss.str();
+}
+str ts(V<bool> v) {
+	str res = "{";
+	F0R(i, sz(v)) res += char('0' + v[i]);
+	res += "}";
+	return res;
+}
+template <size_t SZ> str ts(bitset<SZ> b) {
+	str res = "";
+	F0R(i, SZ) res += char('0' + b[i]);
+	return res;
+}
+tcTU > str ts(pair<T, U> p);
+tcT > str ts(T v) {  // containers with begin(), end()
+#ifdef LOCAL
+	bool fst = 1;
+	str res = "{";
+	for (const auto &x : v) {
+		if (!fst) res += ", ";
+		fst = 0;
+		res += ts(x);
+	}
+	res += "}";
+	return res;
+#else
+	bool fst = 1;
+	str res = "";
+	for (const auto &x : v) {
+		if (!fst) res += " ";
+		fst = 0;
+		res += ts(x);
+	}
+	return res;
+
+#endif
+}
+tcTU > str ts(pair<T, U> p) {
+#ifdef LOCAL
+	return "(" + ts(p.f) + ", " + ts(p.s) + ")";
+#else
+	return ts(p.f) + " " + ts(p.s);
+#endif
+}
+
+// OUTPUT
+tcT > void pr(T x) { cout << ts(x); }
+tcTUU > void pr(const T &t, const U &...u) {
+	pr(t);
+	pr(u...);
+}
+void ps() { pr("\n"); }  // print w/ spaces
+tcTUU > void ps(const T &t, const U &...u) {
+	pr(t);
+	if (sizeof...(u)) pr(" ");
+	ps(u...);
+}
+
+// DEBUG
+void DBG() { cerr << "]" << endl; }
+tcTUU > void DBG(const T &t, const U &...u) {
+	cerr << ts(t);
+	if (sizeof...(u)) cerr << ", ";
+	DBG(u...);
+}
+#ifdef LOCAL  // compile with -DLOCAL, chk -> fake assert
+#define dbg(...)                                                                       \
+	cerr << "Line(" << __LINE__ << ") -> [" << #__VA_ARGS__ << "]: [", DBG(__VA_ARGS__)
+#define chk(...)                                                                       \
+	if (!(__VA_ARGS__))                                                                \
+		cerr << "Line(" << __LINE__ << ") -> function(" << __FUNCTION__                \
+		     << ") -> CHK FAILED: (" << #__VA_ARGS__ << ")" << "\n",                   \
+		    exit(0);
+#else
+#define dbg(...) 0
+#define chk(...) 0
+#endif
+
+void setPrec() { cout << fixed << setprecision(15); }
+void unsyncIO() { cin.tie(0)->sync_with_stdio(0); }
+// FILE I/O
+void setIn(str s) { freopen(s.c_str(), "r", stdin); }
+void setOut(str s) { freopen(s.c_str(), "w", stdout); }
+void setIO(str s = "") {
+	unsyncIO();
+	setPrec();
+	// cin.exceptions(cin.failbit);
+	// throws exception when do smth illegal
+	// ex. try to read letter into int
+	if (sz(s)) setIn(s + ".in"), setOut(s + ".out");  // for USACO
+}
+
+/**
+ * Description: point update and rectangle sum with offline 2D BIT.
+ * For each of the points to be updated, $x\in (0,SZ)$ and $y\neq 0$.
+ * Time: O(N\log^2 N)
+ * Memory: O(N\log N)
+ * Source: Own
+ * Verification:
+ * https://dmoj.ca/problem/occ19g4
+ * http://www.usaco.org/index.php?page=viewproblem2&cpid=722 (753 ms)
+ * http://www.usaco.org/index.php?page=viewproblem2&cpid=601 (679 ms)
+ */
+
+template <class T, int SZ> struct OffBIT2D {
+	bool mode = 0;  // mode = 1 -> initialized
+	vpi todo;       // locations of updates to process
+	int cnt[SZ], st[SZ];
+	vi val;
+	vector<T> bit;  // store all BITs in single vector
+	void init() {
+		assert(!mode);
+		mode = 1;
+		int lst[SZ];
+		F0R(i, SZ) lst[i] = cnt[i] = 0;
+		sort(all(todo), [](const pi &a, const pi &b) { return a.s < b.s; });
+		trav(t, todo) for (int x = t.f; x < SZ; x += x & -x) if (lst[x] != t.s)
+		    lst[x] = t.s,
+		    cnt[x]++;
+		int sum = 0;
+		F0R(i, SZ) lst[i] = 0, st[i] = (sum += cnt[i]);
+		val.rsz(sum);
+		bit.rsz(sum);
+		reverse(all(todo));
+		trav(t, todo) for (int x = t.f; x < SZ; x += x & -x) if (lst[x] != t.s)
+		    lst[x] = t.s,
+		    val[--st[x]] = t.s;
+	}
+	int rank(int y, int l, int r) {
+		return ub(begin(val) + l, begin(val) + r, y) - begin(val) - l;
+	}
+	void UPD(int x, int y, T t) {
+		for (y = rank(y, st[x], st[x] + cnt[x]); y <= cnt[x]; y += y & -y)
+			bit[st[x] + y - 1] += t;
+	}
+	void upd(int x, int y, T t) {
+		if (!mode) todo.pb({x, y});
+		else
+			for (; x < SZ; x += x & -x) UPD(x, y, t);
+	}
+	int QUERY(int x, int y) {
+		T res = 0;
+		for (y = rank(y, st[x], st[x] + cnt[x]); y; y -= y & -y)
+			res += bit[st[x] + y - 1];
+		return res;
+	}
+	T query(int x, int y) {
+		assert(mode);
+		T res = 0;
+		for (; x; x -= x & -x) res += QUERY(x, y);
+		return res;
+	}
+	T query(int xl, int xr, int yl, int yr) {
+		return query(xr, yr) - query(xl - 1, yr) - query(xr, yl - 1) +
+		       query(xl - 1, yl - 1);
+	}
+};
+
+OffBIT2D<int, 100005> OB;
+int N, K;
+
+int main() {
+	setIO("friendcross");
+	re(N, K);
+	vpi pos(N + 1);
+	FOR(i, 1, N + 1) {
+		int x;
+		re(x);
+		pos[x].f = i;
+	}
+	FOR(i, 1, N + 1) {
+		int x;
+		re(x);
+		pos[x].s = i;
+	}
+	FOR(i, 1, N + 1) OB.upd(pos[i].f, pos[i].s, 1);
+	OB.init();
+	ll ans = 0;
+	int ind = 1;
+	FOR(i, 1, N + 1) {
+		while (ind < i - K) {
+			OB.upd(pos[ind].f, pos[ind].s, 1);
+			++ind;
+		}
+		ans += OB.query(pos[i].f, N) + OB.query(N, pos[i].s) -
+		       2 * OB.query(pos[i].f, pos[i].s);
+		// add unfriendly crossing pairs with cow i and some cow < i
+	}
+	ps(ans);
+}

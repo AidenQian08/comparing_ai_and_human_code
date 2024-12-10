@@ -1,0 +1,843 @@
+n, k = map(int, input().split())
+arr = list(map(int, input().split()))
+left = 0
+right = 0
+ans = 0
+distinct = 0
+freq = {}
+while left < n:
+	while right < n:
+		if arr[right] not in freq and distinct == k:
+			break
+
+		# Put the new array element in the map.
+		if arr[right] in freq:
+			freq[arr[right]] += 1
+		else:
+			freq[arr[right]] = 1
+			distinct += 1
+		right += 1
+
+	# Add the new subarrays.
+	ans += right - left
+
+	# Slide the window rightwards.
+	freq[arr[left]] -= 1
+	if freq[arr[left]] == 0:
+		freq.pop(arr[left])
+		distinct -= 1
+	left += 1
+print(ans)
+
+New Solution
+
+MAXN = 10**6
+MOD = 10**9 + 7
+
+fac = [0] * (MAXN + 1)
+inv = [0] * (MAXN + 1)
+
+
+# BeginCodeSnip{Combinatorics Functions (from the module)}
+def exp(x: int, n: int, m: int) -> int:
+	x %= m
+	res = 1
+	while n > 0:
+		if n % 2 == 1:
+			res = res * x % m
+		x = x * x % m
+		n //= 2
+	return res
+
+
+def factorial():
+	fac[0] = 1
+	for i in range(1, MAXN + 1):
+		fac[i] = fac[i - 1] * i % MOD
+
+
+def inverses():
+	inv[MAXN] = exp(fac[MAXN], MOD - 2, MOD)
+	for i in range(MAXN, 0, -1):
+		inv[i - 1] = inv[i] * i % MOD
+
+
+def choose(n: int, r: int):
+	return fac[n] * inv[r] % MOD * inv[n - r] % MOD
+
+
+# EndCodeSnip
+
+n = int(input())
+
+if n % 2 != 0:
+	print(0)
+else:
+	factorial()
+	inverses()
+	result = exp(n // 2 + 1, MOD - 2, MOD) * choose(n, n // 2) % MOD
+	print(result)
+
+New Solution
+
+n = int(input())
+planets = list(map(lambda i: int(i) - 1, input().split()))
+
+path_length = [0] * n
+visited = [False] * n
+
+for i in range(len(planets)):
+	"""
+	We dfs from the current planet until we end up at a planet we have already
+	visited. Note that the visited planet is not added to the path array.
+	"""
+
+	if visited[i]:
+		continue
+
+	path = [i]  # The path of planets whose teleporters we go through
+	path_set = set([i])  # Set of all planets whose teleporters we go through
+	visited[i] = True
+	while not visited[planets[i]]:
+		i = planets[i]
+		visited[i] = True
+		path.append(i)
+		path_set.add(i)
+
+	"""
+	Let i be the planet we have already visited. If i exists in path, then
+	there is a cycle. When there is a cycle, all planets in that cycle have the
+	same path length (the distance for each planet to visit itself).
+	"""
+	i = planets[i]
+	if i in path_set:
+		# If there is a cycle, the planets in [i, ..., i) are in the cycle.
+		# This is every element from the end of path until we hit i.
+		path_cycle = [path.pop()]  # The path of planets in the cycle.
+		while path_cycle[-1] != i:
+			path_cycle.append(path.pop())
+
+		for planet in path_cycle:
+			path_length[planet] = len(path_cycle)
+
+	"""
+	For planets outside the cycle (or if there is none), the path length of
+	a planet is the path length of the planet the former planet's teleporter
+	can visit, plus one.
+	"""
+	while path:
+		top = path.pop()
+		path_length[top] = path_length[planets[top]] + 1
+
+print(*path_length)
+
+New Solution
+
+MOD = int(1e9) + 7
+
+for _ in range(int(input())):
+	a, b, c = map(int, input().split())
+	pow_bc = pow(b, c, MOD - 1)
+	print(pow(a, pow_bc, mod))
+
+New Solution
+
+import sys
+
+MAX_N = 10**5
+sys.setrecursionlimit(MAX_N)
+
+
+def dfs(node: int) -> bool:
+	visited[node] = on_stack[node] = True
+	for next_ in graph[node]:
+		if on_stack[next_]:
+			cycle.append(node)  # start cycle
+			on_stack[node] = on_stack[next_] = False
+			return True
+
+		elif not visited[next_]:
+			if dfs(next_):  # continue cycle
+				if on_stack[node]:
+					cycle.append(node)
+					on_stack[node] = False
+					return True
+				else:  # found u again
+					cycle.append(node)
+					return False
+
+			if cycle:
+				return False  # finished with cycle
+
+	on_stack[node] = False
+	return False
+
+
+n, m = map(int, input().strip().split())
+graph = [[] for _ in range(n)]
+for _ in range(m):
+	a, b = map(int, input().strip().split())
+	graph[a - 1].append(b - 1)
+
+visited = [False] * n
+on_stack = [False] * n
+cycle = []
+for i in range(n):
+	dfs(i)
+	if cycle:
+		break
+
+if cycle:
+	print(len(cycle) + 1)
+	print(cycle[0] + 1, *[i + 1 for i in cycle[::-1]])
+else:
+	print("IMPOSSIBLE")
+
+New Solution
+
+# BeginCodeSnip{DSU (from the module)}
+class DisjointSets:
+	def __init__(self, size: int) -> None:
+		self.parents = [i for i in range(size)]
+		self.sizes = [1 for _ in range(size)]
+
+	def find(self, x: int) -> int:
+		if self.parents[x] == x:
+			return x
+		self.parents[x] = self.find(self.parents[x])
+		return self.parents[x]
+
+	def unite(self, x: int, y: int) -> bool:
+		x_root = self.find(x)
+		y_root = self.find(y)
+		if x_root == y_root:
+			return False
+
+		if self.sizes[x_root] < self.sizes[y_root]:
+			x_root, y_root = y_root, x_root
+
+		self.parents[y_root] = x_root
+		self.sizes[x_root] += self.sizes[y_root]
+		return True
+
+	def connected(self, x: int, y: int) -> bool:
+		return self.find(x) == self.find(y)
+
+
+# EndCodeSnip
+
+
+city_num, road_num = map(int, input().split())
+roads = []
+for _ in range(road_num):
+	a, b, cost = map(int, input().split())
+	roads.append((cost, a - 1, b - 1))
+roads.sort()
+
+cities = DisjointSets(city_num)
+min_cost = 0
+added = 0
+for cost, c1, c2 in roads:
+	status = cities.unite(c1, c2)
+	min_cost += status * cost
+	added += status
+
+print("IMPOSSIBLE" if added != city_num - 1 else min_cost)
+
+New Solution
+
+import sys
+
+sys.setrecursionlimit(10**5)  # Python has a default recursion limit of 1000
+
+n = 6
+visited = [False] * n
+
+"""
+Define adjacency list and read in problem-specific input here.
+
+In this example, we've provided "dummy input" that's
+reflected in the GIF above to help illustrate the
+order of the recrusive calls.
+"""
+adj = [[] for _ in range(n)]
+adj[0] = [1, 2, 4]
+adj[1] = [3, 4]
+adj[2] = [5]
+
+
+def dfs(current_node):
+	visited[current_node] = True
+	for neighbor in adj[current_node]:
+		if not visited[neighbor]:
+			dfs(neighbor)
+
+
+for i in range(n):
+	if not visited[i]:
+		dfs(i)
+
+New Solution
+
+n, x = map(int, input().split())
+arr = list(map(int, input().split()))
+
+i = 0
+j = 0
+sum, res = 0, 0
+while j < n:
+	sum += arr[j]
+	while sum > x:
+		sum -= arr[i]
+		i = i + 1
+
+	res += sum == x
+	j = j + 1
+
+print(res)
+
+New Solution
+
+side_len, query_num = [int(i) for i in input().split()]
+tree_prefixes = [[0 for _ in range(side_len + 1)] for _ in range(side_len + 1)]
+for r in range(side_len):
+	for ci, c in enumerate(input()):
+		tree = c == "*"
+		tree_prefixes[r + 1][ci + 1] += (
+			tree_prefixes[r][ci + 1]
+			+ tree_prefixes[r + 1][ci]
+			- tree_prefixes[r][ci]
+			+ tree
+		)
+
+for _ in range(query_num):
+	from_row, from_col, to_row, to_col = [int(i) for i in input().split()]
+	print(
+		tree_prefixes[to_row][to_col]
+		- tree_prefixes[to_row][from_col - 1]
+		- tree_prefixes[from_row - 1][to_col]
+		+ tree_prefixes[from_row - 1][from_col - 1]
+	)
+
+New Solution
+
+import sys
+
+n, target = map(int, input().split())
+values = [int(x) for x in input().split()]
+
+# use a map to avoid using a very large array
+val_to_ind = {}
+for i, val in enumerate(values):
+	# target minus a number is the other number
+	if target - val in val_to_ind:
+		print(i + 1, val_to_ind[target - val])
+		sys.exit(0)
+	val_to_ind[val] = i + 1
+
+print("IMPOSSIBLE")
+
+New Solution
+
+n = int(input())
+weights = list(map(int, input().split()))
+
+
+def recurse_apples(i: int, sum1: int, sum2: int) -> int:
+	# We've added all apples- return the absolute difference
+	if i == n:
+		return abs(sum2 - sum1)
+
+	# Try adding the current apple to either the first or second set
+	return min(
+		recurse_apples(i + 1, sum1 + weights[i], sum2),
+		recurse_apples(i + 1, sum1, sum2 + weights[i]),
+	)
+
+
+# Solve the problem starting at apple 0 with both sets being empty
+print(recurse_apples(0, 0, 0))
+
+New Solution
+
+s = input()
+perms = []
+char_count = [0] * 26
+
+
+def search(curr: str = ""):
+	# we've finished creating a permutation
+	if len(curr) == len(s):
+		perms.append(curr)
+		return
+	for i in range(26):
+		# For all available characters
+		if char_count[i] > 0:
+			# Add it to the current string and continue the search
+			char_count[i] -= 1
+			search(curr + chr(ord("a") + i))
+			char_count[i] += 1
+
+
+for c in s:
+	char_count[ord(c) - ord("a")] += 1
+
+search()
+
+print(len(perms))
+for perm in perms:
+	print(perm)
+
+New Solution
+
+WIDTH = 1000
+
+barn = [[0 for _ in range(WIDTH + 1)] for _ in range(WIDTH + 1)]
+with open("paintbarn.in") as read:
+	rect_num, paint_req = [int(i) for i in read.readline().split()]
+	for _ in range(rect_num):
+		start_x, start_y, end_x, end_y = [int(i) for i in read.readline().split()]
+		# Set up the prefix sums array with all the corners of the given rectangle
+		barn[start_x][start_y] += 1
+		barn[start_x][end_y] -= 1
+		barn[end_x][start_y] -= 1
+		barn[end_x][end_y] += 1
+
+valid_area = 0
+# Run 2D prefix sums on the array
+for x in range(WIDTH + 1):
+	for y in range(WIDTH + 1):
+		if x > 0:
+			barn[x][y] += barn[x - 1][y]
+		if y > 0:
+			barn[x][y] += barn[x][y - 1]
+		if x > 0 and y > 0:
+			barn[x][y] -= barn[x - 1][y - 1]
+		valid_area += barn[x][y] == paint_req
+
+print(valid_area, file=open("paintbarn.out", "w"))
+
+New Solution
+
+# This solution does TLE on the USACO website on one test case because python is slow.
+from collections import deque
+
+with open("perimeter.in") as r:
+	t = r.readline
+	n = int(t())
+	ice = []
+	visited = [[False] * n for _ in range(n)]
+
+	for _ in range(n):
+		ice.append(list(t()))
+
+max_area = 0
+min_peri = float("inf")
+
+# possible directions
+DIRECTIONS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+# check if out of bounds
+def out(a, b, l):
+	if a < 0 or b < 0 or a >= l or b >= l:
+		return True
+	return False
+
+
+def area_and_perimeter(x, y):
+	area, peri = 1, 0
+
+	q = deque()
+	q.append((x, y))
+	visited[x][y] = True
+
+	while q:
+		x, y = q.pop()
+
+		for dx, dy in DIRECTIONS:
+			nx, ny = x + dx, y + dy
+			if out(nx, ny, n) or ice[nx][ny] == ".":
+				peri += 1
+			else:
+				# check if already visited
+				if not visited[nx][ny]:
+					area += 1
+					q.appendleft((nx, ny))
+					visited[nx][ny] = True
+	return area, peri
+
+
+for i in range(n):
+	for j in range(n):
+		if ice[i][j] == "#" and not visited[i][j]:
+			area, peri = area_and_perimeter(i, j)
+
+			if area > max_area:
+				max_area, min_peri = area, peri
+			elif area == max_area:
+				if min_peri > peri:
+					max_area, min_peri = area, peri
+
+print(max_area, min_peri, file=open("perimeter.out", "w"))
+
+New Solution
+
+from collections import deque
+
+with open("shuffle.in", "r") as input_file:
+	n = int(input_file.readline())
+
+	cows_after_shuffle = [0] * n
+	a = list(map(int, input_file.readline().split()))
+
+	# Calculate number of cows that a position will receive after one shuffle.
+	for i in range(n):
+		a[i] -= 1
+		cows_after_shuffle[a[i]] += 1
+
+	ans = n
+	no_cows = deque()
+
+	# Calculate positions that are empty after one shuffle.
+	for i in range(n):
+		if cows_after_shuffle[i] == 0:
+			no_cows.append(i)
+			ans -= 1
+
+	while no_cows:
+		curr = no_cows.popleft()
+
+		# Position `curr` cannot contribute any cows.
+		cows_after_shuffle[a[curr]] -= 1
+
+		# If `a[curr]` has no cows, insert it into the queue.
+		if cows_after_shuffle[a[curr]] == 0:
+			no_cows.append(a[curr])
+			ans -= 1
+
+print(ans, file=open("shuffle.out", "w"))
+
+New Solution
+
+# Take in input using Python file i/o system
+file_in = open("whereami.in")
+data = file_in.read().strip().split("\n")
+n = int(data[0])
+mailboxes = data[1]
+
+# Set the answer initially to n, as we know n is always a possible answer
+ans = n
+
+# We can iterate through lengths of sequences to find the smallest length
+for l in range(1, n + 1):
+	# Store the substrings in a set
+	sequences = set()
+	for i in range(n - l + 1):
+		sequences.add(mailboxes[i : i + l])
+	# Check if all substrings are unique
+	if len(sequences) == (n - l + 1):
+		ans = l
+		# We can exit the loop as this will be the smallest working length
+		break
+
+print(ans, file=open("whereami.out", "w"))
+
+New Solution
+
+fin, fout = open("billboard.in"), open("billboard.out", "w")
+
+x1, y1, x2, y2 = map(int, fin.readline().split())
+x3, y3, x4, y4 = map(int, fin.readline().split())
+
+# we'll be using one-indexing to make things more obvious
+x = [0, x1, x2, x3, x4]
+y = [0, y1, y2, y3, y4]
+
+# Case 1
+if x[4] >= x[2] and x[3] <= x[1] and y[4] >= y[2] and y[3] <= y[1]:
+	fout.write(str(0))
+# Case 2
+elif x[3] <= x[1] and y[3] <= y[1] and y[4] > y[1] and x[4] >= x[2]:
+	fout.write(str((x[2] - x[1]) * (y[2] - y[4])))
+# Case 3
+elif y[3] < y[2] and x[3] <= x[1] and y[4] >= y[2] and x[4] >= x[2]:
+	fout.write(str((x[2] - x[1]) * (y[3] - y[1])))
+# Case 4
+elif x[4] > x[1] and x[3] <= x[1] and y[4] >= y[2] and y[3] <= y[1]:
+	fout.write(str((x[2] - x[4]) * (y[2] - y[1])))
+# Case 5
+elif x[3] < x[2] and x[4] >= x[2] and y[4] >= y[2] and y[3] <= x[1]:
+	fout.write(str((x[3] - x[1]) * (y[2] - y[1])))
+# Case 6 and the corner case
+else:
+	fout.write(str((x[2] - x[1]) * (y[2] - y[1])))
+
+New Solution
+
+import sys
+
+MAX_POS = 2000
+
+
+def main():
+	sys.stdin = open("billboard.in", "r")
+	sys.stdout = open("billboard.out", "w")
+
+	visible = [[False for _ in range(MAX_POS)] for _ in range(MAX_POS)]
+
+	for i in range(3):
+		x1, y1, x2, y2 = map(int, input().split())
+		x1 += MAX_POS // 2
+		y1 += MAX_POS // 2
+		x2 += MAX_POS // 2
+		y2 += MAX_POS // 2
+		for x in range(x1, x2):
+			for y in range(y1, y2):
+				visible[x][y] = i < 2
+
+	ans = 0
+	for x in range(MAX_POS):
+		for y in range(MAX_POS):
+			ans += visible[x][y]
+	print(ans)
+
+
+main()
+
+New Solution
+
+from collections import deque
+
+n, m = map(int, input().split())
+a = input()
+
+adj = [[] for _ in range(n)]
+in_degree = [0] * n
+for _ in range(m):
+	x, y = map(int, input().split())
+	x -= 1
+	y -= 1
+	in_degree[y] += 1
+	adj[x].append(y)
+
+queue = deque()
+# dp[i][j] is the frequency of letter j when we are at node i.
+dp = [[0] * 26 for _ in range(n)]
+
+for i in range(n):
+	if in_degree[i] == 0:
+		queue.append(i)
+		dp[i][ord(a[i]) - ord("a")] += 1
+
+# Run topological sort.
+size = 0
+while size < n and len(queue) > 0:
+	cur = queue.popleft()
+	for nxt in adj[cur]:
+		for j in range(26):
+			# Update the frequency with the next occurrence.
+			if j == ord(a[nxt]) - ord("a"):
+				dp[nxt][j] = max(dp[cur][j] + 1, dp[nxt][j])
+			else:
+				dp[nxt][j] = max(dp[cur][j], dp[nxt][j])
+		# Add the next node to the queue.
+		in_degree[nxt] -= 1
+		if in_degree[nxt] == 0:
+			queue.append(nxt)
+	size += 1
+
+# No answer.
+if size < n:
+	print(-1)
+else:  # Find the maximum frequency across all nodes and letters.
+	ans = 0
+	for i in range(n):
+		for j in range(26):
+			ans = max(ans, dp[i][j])
+	print(ans)
+
+New Solution
+
+# counters for colored and uncolored nodes
+c = 0
+uc = 0
+
+
+def dfs(node: int, parent: int, col: bool) -> int:
+	global c, uc
+	"""
+	Iteratively DFS with a stack.
+	While we can increase the recursion depth with sys.setrecursionlimit,
+	using that still causes the stack to overflow.
+	"""
+	stack = [(node, parent, col)]
+	while stack:
+		node, parent, col = stack.pop()
+
+		if col:
+			c += 1
+		else:
+			uc += 1
+
+		for u in adj[node]:
+			# if the adjacent node isn't the parent,
+			# push it onto the stack with the opposite color
+			if u != parent:
+				stack.append((u, node, not col))
+
+
+n = int(input())
+adj = [[] for _ in range(n + 1)]
+for _ in range(n - 1):
+	u, v = map(int, input().split())
+	adj[u].append(v)
+	adj[v].append(u)
+
+dfs(1, 0, False)
+
+print(c * uc - (n - 1))
+
+New Solution
+
+for _ in range(int(input())):
+	n, k = map(int, input().split())
+	arr = [int(i) for i in input().split()]
+	nums = [(arr[i], i + 1) for i in range(n)]
+	nums.sort()
+
+	mins = float("inf")
+	curr = 0
+	for i in range(n - 1):
+		if nums[i][0] ^ nums[i + 1][0] < mins:
+			mins = nums[i][0] ^ nums[i + 1][0]
+			curr = i
+
+	print(f"{nums[curr][1]} {nums[curr + 1][1]} {nums[curr][0] ^ ((1 << k) - 1)}")
+
+New Solution
+
+def trap_area(base1: float, base2: float, height: float) -> float:
+	""":return: the area of a trapezoid with the given base lens and height"""
+	return height * (base1 + base2) / 2
+
+
+for _ in range(int(input())):
+	branch_num, base, height = [int(i) for i in input().split()]
+	offsets = sorted(int(i) for i in input().split())
+	assert branch_num == len(offsets)
+
+	total_area = 0
+	slope = base / height
+	for b in range(branch_num):
+		if b == branch_num - 1 or offsets[b] + height <= offsets[b + 1]:
+			total_area += base * height / 2
+			continue
+
+		height_diff = offsets[b + 1] - offsets[b]
+		new_base = base - slope * height_diff
+		total_area += trap_area(base, new_base, height_diff)
+
+	print(total_area)
+
+New Solution
+
+from math import gcd
+
+for _ in range(int(input())):
+	input()
+	k_num = 0
+	d_num = 0
+	max_pref_chunks = []
+	pref_ratios = {}
+	for c in input():
+		if c == "D":
+			d_num += 1
+		elif c == "K":
+			k_num += 1
+
+		# get the simplified ratio by dividing both quantities by the gcd
+		common = gcd(d_num, k_num)
+		d_ratio = d_num // common
+		k_ratio = k_num // common
+
+		# add the ratio to the records and record the max prefix chunk amount
+		if d_ratio not in pref_ratios:
+			pref_ratios[d_ratio] = {}
+		if k_ratio not in pref_ratios[d_ratio]:
+			pref_ratios[d_ratio][k_ratio] = 0
+		pref_ratios[d_ratio][k_ratio] += 1
+		max_pref_chunks.append(pref_ratios[d_ratio][k_ratio])
+
+	print(" ".join(str(m) for m in max_pref_chunks))
+
+New Solution
+
+for _ in range(int(input())):
+	n, m = map(int, input().split())
+
+	# Stores coordinates of all good people, which we will remove as we protect.
+	good_people = set()
+	grid = []
+	for r in range(n):
+		grid.append(list(input().strip()))
+		for c, char in enumerate(grid[-1]):
+			if char == "G":
+				good_people.add((r, c))
+
+	visited = [[False] * len(grid[0]) for _ in range(len(grid))]
+
+	stack = [(n - 1, m - 1)]
+	while stack:
+		i, j = stack.pop()
+
+		if visited[i][j]:
+			continue
+		visited[i][j] = True
+
+		"""
+		If an adjacent cell is a bad person, then we want to turn the current
+		cell into a wall. If an adjacent cell is a bad person and the current
+		cell is a good person, we cannot protect the good person. We only add
+		adjacent cells to the queue and mark the good person as protected if
+		we discover there are no bad people adjacent.
+		"""
+
+		cells_to_add = []
+		for new_i, new_j in [(i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)]:
+			if not (0 <= new_i < n and 0 <= new_j < m) or visited[new_i][new_j]:
+				continue
+
+			if grid[new_i][new_j] == "." or grid[new_i][new_j] == "G":
+				cells_to_add.append((new_i, new_j))
+			elif grid[new_i][new_j] == "B":
+				break
+		else:
+			stack.extend(cells_to_add)
+			if grid[i][j] == "G":
+				good_people.discard((i, j))
+
+	print("Yes" if not good_people else "No")
+
+New Solution
+
+from math import log2
+
+for _ in range(int(input())):
+	size = int(input())
+	arr = [int(i) for i in input().split()]
+	assert len(arr) == size
+
+	target = [arr[0]]
+	to_add = []
+	for i in range(1, size):
+		if target[-1] > arr[i]:
+			to_add.append(target[-1] - arr[i])
+			target.append(target[-1])
+		else:
+			target.append(arr[i])
+
+	min_time = 0
+	for a in to_add:
+		min_time = max(min_time, int(log2(a)) + 1)
+
+	print(min_time)

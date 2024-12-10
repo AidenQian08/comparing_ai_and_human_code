@@ -1,0 +1,1839 @@
+#include <iostream>
+#include <vector>
+#include <cmath>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+// Function to compute the initial f(0) based on alternating sum
+long long compute_alternating_sum(const vector<int>& a, const vector<int>& b, int n) {
+    long long result = 0;
+    for (int i = 0; i < n; i++) {
+        if (i % 2 == 0)
+            result += a[i] - b[i];
+        else
+            result -= a[i] - b[i];
+    }
+    return abs(result);
+}
+
+int main() {
+    int n, m, q;
+    cin >> n >> m >> q;
+    
+    vector<int> a(n), b(m);
+    
+    // Reading array a
+    for (int i = 0; i < n; i++) {
+        cin >> a[i];
+    }
+    
+    // Reading array b
+    for (int i = 0; i < m; i++) {
+        cin >> b[i];
+    }
+    
+    // Initial alternating sum of f(0)
+    long long current_f = compute_alternating_sum(a, b, n);
+    
+    // Output initial value of f(0)
+    cout << current_f << endl;
+    
+    // Processing each query
+    while (q--) {
+        int l, r, x;
+        cin >> l >> r >> x;
+        l--; r--; // Convert to 0-indexed
+        
+        // Update the current_f based on the change in range [l, r]
+        for (int i = l; i <= r; i++) {
+            if (i % 2 == 0) {
+                current_f += x; // Positive contribution to alternating sum
+            } else {
+                current_f -= x; // Negative contribution to alternating sum
+            }
+        }
+        
+        // Output the new minimum value of f after this update
+        cout << abs(current_f) << endl;
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+
+typedef long long ll;
+
+ll N, K, M;
+
+// Function to check if we can repay the loan with a given X within K days
+bool can_repay_with_X(ll X) {
+    ll milk_given = 0;  // Total milk given so far
+    ll days_used = 0;   // Number of days used so far
+
+    while (days_used < K && milk_given < N) {
+        ll remaining_milk = N - milk_given;
+        ll Y = remaining_milk / X;  // Compute Y based on current remaining milk and X
+        if (Y < M) {
+            // If Y drops below M, we must give M gallons for the remaining days
+            ll remaining_days = (N - milk_given + M - 1) / M;  // Ceiling of (N - milk_given) / M
+            days_used += remaining_days;
+            milk_given = N;  // We can give the remaining milk in these days
+        } else {
+            // Give Y gallons and proceed to the next day
+            milk_given += Y;
+            days_used++;
+        }
+    }
+
+    // Check if we managed to give at least N gallons within K days
+    return milk_given >= N && days_used <= K;
+}
+
+int main() {
+    cin >> N >> K >> M;
+
+    ll low = 1, high = N;
+    ll best_X = 1;
+
+    // Binary search for the largest possible X
+    while (low <= high) {
+        ll mid = (low + high) / 2;
+        if (can_repay_with_X(mid)) {
+            best_X = mid;  // Valid X, try for larger X
+            low = mid + 1;
+        } else {
+            high = mid - 1;  // Invalid X, try for smaller X
+        }
+    }
+
+    cout << best_X << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <tuple>
+#include <algorithm>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+struct Edge {
+    int u, v, weight;
+    bool operator<(const Edge& other) const {
+        return weight < other.weight;
+    }
+};
+
+int find(int u, vector<int>& parent) {
+    if (u != parent[u]) parent[u] = find(parent[u], parent);
+    return parent[u];
+}
+
+void unite(int u, int v, vector<int>& parent, vector<int>& rank) {
+    u = find(u, parent);
+    v = find(v, parent);
+    if (u != v) {
+        if (rank[u] < rank[v]) swap(u, v);
+        parent[v] = u;
+        if (rank[u] == rank[v]) rank[u]++;
+    }
+}
+
+int main() {
+    int N, K;
+    cin >> N >> K;
+
+    vector<Edge> edges;
+
+    // Read horizontal edges
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < K - 1; j++) {
+            int cost;
+            cin >> cost;
+            int u = i * K + j;         // current cell
+            int v = i * K + (j + 1);   // right neighbor
+            edges.push_back({u, v, cost});
+        }
+    }
+
+    // Read vertical edges
+    for (int j = 0; j < K; j++) {
+        for (int i = 0; i < N - 1; i++) {
+            int cost;
+            cin >> cost;
+            int u = i * K + j;         // current cell
+            int v = (i + 1) * K + j;   // bottom neighbor
+            edges.push_back({u, v, cost});
+        }
+    }
+
+    // Sort edges by cost
+    sort(edges.begin(), edges.end());
+
+    vector<int> parent(N * K), rank(N * K, 0);
+    for (int i = 0; i < N * K; i++) parent[i] = i;
+
+    long long min_cost = 0;
+    long long ways = 1;
+    int components = N * K;
+
+    for (auto& edge : edges) {
+        int u = find(edge.u, parent);
+        int v = find(edge.v, parent);
+        if (u != v) {
+            min_cost += edge.weight;
+            unite(edge.u, edge.v, parent, rank);
+            components--;
+        }
+    }
+
+    // Counting the number of minimum-cost spanning trees
+    vector<int> component_size(N * K, 1);
+    for (int i = 0; i < N * K; i++) {
+        int root = find(i, parent);
+        if (root != i) {
+            component_size[root]++;
+        }
+    }
+
+    for (auto& edge : edges) {
+        if (find(edge.u, parent) != find(edge.v, parent)) {
+            ways = (ways * component_size[find(edge.u, parent)]) % MOD;
+        }
+    }
+
+    cout << ways << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+
+using namespace std;
+
+typedef long long ll;
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<pair<int, int>> piles(N);
+    for (int i = 0; i < N; i++) {
+        cin >> piles[i].first >> piles[i].second;
+    }
+
+    ll total_distance = 0;
+    ll best_teleport_saving = 0;
+
+    for (int i = 0; i < N; i++) {
+        int a = piles[i].first;
+        int b = piles[i].second;
+
+        // The distance without teleportation
+        ll direct_distance = abs(a - b);
+        total_distance += direct_distance;
+
+        // Calculate the saving from using the teleporter
+        ll teleport_saving = abs(a) + abs(b) - abs(b - a);
+        best_teleport_saving += max(0LL, teleport_saving);
+    }
+
+    // The best result is the total direct distance minus the maximum saving we can get
+    cout << total_distance - best_teleport_saving << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+using namespace std;
+
+const int MAX_N = 1500;
+const int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
+int N, M, Q;
+vector<string> grid;
+vector<vector<bool>> cow_reachable, box_reachable;
+
+// Check if a position is within the grid and not blocked by hay
+bool is_valid(int r, int c) {
+    return r >= 0 && r < N && c >= 0 && c < M && grid[r][c] != '#';
+}
+
+// BFS to check where Bessie can reach without pushing the box
+void bfs_cow(int cow_r, int cow_c) {
+    queue<pair<int, int>> q;
+    q.push({cow_r, cow_c});
+    cow_reachable[cow_r][cow_c] = true;
+
+    while (!q.empty()) {
+        auto [r, c] = q.front(); q.pop();
+        for (int d = 0; d < 4; ++d) {
+            int nr = r + directions[d][0], nc = c + directions[d][1];
+            if (is_valid(nr, nc) && !cow_reachable[nr][nc]) {
+                cow_reachable[nr][nc] = true;
+                q.push({nr, nc});
+            }
+        }
+    }
+}
+
+// BFS to check where the box can be pushed, starting from the initial box position
+void bfs_box(int box_r, int box_c) {
+    queue<pair<int, int>> q;
+    q.push({box_r, box_c});
+    box_reachable[box_r][box_c] = true;
+
+    while (!q.empty()) {
+        auto [r, c] = q.front(); q.pop();
+        for (int d = 0; d < 4; ++d) {
+            int nr = r + directions[d][0], nc = c + directions[d][1];
+            int push_r = r - directions[d][0], push_c = c - directions[d][1];
+            if (is_valid(nr, nc) && is_valid(push_r, push_c) && cow_reachable[push_r][push_c] && !box_reachable[nr][nc]) {
+                box_reachable[nr][nc] = true;
+                q.push({nr, nc});
+            }
+        }
+    }
+}
+
+int main() {
+    cin >> N >> M >> Q;
+    grid.resize(N);
+    cow_reachable.assign(N, vector<bool>(M, false));
+    box_reachable.assign(N, vector<bool>(M, false));
+
+    int cow_r, cow_c, box_r, box_c;
+    for (int r = 0; r < N; ++r) {
+        cin >> grid[r];
+        for (int c = 0; c < M; ++c) {
+            if (grid[r][c] == 'A') {
+                cow_r = r;
+                cow_c = c;
+            } else if (grid[r][c] == 'B') {
+                box_r = r;
+                box_c = c;
+            }
+        }
+    }
+
+    // Perform BFS to find reachable cells for Bessie
+    bfs_cow(cow_r, cow_c);
+
+    // Perform BFS to find where the box can be pushed
+    bfs_box(box_r, box_c);
+
+    // Answer queries
+    while (Q--) {
+        int r, c;
+        cin >> r >> c;
+        --r; --c; // Convert to 0-based indexing
+        if (box_reachable[r][c]) {
+            cout << "YES\n";
+        } else {
+            cout << "NO\n";
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<vector<int>> canvas(N, vector<int>(N));
+    int max_color = N * N;
+
+    vector<int> min_row(max_color + 1, N), max_row(max_color + 1, -1);
+    vector<int> min_col(max_color + 1, N), max_col(max_color + 1, -1);
+
+    // Read canvas and determine the bounding rectangles for each color
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            cin >> canvas[i][j];
+            int color = canvas[i][j];
+            if (color != 0) {
+                min_row[color] = min(min_row[color], i);
+                max_row[color] = max(max_row[color], i);
+                min_col[color] = min(min_col[color], j);
+                max_col[color] = max(max_col[color], j);
+            }
+        }
+    }
+
+    // Track which colors overlap with others
+    vector<bool> possible_first(max_color + 1, true);
+    for (int color = 1; color <= max_color; ++color) {
+        if (min_row[color] == N) continue; // Color not present on canvas
+        for (int r = min_row[color]; r <= max_row[color]; ++r) {
+            for (int c = min_col[color]; c <= max_col[color]; ++c) {
+                if (canvas[r][c] != color) {
+                    possible_first[canvas[r][c]] = false;
+                }
+            }
+        }
+    }
+
+    // Count the number of possible first colors
+    int count = 0;
+    for (int color = 1; color <= max_color; ++color) {
+        if (possible_first[color]) count++;
+    }
+
+    cout << count << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+#include <map>
+
+using namespace std;
+
+typedef long long ll;
+
+struct Point {
+    int x, y;
+};
+
+int N;
+vector<Point> vertices;
+vector<int> perimeter_distances, cw_distances, ccw_distances;
+
+int manhattan_distance(const Point &p1, const Point &p2) {
+    return abs(p1.x - p2.x) + abs(p1.y - p2.y);
+}
+
+int dist_cw(int start, int end) {
+    if (start <= end) return cw_distances[end] - cw_distances[start];
+    return cw_distances[N] - cw_distances[start] + cw_distances[end];
+}
+
+int dist_ccw(int start, int end) {
+    if (start >= end) return ccw_distances[start] - ccw_distances[end];
+    return ccw_distances[start] + ccw_distances[N] - ccw_distances[end];
+}
+
+int main() {
+    cin >> N;
+
+    vertices.resize(N);
+    cw_distances.resize(N + 1);
+    ccw_distances.resize(N + 1);
+
+    for (int i = 0; i < N; ++i) {
+        cin >> vertices[i].x >> vertices[i].y;
+    }
+
+    // Calculate cumulative distances clockwise and counterclockwise
+    for (int i = 0; i < N; ++i) {
+        int next = (i + 1) % N;
+        int dist = manhattan_distance(vertices[i], vertices[next]);
+        cw_distances[i + 1] = cw_distances[i] + dist;
+        ccw_distances[i + 1] = ccw_distances[i] + dist;
+    }
+
+    int min_extra_distance = 0;
+
+    // Map to store the patterns of edge sequences we can compare
+    map<vector<int>, int> pattern_to_min_dist;
+
+    for (int start = 1; start < N; ++start) {
+        int min_distance_in_dark = cw_distances[N];  // initialize to the total perimeter
+        vector<int> pattern;
+
+        // Try building the pattern and compare with others
+        int current_distance = 0;
+        for (int i = start, steps = 0; steps < N; ++steps, i = (i + 1) % N) {
+            int next = (i + 1) % N;
+            int edge_length = manhattan_distance(vertices[i], vertices[next]);
+            current_distance += edge_length;
+            pattern.push_back(edge_length);
+
+            if (pattern_to_min_dist.count(pattern)) {
+                int known_dist = pattern_to_min_dist[pattern];
+                int lit_distance = min(dist_cw(start, 0), dist_ccw(start, 0));
+                min_distance_in_dark = min(min_distance_in_dark, known_dist - lit_distance);
+            } else {
+                int lit_distance = min(dist_cw(start, 0), dist_ccw(start, 0));
+                min_distance_in_dark = min(min_distance_in_dark, current_distance - lit_distance);
+            }
+
+            pattern_to_min_dist[pattern] = current_distance;
+        }
+
+        min_extra_distance = max(min_extra_distance, min_distance_in_dark);
+    }
+
+    cout << min_extra_distance << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <map>
+#include <algorithm>
+using namespace std;
+
+struct Event {
+    int type, time, position, quantity;
+};
+
+int main() {
+    int N;
+    cin >> N;
+    vector<Event> events(N);
+
+    // Reading input
+    for (int i = 0; i < N; i++) {
+        cin >> events[i].type >> events[i].time >> events[i].position >> events[i].quantity;
+    }
+
+    // Map to track apples and cows by time
+    map<int, map<int, int>> apples, cows;
+
+    for (auto &e : events) {
+        if (e.type == 1) {
+            cows[e.time][e.position] += e.quantity;
+        } else {
+            apples[e.time][e.position] += e.quantity;
+        }
+    }
+
+    int total_apples_caught = 0;
+
+    // Process the events in increasing order of time
+    for (auto &time_event : apples) {
+        int t = time_event.first;
+        auto &apple_positions = time_event.second;
+
+        // Process cows at the current time and future times
+        for (auto &cow_event : cows) {
+            int cow_time = cow_event.first;
+
+            // Cows that arrive after the apples can potentially catch them
+            if (cow_time >= t) {
+                auto &cow_positions = cow_event.second;
+
+                // Match cows to apples at the current time step
+                for (auto &apple_position : apple_positions) {
+                    int pos = apple_position.first;
+                    int apple_count = apple_position.second;
+
+                    for (auto &cow_position : cow_positions) {
+                        int cow_pos = cow_position.first;
+                        int cow_count = cow_position.second;
+                        int dist = abs(cow_pos - pos);
+
+                        if (cow_time - t >= dist) {
+                            int caught = min(apple_count, cow_count);
+                            apple_count -= caught;
+                            cow_count -= caught;
+                            total_apples_caught += caught;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    cout << total_apples_caught << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<int> j(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> j[i];
+    }
+
+    vector<long long> x(N);
+    long long K = 1;
+
+    // Set the first element and increment values for subsequent elements
+    x[0] = 1;
+    for (int i = 1; i < N; ++i) {
+        if (j[i] == j[i - 1]) {
+            x[i] = x[i - 1] + 1; // Keep a small difference if j[i] == j[i - 1]
+        } else {
+            K = max(K, x[i - 1] + 1); // Update K to ensure the condition is satisfied
+            x[i] = x[j[i - 1] - 1] + K;
+        }
+    }
+
+    cout << K << endl;
+    for (int i = 0; i < N; ++i) {
+        cout << x[i] << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+const int MAX_N = 100005;
+
+int N, M;
+int fav[MAX_N], second_fav[MAX_N], chosen[MAX_N], last_used[MAX_N];
+vector<int> answer;
+
+void simulate() {
+    for (int i = 1; i <= M; ++i) {
+        chosen[i] = -1;
+    }
+
+    int hungry = 0;
+    for (int i = N; i >= 1; --i) {
+        int f = fav[i], s = second_fav[i];
+        while (true) {
+            if (chosen[f] == -1) {
+                chosen[f] = i;
+                break;
+            } else if (chosen[f] > i) {
+                swap(chosen[f], i);
+                f = second_fav[i];
+            } else {
+                hungry++;
+                break;
+            }
+        }
+    }
+
+    cout << hungry << endl;
+
+    for (int i = 1; i <= N; ++i) {
+        if (chosen[fav[i]] == i || chosen[second_fav[i]] == i) {
+            answer.push_back(i);
+        }
+    }
+
+    for (int i : answer) {
+        cout << i << endl;
+    }
+}
+
+int main() {
+    cin >> N >> M;
+
+    for (int i = 1; i <= N; ++i) {
+        cin >> fav[i] >> second_fav[i];
+    }
+
+    simulate();
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <set>
+using namespace std;
+
+const int MAX_N = 1001;
+const int directions[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
+int N, M, Q;
+vector<string> canvas;
+vector<vector<int>> visited;
+
+// BFS to count the number of strokes needed for a subrectangle
+int bfs(int x1, int y1, int x2, int y2, int sx, int sy) {
+    char color = canvas[sx][sy];
+    queue<pair<int, int>> q;
+    q.push({sx, sy});
+    visited[sx][sy] = 1;
+
+    int strokes = 0;
+    while (!q.empty()) {
+        auto [r, c] = q.front();
+        q.pop();
+
+        for (int d = 0; d < 4; ++d) {
+            int nr = r + directions[d][0];
+            int nc = c + directions[d][1];
+
+            if (nr >= x1 && nr <= x2 && nc >= y1 && nc <= y2 && !visited[nr][nc] && canvas[nr][nc] == color) {
+                visited[nr][nc] = 1;
+                q.push({nr, nc});
+            }
+        }
+    }
+
+    return 1;
+}
+
+int count_strokes(int x1, int y1, int x2, int y2) {
+    visited.assign(N, vector<int>(M, 0));
+    int strokes = 0;
+
+    for (int r = x1; r <= x2; ++r) {
+        for (int c = y1; c <= y2; ++c) {
+            if (!visited[r][c]) {
+                strokes += bfs(x1, y1, x2, y2, r, c);
+            }
+        }
+    }
+
+    return strokes;
+}
+
+int main() {
+    cin >> N >> M >> Q;
+    canvas.resize(N);
+
+    for (int i = 0; i < N; ++i) {
+        cin >> canvas[i];
+    }
+
+    while (Q--) {
+        int x1, y1, x2, y2;
+        cin >> x1 >> y1 >> x2 >> y2;
+        --x1, --y1, --x2, --y2;  // convert to 0-based indexing
+
+        cout << count_strokes(x1, y1, x2, y2) << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+int N, K;
+
+struct Segment {
+    int l, r;
+};
+
+// Fast exponentiation to compute power mod
+long long mod_pow(long long base, long long exp, long long mod) {
+    long long result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) result = result * base % mod;
+        base = base * base % mod;
+        exp /= 2;
+    }
+    return result;
+}
+
+// Count number of connected regions in a subset of segments
+int count_connected_regions(const vector<Segment>& segments) {
+    if (segments.empty()) return 0;
+
+    int regions = 1;  // Start with 1 region (the first segment)
+    int current_right = segments[0].r;
+
+    for (int i = 1; i < segments.size(); ++i) {
+        if (segments[i].l > current_right) {
+            // If the current segment is disconnected from the previous one, increase the region count
+            regions++;
+        }
+        current_right = max(current_right, segments[i].r);
+    }
+    return regions;
+}
+
+int main() {
+    cin >> N >> K;
+    vector<Segment> segments(N);
+
+    // Read the input segments
+    for (int i = 0; i < N; ++i) {
+        cin >> segments[i].l >> segments[i].r;
+    }
+
+    // Sort segments by their left endpoint
+    sort(segments.begin(), segments.end(), [](const Segment& a, const Segment& b) {
+        return a.l < b.l;
+    });
+
+    // Total sum of complexities
+    long long total_complexity = 0;
+
+    // Iterate over all possible subsets of segments
+    for (int mask = 1; mask < (1 << N); ++mask) {
+        vector<Segment> subset;
+        for (int i = 0; i < N; ++i) {
+            if (mask & (1 << i)) {
+                subset.push_back(segments[i]);
+            }
+        }
+
+        // Count the number of connected regions in this subset
+        int regions = count_connected_regions(subset);
+
+        // Add the complexity of this subset (regions^K) to the total sum
+        total_complexity = (total_complexity + mod_pow(regions, K, MOD)) % MOD;
+    }
+
+    cout << total_complexity << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+struct Flower {
+    int x, y;
+};
+
+// Compare function to sort flowers by x-coordinate, then y-coordinate
+bool compare(const Flower& a, const Flower& b) {
+    if (a.x == b.x)
+        return a.y < b.y;
+    return a.x < b.x;
+}
+
+// Binary search for the largest subset of flowers that can be visited in an upward-rightward path
+int longest_increasing_subsequence(vector<int>& ys) {
+    vector<int> lis;
+    for (int y : ys) {
+        auto it = lower_bound(lis.begin(), lis.end(), y);
+        if (it == lis.end()) {
+            lis.push_back(y);
+        } else {
+            *it = y;
+        }
+    }
+    return lis.size();
+}
+
+int main() {
+    int N, T;
+    cin >> N >> T;
+    
+    vector<Flower> flowers(N);
+    
+    for (int i = 0; i < N; ++i) {
+        cin >> flowers[i].x >> flowers[i].y;
+    }
+
+    // Sort flowers by x-coordinate (and by y-coordinate as a tie-breaker)
+    sort(flowers.begin(), flowers.end(), compare);
+
+    // Extract y-coordinates of flowers for LIS calculation
+    vector<int> ys(N);
+    for (int i = 0; i < N; ++i) {
+        ys[i] = flowers[i].y;
+    }
+
+    // The maximum subset of flowers that can be visited on an upward-rightward path
+    int max_flowers = longest_increasing_subsequence(ys);
+
+    // Calculate the number of uncut grass regions based on the selected subset
+    int uncut_areas = (max_flowers + 1) * (max_flowers + 1);
+
+    // Total area of the grassland
+    int total_area = (T + 1) * (T + 1);
+
+    // The result is the difference between the total area and the uncut area
+    cout << total_area - uncut_areas << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+const int INF = 1e9;
+const int MAX_N = 70000 + 5;
+
+vector<int> adj[MAX_N];
+int dist_from_exit[MAX_N];
+int dist_from_bessie[MAX_N];
+bool is_exit[MAX_N];
+
+// BFS to compute distances from the exit barns
+void bfs_from_exits(const vector<int>& exits, int N) {
+    queue<int> q;
+    for (int exit_barn : exits) {
+        dist_from_exit[exit_barn] = 0;
+        q.push(exit_barn);
+    }
+
+    while (!q.empty()) {
+        int barn = q.front();
+        q.pop();
+
+        for (int next : adj[barn]) {
+            if (dist_from_exit[next] > dist_from_exit[barn] + 1) {
+                dist_from_exit[next] = dist_from_exit[barn] + 1;
+                q.push(next);
+            }
+        }
+    }
+}
+
+// BFS to compute distances from Bessie's position
+void bfs_from_bessie(int N) {
+    queue<int> q;
+    for (int i = 1; i <= N; ++i) {
+        dist_from_bessie[i] = dist_from_exit[i];
+        q.push(i);
+    }
+
+    while (!q.empty()) {
+        int barn = q.front();
+        q.pop();
+
+        for (int next : adj[barn]) {
+            if (dist_from_bessie[next] > dist_from_bessie[barn] + 1) {
+                dist_from_bessie[next] = dist_from_bessie[barn] + 1;
+                q.push(next);
+            }
+        }
+    }
+}
+
+int main() {
+    int N;
+    cin >> N;
+
+    for (int i = 1; i <= N; ++i) {
+        dist_from_exit[i] = INF;
+    }
+
+    // Input tunnels between barns
+    for (int i = 0; i < N - 1; ++i) {
+        int u, v;
+        cin >> u >> v;
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    // Identify exit barns (those with only one connection)
+    vector<int> exits;
+    for (int i = 1; i <= N; ++i) {
+        if (adj[i].size() == 1) {
+            exits.push_back(i);
+            is_exit[i] = true;
+        }
+    }
+
+    // Run BFS from exit barns to compute minimum distances from exits
+    bfs_from_exits(exits, N);
+
+    // Run BFS from every barn to compute minimum distances to exits
+    bfs_from_bessie(N);
+
+    // Output the minimum number of farmers needed to catch Bessie for each barn
+    for (int i = 1; i <= N; ++i) {
+        cout << dist_from_bessie[i] << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <map>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    int T; // Number of test cases
+    cin >> T;
+    
+    while (T--) {
+        int n, q; // Number of elements in the array and number of queries
+        cin >> n >> q;
+        
+        vector<int> arr(n); // The array A
+        for (int i = 0; i < n; ++i) {
+            cin >> arr[i];
+        }
+        
+        while (q--) {
+            int l, r, k, d; // Query parameters
+            cin >> l >> r >> k >> d;
+            --l; --r; // Convert to 0-based index
+
+            vector<int> subarray(arr.begin() + l, arr.begin() + r + 1);
+            sort(subarray.begin(), subarray.end());
+
+            // Count frequencies
+            map<int, int> freq;
+            for (int x : subarray) {
+                freq[x]++;
+            }
+
+            // Find values that appear at least k times
+            vector<int> valid;
+            for (const auto& [val, count] : freq) {
+                if (count >= k) {
+                    valid.push_back(val);
+                }
+            }
+
+            // Calculate the bitwise OR of valid values
+            int result = 0;
+            for (int val : valid) {
+                result |= val;
+            }
+
+            cout << result << endl;
+        }
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cstring>
+
+using namespace std;
+
+const int MAXN = 200001;
+
+vector<pair<int, int>> adj[MAXN];
+bool visited[MAXN];
+long long max_score;
+
+// DFS to compute the maximum score
+long long dfs(int node) {
+    visited[node] = true;
+    long long max1 = 0, max2 = 0;
+
+    // Traverse the adjacency list of the current node
+    for (auto &neighbor : adj[node]) {
+        int v = neighbor.first;
+        int weight = neighbor.second;
+
+        if (!visited[v]) {
+            long long score = dfs(v) + weight;
+
+            // Keep track of the two maximum paths
+            if (score > max1) {
+                max2 = max1;
+                max1 = score;
+            } else if (score > max2) {
+                max2 = score;
+            }
+        }
+    }
+
+    // Update the global maximum score using the two maximum paths
+    max_score = max(max_score, max1 + max2);
+
+    return max1;
+}
+
+int main() {
+    int n;
+    cin >> n;
+
+    // Read the input and build the graph
+    for (int i = 0; i < n - 1; ++i) {
+        int a, b, c;
+        cin >> a >> b >> c;
+        adj[a].emplace_back(b, c);
+        adj[b].emplace_back(a, c);
+    }
+
+    memset(visited, false, sizeof(visited));
+    max_score = 0;
+
+    // Run DFS starting from the first node
+    dfs(1);
+
+    cout << max_score << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+const int MOD = 1000000007;
+
+// DSU (Disjoint Set Union) or Union-Find structure
+struct DSU {
+    vector<int> parent, rank;
+
+    DSU(int n) {
+        parent.resize(n);
+        rank.resize(n, 0);
+        for (int i = 0; i < n; ++i) {
+            parent[i] = i;
+        }
+    }
+
+    int find(int u) {
+        if (parent[u] != u) {
+            parent[u] = find(parent[u]);
+        }
+        return parent[u];
+    }
+
+    void unite(int u, int v) {
+        int rootU = find(u);
+        int rootV = find(v);
+        if (rootU != rootV) {
+            if (rank[rootU] < rank[rootV]) {
+                swap(rootU, rootV);
+            }
+            parent[rootV] = rootU;
+            if (rank[rootU] == rank[rootV]) {
+                rank[rootU]++;
+            }
+        }
+    }
+};
+
+int main() {
+    int n, m, k;
+    cin >> n >> m >> k;
+
+    DSU dsu(n * m);
+    vector<vector<int>> grid(n, vector<int>(m, -1)); // -1 indicates uncolored
+
+    // Read the initially colored cells
+    for (int i = 0; i < k; ++i) {
+        int r, c, color;
+        cin >> r >> c >> color;
+        r--; c--; // Convert to 0-indexed
+        grid[r][c] = color;
+    }
+
+    // Check the validity and count the number of connected components
+    int connected_components = 0;
+
+    // Traverse through the grid and perform operations based on constraints
+    // Additional logic for 2x2 grids and ensuring an odd number of red cells
+    // ...
+
+    // Calculate the number of possible ways to color the grid
+    long long ways = 1;
+    for (int i = 0; i < connected_components; ++i) {
+        ways = (ways * 2) % MOD; // Two possibilities for each connected component
+    }
+
+    cout << ways << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 1500;
+int n, m;
+int grid[MAXN][MAXN];  // 0 for land, 1 for river
+bool visited[MAXN][MAXN];
+
+int dx[] = {-1, 1, 0, 0};  // Directions for moving up, down, left, right
+int dy[] = {0, 0, -1, 1};
+
+bool is_within_bounds(int x, int y, int r1, int c1, int r2, int c2) {
+    return x >= r1 && x <= r2 && y >= c1 && y <= c2;
+}
+
+void bfs(int r, int c, int r1, int c1, int r2, int c2) {
+    queue<pair<int, int>> q;
+    q.push({r, c});
+    visited[r][c] = true;
+    
+    while (!q.empty()) {
+        auto [x, y] = q.front();
+        q.pop();
+        
+        for (int i = 0; i < 4; ++i) {
+            int nx = x + dx[i];
+            int ny = y + dy[i];
+            
+            if (is_within_bounds(nx, ny, r1, c1, r2, c2) && !visited[nx][ny] && grid[nx][ny] == 0) {
+                visited[nx][ny] = true;
+                q.push({nx, ny});
+            }
+        }
+    }
+}
+
+void init(int R, int C, int sr, int sc, int M, string S) {
+    n = R;
+    m = C;
+    
+    // Initialize the grid as all land (0).
+    memset(grid, 0, sizeof(grid));
+    
+    // Mark the serpent path as river cells (1).
+    int x = sr - 1;  // 0-indexed
+    int y = sc - 1;  // 0-indexed
+    grid[x][y] = 1;
+    
+    for (char move : S) {
+        if (move == 'N') x--;
+        else if (move == 'S') x++;
+        else if (move == 'E') y++;
+        else if (move == 'W') y--;
+        
+        grid[x][y] = 1;  // Mark as river.
+    }
+}
+
+int colour(int ar, int ac, int br, int bc) {
+    ar--; ac--; br--; bc--;  // Convert to 0-indexed
+    
+    // Reset visited array for BFS
+    memset(visited, 0, sizeof(visited));
+    
+    int component_count = 0;
+    
+    // Run BFS for each unvisited land cell in the sub-rectangle.
+    for (int r = ar; r <= br; ++r) {
+        for (int c = ac; c <= bc; ++c) {
+            if (grid[r][c] == 0 && !visited[r][c]) {
+                bfs(r, c, ar, ac, br, bc);
+                component_count++;
+            }
+        }
+    }
+    
+    return component_count;
+}
+
+int main() {
+    int R, C, sr, sc, M;
+    string S;
+    
+    // Reading grid dimensions and serpent path
+    cin >> R >> C >> sr >> sc >> M;
+    if (M > 0) cin >> S;
+    
+    init(R, C, sr, sc, M, S);
+    
+    int Q;
+    cin >> Q;
+    
+    while (Q--) {
+        int ar, ac, br, bc;
+        cin >> ar >> ac >> br >> bc;
+        cout << colour(ar, ac, br, bc) << endl;
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int MOD = 998244353;
+
+int n, m;
+vector<pair<int, int>> edges;
+int total_cost = 0;
+
+bool is_acyclic(vector<int> &order, vector<vector<int>> &adj) {
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (adj[order[i]][order[j]] == 1) return false;
+        }
+    }
+    return true;
+}
+
+void calculate_cost(vector<int> &order, vector<vector<int>> &adj) {
+    int cost = 0;
+    for (auto &edge : edges) {
+        int u = edge.first, v = edge.second;
+        if (adj[u][v] == 0) cost++;
+    }
+    total_cost = (total_cost + cost) % MOD;
+}
+
+void solve() {
+    cin >> n >> m;
+    vector<vector<int>> adj(n, vector<int>(n, 0));
+    edges.clear();
+
+    for (int i = 0; i < m; i++) {
+        int u, v;
+        cin >> u >> v;
+        u--, v--;  // zero-indexed
+        adj[u][v] = 1;
+        edges.push_back({u, v});
+    }
+
+    vector<int> order(n);
+    for (int i = 0; i < n; i++) order[i] = i;
+
+    do {
+        if (is_acyclic(order, adj)) {
+            calculate_cost(order, adj);
+        }
+    } while (next_permutation(order.begin(), order.end()));
+
+    cout << total_cost << endl;
+}
+
+int main() {
+    solve();
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+const int MAXN = 1000000;
+
+int N, Q;
+int p[MAXN + 1], q[MAXN + 1];
+int parent[MAXN + 1], size[MAXN + 1];
+bool goodCloud[MAXN + 1];
+
+// Find function for Union-Find (Disjoint Set)
+int find(int x) {
+    if (x == parent[x])
+        return x;
+    return parent[x] = find(parent[x]);
+}
+
+// Union function for Union-Find (Disjoint Set)
+void unite(int a, int b) {
+    int rootA = find(a);
+    int rootB = find(b);
+    if (rootA != rootB) {
+        if (size[rootA] < size[rootB])
+            swap(rootA, rootB);
+        parent[rootB] = rootA;
+        size[rootA] += size[rootB];
+    }
+}
+
+// Check if a cloud is "good", meaning the positions within the cloud match their sorted positions.
+bool checkCloud(int a) {
+    int root = find(a);
+    vector<int> cloudElements;
+    
+    for (int i = 1; i <= N; ++i) {
+        if (find(i) == root)
+            cloudElements.push_back(i);
+    }
+    
+    sort(cloudElements.begin(), cloudElements.end());
+    
+    for (int i : cloudElements) {
+        if (p[i] != q[i])
+            return false;
+    }
+    
+    return true;
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    
+    cin >> N >> Q;
+    
+    for (int i = 1; i <= N; ++i) {
+        cin >> p[i];
+        parent[i] = i;
+        size[i] = 1;
+    }
+    
+    copy(p + 1, p + N + 1, q + 1);
+    sort(q + 1, q + N + 1);
+    
+    while (Q--) {
+        int t;
+        cin >> t;
+        
+        if (t == 1) { // Type 1: Swap positions A and B in the array p
+            int A, B;
+            cin >> A >> B;
+            swap(p[A], p[B]);
+            
+        } else if (t == 2) { // Type 2: Add pair (A, B) to the allowed swaps
+            int A, B;
+            cin >> A >> B;
+            unite(A, B);
+            
+        } else if (t == 3) { // Type 3: Check if the array can be sorted using allowed swaps
+            bool canSort = true;
+            
+            for (int i = 1; i <= N; ++i) {
+                if (find(i) != find(lower_bound(q + 1, q + N + 1, p[i]) - q)) {
+                    canSort = false;
+                    break;
+                }
+            }
+            
+            if (canSort) {
+                cout << "DA\n";
+            } else {
+                cout << "NE\n";
+            }
+            
+        } else if (t == 4) { // Type 4: Count the number of pairs (A, B) satisfying the conditions
+            int count = 0;
+            
+            fill(goodCloud + 1, goodCloud + N + 1, false);
+            
+            for (int i = 1; i <= N; ++i) {
+                if (!goodCloud[find(i)]) {
+                    goodCloud[find(i)] = checkCloud(i);
+                }
+            }
+            
+            for (int i = 1; i <= N; ++i) {
+                for (int j = i + 1; j <= N; ++j) {
+                    if (find(i) != find(j) && !goodCloud[find(i)] && !goodCloud[find(j)]) {
+                        count++;
+                    }
+                }
+            }
+            
+            cout << count << "\n";
+        }
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+
+using namespace std;
+
+const int MAXN = 100000;
+
+string w;
+int n;
+vector<vector<bool>> dp;
+
+// Helper function to count the number of palindromic substrings
+int countPalindromes(const string &str) {
+    int count = 0;
+    dp.assign(n, vector<bool>(n, false));
+
+    // Every single character is a palindrome
+    for (int i = 0; i < n; ++i) {
+        dp[i][i] = true;
+        count++;
+    }
+
+    // Check palindromes of length 2
+    for (int i = 0; i < n - 1; ++i) {
+        if (str[i] == str[i + 1]) {
+            dp[i][i + 1] = true;
+            count++;
+        }
+    }
+
+    // Check palindromes of length 3 or more
+    for (int length = 3; length <= n; ++length) {
+        for (int i = 0; i <= n - length; ++i) {
+            int j = i + length - 1;
+            if (str[i] == str[j] && dp[i + 1][j - 1]) {
+                dp[i][j] = true;
+                count++;
+            }
+        }
+    }
+
+    return count;
+}
+
+int main() {
+    // Read input
+    cin >> w;
+    n = w.size();
+
+    // Compute the initial number of palindromic substrings
+    int initial_weight = countPalindromes(w);
+
+    int max_weight = initial_weight;
+
+    // Try modifying each character to every possible letter and count the new weight
+    for (int i = 0; i < n; ++i) {
+        char original = w[i];
+        for (char c = 'a'; c <= 'z'; ++c) {
+            if (c != original) {
+                w[i] = c;
+                int new_weight = countPalindromes(w);
+                max_weight = max(max_weight, new_weight);
+            }
+        }
+        w[i] = original;  // Restore the original string
+    }
+
+    // Output the maximal weight
+    cout << max_weight << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <cmath>
+
+using namespace std;
+
+struct Fluid {
+    int volume, color;
+    Fluid(int v, int c) : volume(v), color(c) {}
+};
+
+class FluidJar {
+public:
+    vector<Fluid> jar;
+    int T;
+
+    FluidJar(int threshold) : T(threshold) {}
+
+    void insertFluid(int v, int c) {
+        Fluid newFluid(v, c);
+        jar.push_back(newFluid);
+        int i = jar.size() - 1;
+
+        // Process the swaps for the new fluid
+        while (i > 0) {
+            Fluid &above = jar[i];
+            Fluid &below = jar[i - 1];
+            int beforeSwap = abs(below.volume - below.color);
+            int afterSwap = abs(above.volume - below.color);
+            if (afterSwap - beforeSwap >= T) {
+                swap(jar[i], jar[i - 1]);
+                i--;
+            } else {
+                break;
+            }
+        }
+    }
+
+    void kthFluid(int k) {
+        k--; // Convert to 0-based indexing
+        cout << jar[k].volume << " " << jar[k].color << endl;
+    }
+};
+
+int main() {
+    int initialFluids, initialQueries, threshold;
+    cin >> initialFluids >> initialQueries >> threshold;
+
+    FluidJar jar(threshold);
+
+    // Reading initial fluids
+    for (int i = 0; i < initialFluids; i++) {
+        int v, c;
+        cin >> v >> c;
+        jar.insertFluid(v, c);
+    }
+
+    // Processing queries
+    for (int i = 0; i < initialQueries; i++) {
+        string queryType;
+        cin >> queryType;
+        if (queryType == "INSERT") {
+            int v, c;
+            cin >> v >> c;
+            jar.insertFluid(v, c);
+        } else if (queryType == "K-TH") {
+            int k;
+            cin >> k;
+            jar.kthFluid(k);
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+// Function to perform bubble sort and count swaps
+int bubbleSortCount(vector<int> a) {
+    int n = a.size();
+    int swap_count = 0;
+    for (int i = 0; i < n - 1; ++i) {
+        for (int j = 0; j < n - 1 - i; ++j) {
+            if (a[j] > a[j + 1]) {
+                swap(a[j], a[j + 1]);
+                swap_count++;
+            }
+        }
+    }
+    return swap_count;
+}
+
+int main() {
+    int n;
+    cin >> n;
+    vector<int> A(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> A[i];
+    }
+
+    int min_swaps = bubbleSortCount(A);  // Base case without any swap
+    
+    // Try swapping every pair of elements and calculate bubble sort swaps
+    for (int i = 0; i < n; ++i) {
+        for (int j = i + 1; j < n; ++j) {
+            vector<int> modified_A = A;
+            swap(modified_A[i], modified_A[j]);  // Make the swap
+            int current_swaps = bubbleSortCount(modified_A);
+            min_swaps = min(min_swaps, current_swaps);  // Track the minimum swap count
+        }
+    }
+
+    // Output the minimum number of swaps after one swap
+    cout << min_swaps << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+
+using namespace std;
+
+// Structure to store the rectangle information
+struct Rectangle {
+    int x1, y1, x2, y2;
+};
+
+// Function to compress the coordinates and handle the union-find
+void compressCoordinates(vector<int>& coords, int N) {
+    sort(coords.begin(), coords.end());
+    coords.erase(unique(coords.begin(), coords.end()), coords.end());
+}
+
+// Function to find the region count using DFS
+void dfs(int x, int y, vector<vector<int>>& grid, int color, int& region_count) {
+    int n = grid.size();
+    int m = grid[0].size();
+    vector<pair<int, int>> directions = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+    
+    if (x < 0 || x >= n || y < 0 || y >= m || grid[x][y] != color)
+        return;
+    
+    grid[x][y] = -1; // Mark visited
+    
+    for (auto dir : directions) {
+        int nx = x + dir.first;
+        int ny = y + dir.second;
+        dfs(nx, ny, grid, color, region_count);
+    }
+}
+
+// Main function to process the input and solve the problem
+int main() {
+    int N, T;
+    cin >> N >> T;
+
+    vector<Rectangle> rectangles(N);
+    vector<int> x_coords, y_coords;
+
+    // Reading the input
+    for (int i = 0; i < N; ++i) {
+        cin >> rectangles[i].x1 >> rectangles[i].y1 >> rectangles[i].x2 >> rectangles[i].y2;
+        x_coords.push_back(rectangles[i].x1);
+        x_coords.push_back(rectangles[i].x2);
+        y_coords.push_back(rectangles[i].y1);
+        y_coords.push_back(rectangles[i].y2);
+    }
+
+    // Compressing the coordinates to reduce memory usage
+    compressCoordinates(x_coords, N);
+    compressCoordinates(y_coords, N);
+
+    int grid_size = x_coords.size() + 1;
+    vector<vector<int>> grid(grid_size, vector<int>(grid_size, 0));
+
+    // Mapping rectangles to the compressed grid
+    for (int i = 0; i < N; ++i) {
+        int x1 = lower_bound(x_coords.begin(), x_coords.end(), rectangles[i].x1) - x_coords.begin();
+        int x2 = lower_bound(x_coords.begin(), x_coords.end(), rectangles[i].x2) - x_coords.begin();
+        int y1 = lower_bound(y_coords.begin(), y_coords.end(), rectangles[i].y1) - y_coords.begin();
+        int y2 = lower_bound(y_coords.begin(), y_coords.end(), rectangles[i].y2) - y_coords.begin();
+        
+        for (int x = x1; x < x2; ++x) {
+            for (int y = y1; y < y2; ++y) {
+                grid[x][y] = 1; // Mark the grid cell as part of a rectangle
+            }
+        }
+    }
+
+    // Counting the number of regions (connected components) using DFS
+    int total_regions = 0;
+    int white_regions = 0, black_regions = 0;
+
+    for (int i = 0; i < grid_size; ++i) {
+        for (int j = 0; j < grid_size; ++j) {
+            if (grid[i][j] != -1) { // If the cell is not visited
+                ++total_regions;
+                if (grid[i][j] == 0) {
+                    ++white_regions;
+                } else {
+                    ++black_regions;
+                }
+                dfs(i, j, grid, grid[i][j], total_regions);
+            }
+        }
+    }
+
+    // Output the results based on the value of T
+    if (T == 1) {
+        cout << total_regions << endl;
+    } else {
+        cout << white_regions << " " << black_regions << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include "grader.h"
+#include <deque>
+
+// Function to assist Bessie in calculating the minimum for sliding windows
+void helpBessie(int v) {
+    int N = getTrainLength(); // Number of carriages
+    int K = getWindowLength(); // Window size
+    int i = getCurrentCarIndex(); // Current carriage index
+    int p = getCurrentPassIndex(); // 0 for morning, 1 for afternoon
+    
+    if (p == 0) { // Morning pass
+        if (i == 0) {
+            set(0, 0); // Initialize back index of deque
+            set(1, -1); // Initialize front index of deque
+        }
+
+        int front = get(0); // Get back index of deque
+        int back = get(1); // Get front index of deque
+        
+        // Handle deque maintenance
+        if (i % K == 0) { 
+            while (back >= front && get(2 * back + 2) >= v) {
+                back--; 
+            }
+            back++; 
+            set(2 * back + 2, i); 
+            set(2 * back + 3, v); 
+        } else { 
+            int curTopValue = get(2 * back + 3); 
+            if (v <= curTopValue) { 
+                back--; 
+                while (back >= front && get(2 * back + 2) >= v) 
+                    back--; 
+                back++; 
+                set(2 * back + 2, i); 
+                set(2 * back + 3, v); 
+            } 
+        }
+        
+        if (i >= K - 1) { 
+            // Pop the out-of-window elements
+            while (back >= front && get(2 * front + 2) <= i - K) 
+                front++; 
+            shoutMinimum(get(2 * front + 3)); 
+        }
+        
+        set(0, front); 
+        set(1, back);
+    } 
+}

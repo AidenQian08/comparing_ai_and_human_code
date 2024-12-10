@@ -1,0 +1,1527 @@
+#include <bits/stdc++.h>
+typedef long long ll;
+using namespace std;
+
+vector<pair<int, int>> ans, graph[100001];
+bool visited[100001], in_ans[200001];
+int tin[100001], low[100001], timer = 0;
+
+void dfs(int node = 1, int parent = 0) {
+	visited[node] = true;
+	tin[node] = low[node] = timer++;
+	for (pair<int, int> i : graph[node])
+		if (i.first != parent) {
+			if (!in_ans[i.second]) {
+				ans.push_back({node, i.first});
+				in_ans[i.second] = true;
+			}
+			if (visited[i.first]) low[node] = min(low[node], tin[i.first]);
+			else {
+				dfs(i.first, node);
+				low[node] = min(low[node], low[i.first]);
+				if (low[i.first] > tin[node]) {
+					cout << "IMPOSSIBLE";
+					exit(0);
+				}
+			}
+		}
+}
+
+int main() {
+	cin.tie(0)->sync_with_stdio(0);
+	int n, m;
+	cin >> n >> m;
+	while (m--) {
+		int u, v;
+		cin >> u >> v;
+		graph[u].push_back({v, m});
+		graph[v].push_back({u, m});
+	}
+	dfs();
+	if (find(visited + 1, visited + n + 1, false) != visited + n + 1)
+		return cout << "IMPOSSIBLE", 0;
+	for (pair<int, int> i : ans) cout << i.first << ' ' << i.second << '\n';
+	return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int N = 200010;
+const int S = 1 << 18;
+
+int n, q, a[N];
+
+struct node {
+	long long sum, pref;
+	node(long long sum, long long pref) : sum(sum), pref(pref) {}
+	node(long long x = 0) : sum(x), pref(max(0LL, x)) {}
+	friend node operator+(const node &a, const node &b) {
+		return {a.sum + b.sum, max(a.pref, a.sum + b.pref)};
+	}
+} tt[S << 1];
+
+void build(int k = 1, int l = 1, int r = n) {
+	if (l == r) {
+		tt[k] = node(a[l]);
+		return;
+	}
+	int m = (l + r) >> 1;
+	build(k << 1, l, m);
+	build(k << 1 | 1, m + 1, r);
+	tt[k] = tt[k << 1] + tt[k << 1 | 1];
+}
+
+void update(int i, int x, int k = 1, int l = 1, int r = n) {
+	if (l == r) {
+		tt[k] = node(x);
+		return;
+	}
+	int m = (l + r) >> 1;
+	if (i <= m) update(i, x, k << 1, l, m);
+	else update(i, x, k << 1 | 1, m + 1, r);
+	tt[k] = tt[k << 1] + tt[k << 1 | 1];
+}
+
+node query(int ql, int qr, int k = 1, int l = 1, int r = n) {
+	if (ql > r || qr < l) return 0;
+	if (ql <= l && qr >= r) return tt[k];
+	int m = (l + r) >> 1;
+	node q1 = query(ql, qr, k << 1, l, m);
+	node q2 = query(ql, qr, k << 1 | 1, m + 1, r);
+	return q1 + q2;
+}
+
+int main() {
+	scanf("%d%d", &n, &q);
+	for (int i = 1; i <= n; ++i) scanf("%d", a + i);
+	build();
+	for (int i = 0, t, x, y; i < q; ++i) {
+		scanf("%d%d%d", &t, &x, &y);
+		if (t == 1) update(x, a[x] = y);
+		else printf("%lld\n", query(x, y).pref);
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+const int MAXN = 5e4;
+
+vector<int> graph[MAXN + 1];
+bitset<MAXN + 1> can[MAXN + 1];
+vector<bool> visited(MAXN + 1);
+
+void dfs(int node) {
+	visited[node] = true;
+
+	// base case: node can reach itself
+	can[node][node] = 1;
+
+	for (int i : graph[node]) {
+		if (!visited[i]) { dfs(i); }
+
+		// activate all bits that are also in its child
+		can[node] |= can[i];
+	}
+}
+
+int main() {
+	cin.tie(0)->sync_with_stdio(0);
+	int n, m;
+	cin >> n >> m;
+
+	for (int i = 0; i < m; i++) {
+		int u, v;
+		cin >> u >> v;
+		graph[u].push_back(v);
+	}
+	for (int i = 1; i <= n; i++) {
+		if (!visited[i]) { dfs(i); }
+	}
+	for (int i = 1; i <= n; i++) {
+		// output the number of activated bits
+		cout << can[i].count() << " ";
+	}
+}
+
+New Solution
+
+#include <queue>
+#include <stdio.h>
+using namespace std;
+
+int n, t;
+long long ans = 0;
+priority_queue<int> Q;
+
+int main() {
+	scanf("%d", &n);
+	for (int i = 0; i < n; i++) {
+		scanf("%d", &t);
+		Q.push(t);
+		ans += Q.top() - t;
+		Q.pop();
+		Q.push(t);
+	}
+	printf("%lld", ans);
+	return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+namespace geo {
+const double EPS = 1e-9;
+
+template <typename T> class point {
+	static_assert(is_arithmetic<T>::value, "T must be an arithmetic type");
+
+  public:
+	T x, y;
+
+	point() : x(T{}), y(T{}) {}
+
+	point(const T &_x, const T &_y) : x(_x), y(_y) {}
+
+	template <typename S> operator point<S>() const {
+		return point<S>(static_cast<S>(x), static_cast<S>(y));
+	}
+
+	template <typename S> point &operator=(const point<S> &p) {
+		x = p.x;
+		y = p.y;
+		return *this;
+	}
+
+	point &operator+=(const point &p) {
+		x += p.x;
+		y += p.y;
+		return *this;
+	}
+
+	point &operator-=(const point &p) {
+		x -= p.x;
+		y -= p.y;
+		return *this;
+	}
+
+	point &operator*=(const T &s) {
+		x *= s;
+		y *= s;
+		return *this;
+	}
+
+	void swap(point &p) {
+		swap(x, p.x);
+		swap(y, p.y);
+	}
+};
+
+template <typename T> point<T> make_point(const T &x, const T &y) {
+	return point<T>(x, y);
+}
+
+template <typename T> void swap(point<T> &p, point<T> &q) { p.swap(q); }
+
+template <typename T> point<T> operator-(const point<T> &p) {
+	return point<T>(-p.x, -p.y);
+}
+
+template <typename T> point<T> operator+(point<T> p, const point<T> &q) {
+	return p += q;
+}
+
+template <typename T> point<T> operator-(point<T> p, const point<T> &q) {
+	return p -= q;
+}
+
+template <typename T> point<T> operator*(point<T> p, const T &s) { return p *= s; }
+
+template <typename T> point<T> operator*(const T &s, point<T> p) { return p *= s; }
+
+template <typename T> T cross(const point<T> &p, const point<T> &q) {
+	long double ret = (long double)p.x * q.y - (long double)p.y * q.x;
+	if (abs(ret) > 1e18) return ret > 0 ? 1 : -1;
+	return p.x * q.y - p.y * q.x;
+}
+
+template <typename T> T operator^(const point<T> &p, const point<T> &q) {
+	return cross(p, q);
+}
+
+template <typename T> bool operator==(const point<T> &p, const point<T> &q) {
+	if constexpr (is_integral<T>::value) return p.x == q.x && p.y == q.y;
+	else return abs(p.x - q.x) <= EPS && abs(p.y - q.y) <= EPS;
+}
+
+template <typename T> bool operator!=(const point<T> &p, const point<T> &q) {
+	return !(p == q);
+}
+
+template <typename T> bool operator<(const point<T> &p, const point<T> &q) {
+	return p.x < q.x || (p.x == q.x && p.y < q.y);
+}
+
+template <typename T> bool operator>(const point<T> &p, const point<T> &q) {
+	return q < p;
+}
+
+template <typename T> bool operator<=(const point<T> &p, const point<T> &q) {
+	return !(p > q);
+}
+
+template <typename T> bool operator>=(const point<T> &p, const point<T> &q) {
+	return !(p < q);
+}
+}  // namespace geo
+
+struct monotonic_dp_hull {
+	long long prev_x = LLONG_MIN, prev_y = 1;
+	deque<geo::point<long long>> points;
+
+	void add(const geo::point<long long> &p) {
+		assert(points.empty() || p.x >= points.back().x);
+		if (!points.empty() && p.x == points.back().x) {
+			if (p.y <= points.back().y) return;
+			points.pop_back();
+		}
+		while (size() >= 2 &&
+		       ((points.back() - p) ^ (points[size() - 2] - points.back())) <= 0)
+			points.pop_back();
+		points.push_back(p);
+	}
+
+	void add(long long m, long long b) { add(geo::point(m, b)); }
+
+	long long query(long long x, long long y = 1) {
+		assert(size() > 0);
+		assert(prev_x == LLONG_MIN || x * prev_y >= prev_x * y);
+		prev_x = x, prev_y = y;
+		while (size() >= 2 &&
+		       x * (points[1].x - points[0].x) >= (points[0].y - points[1].y) * y)
+			points.pop_front();
+		return points[0].x * x + points[0].y * y;
+	}
+
+	void clear() {
+		points.clear();
+		prev_x = LLONG_MIN, prev_y = 1;
+	}
+
+	int size() const { return points.size(); }
+};
+
+const long long INF = 1e16;
+
+int main() {
+	ios_base::sync_with_stdio(false);
+	cin.tie(NULL);
+
+	int N, M;
+	cin >> N >> M;
+	vector<long long> A(N + 1, 0);
+	for (int i = 1; i <= N; i++) cin >> A[i];
+	vector<long long> sum(N + 1), pre(N + 1), suf(N + 1);
+	for (int i = 1; i <= N; i++) {
+		sum[i] = sum[i - 1] + A[i];
+		pre[i] = pre[i - 1] + A[i] * i;
+		suf[i] = suf[i - 1] + A[i] * (N - i + 1);
+	}
+
+	vector<vector<long long>> dp0(M + 1, vector<long long>(N + 1, INF));
+	vector<vector<long long>> dp1(M + 1, vector<long long>(N + 1, INF));
+
+	dp1[0][0] = 0;
+	for (int m = 1; m <= M; m++) {
+		monotonic_dp_hull md0, md1;
+		md1.add(0, 0);
+		for (int i = 1; i <= N; i++) {
+			dp0[m][i] =
+			    -md1.query((i - 1) - N) + suf[i - 1] - (N - (i - 1)) * sum[i - 1];
+			md0.add(i, -dp0[m][i] + pre[i] - i * sum[i]);
+			dp1[m][i] = -md0.query(sum[i]) + pre[i];
+			md1.add(sum[i], -dp1[m - 1][i] + suf[i]);
+		}
+	}
+
+	cout << dp1[M][N] << '\n';
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+typedef long long ll;
+using namespace std;
+
+int n, a, b;
+vector<int> graph[200001];
+int subtree[200001];
+
+ll ans = 0, bit[200001];
+int total_cnt[200001]{1}, mx_depth;
+int cnt[200001], subtree_depth;
+bool processed[200001];
+
+int get_subtree_sizes(int node, int parent = 0) {
+	subtree[node] = 1;
+	for (int i : graph[node])
+		if (!processed[i] && i != parent) subtree[node] += get_subtree_sizes(i, node);
+	return subtree[node];
+}
+
+int get_centroid(int desired, int node, int parent = 0) {
+	for (int i : graph[node])
+		if (!processed[i] && i != parent && subtree[i] >= desired)
+			return get_centroid(desired, i, node);
+	return node;
+}
+
+void get_cnt(int node, int parent, int depth = 1) {
+	if (depth > b) return;
+	subtree_depth = max(subtree_depth, depth);
+	cnt[depth]++;
+	for (int i : graph[node])
+		if (!processed[i] && i != parent) get_cnt(i, node, depth + 1);
+}
+
+void centroid_decomp(int node = 1) {
+	int centroid = get_centroid(get_subtree_sizes(node) >> 1, node);
+	processed[centroid] = true;
+	mx_depth = 0;
+	long long partial_sum_init = (a == 1 ? 1ll : 0ll);
+	for (int i : graph[centroid])
+		if (!processed[i]) {
+			subtree_depth = 0;
+			get_cnt(i, centroid);
+
+			long long partial_sum = partial_sum_init;
+			for (int depth = 1; depth <= subtree_depth; depth++) {
+				ans += partial_sum * cnt[depth];
+
+				int dremove = b - depth;
+				if (dremove >= 0) partial_sum -= total_cnt[dremove];
+				int dadd = a - (depth + 1);
+				if (dadd >= 0) partial_sum += total_cnt[dadd];
+			}
+
+			for (int depth = a - 1; depth <= b - 1 && depth <= subtree_depth; depth++)
+				partial_sum_init += cnt[depth];
+
+			for (int depth = 1; depth <= subtree_depth; depth++)
+				total_cnt[depth] += cnt[depth];
+			mx_depth = max(mx_depth, subtree_depth);
+
+			fill(cnt, cnt + subtree_depth + 1, 0);
+		}
+	fill(total_cnt + 1, total_cnt + mx_depth + 1, 0);
+	for (int i : graph[centroid])
+		if (!processed[i]) centroid_decomp(i);
+}
+
+int main() {
+	cin.tie(0)->sync_with_stdio(0);
+	cin >> n >> a >> b;
+	for (int i = 1; i < n; i++) {
+		int u, v;
+		cin >> u >> v;
+		graph[u].push_back(v);
+		graph[v].push_back(u);
+	}
+	centroid_decomp();
+	cout << ans;
+	return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+typedef long long ll;
+using namespace std;
+
+int n, k;
+vector<int> graph[200001];
+int subtree[200001];
+
+ll ans = 0;
+int cnt[200001]{1}, mx_depth;
+bool processed[200001];
+
+int get_subtree_sizes(int node, int parent = 0) {
+	subtree[node] = 1;
+	for (int i : graph[node])
+		if (!processed[i] && i != parent) subtree[node] += get_subtree_sizes(i, node);
+	return subtree[node];
+}
+
+int get_centroid(int desired, int node, int parent = 0) {
+	for (int i : graph[node])
+		if (!processed[i] && i != parent && subtree[i] >= desired)
+			return get_centroid(desired, i, node);
+	return node;
+}
+
+void get_cnt(int node, int parent, bool filling, int depth = 1) {
+	if (depth > k) return;
+	mx_depth = max(mx_depth, depth);
+	if (filling) cnt[depth]++;
+	else ans += cnt[k - depth];
+	for (int i : graph[node])
+		if (!processed[i] && i != parent) get_cnt(i, node, filling, depth + 1);
+}
+
+void centroid_decomp(int node = 1) {
+	int centroid = get_centroid(get_subtree_sizes(node) >> 1, node);
+	processed[centroid] = true;
+	mx_depth = 0;
+	for (int i : graph[centroid])
+		if (!processed[i]) {
+			get_cnt(i, centroid, false);
+			get_cnt(i, centroid, true);
+		}
+	fill(cnt + 1, cnt + mx_depth + 1, 0);
+	for (int i : graph[centroid])
+		if (!processed[i]) centroid_decomp(i);
+}
+
+int main() {
+	cin.tie(0)->sync_with_stdio(0);
+	cin >> n >> k;
+	for (int i = 1; i < n; i++) {
+		int u, v;
+		cin >> u >> v;
+		graph[u].push_back(v);
+		graph[v].push_back(u);
+	}
+	centroid_decomp();
+	cout << ans;
+	return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+
+using namespace std;
+#define pb push_back
+
+struct BIT {
+	vector<int> bit;
+	int n;
+	BIT(int n) : n(n + 1), bit(n + 1) {}
+	int sum(int r) {
+		r++;
+		int ret = 0;
+		while (r > 0) {
+			ret += bit[r];
+			r -= r & -r;
+		}
+		return ret;
+	}
+
+	void update(int idx, int v) {
+		idx++;
+		while (idx < n) {
+			bit[idx] += v;
+			idx += idx & -idx;
+		}
+	}
+};
+
+const int MAXN = 2e5 + 1;
+
+/*
+ * tour = Euler Tour
+ * color = color of each node
+ * answer = answer for each node
+ * lend = left endpoint of each node (as explained in editorial)
+ */
+int tour[MAXN], color[MAXN], answer[MAXN], lend[MAXN];
+
+vector<int> adj[MAXN];
+int idx = 0;
+
+void dfs(int u, int par = 0) {
+	lend[u] = idx;
+	for (int n : adj[u]) {
+		if (n == par) continue;
+		dfs(n, u);
+	}
+	tour[idx] = u;
+	idx++;
+}
+
+int main() {
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+	int N, u, v;
+	cin >> N;
+	for (int i = 1; i <= N; i++) { cin >> color[i]; }
+	for (int i = 0; i < N - 1; i++) {
+		cin >> u >> v;
+		adj[u].pb(v);
+		adj[v].pb(u);
+	}
+	dfs(1);
+	BIT bit(N);
+
+	// This map stores the rightmost occurrence of each color
+	map<int, int> last;
+	for (int i = 0; i < N; i++) {
+		// If we ever considered the color of tour[i]
+		if (last.count(color[tour[i]])) {
+			// The last time the color of tour[i] appeared, we make that 0 again
+			bit.update(last[color[tour[i]]], -1);
+		}
+		// We change the last occurrence of the color of tour[i]
+		last[color[tour[i]]] = i;
+		// We reflect that change in our BIT
+		bit.update(i, 1);
+		/*
+		 * The answer for tour[i]'s node is simply
+		 * the sum of 1s in its contiguous subinterval in the Euler Tour
+		 */
+		answer[tour[i]] = bit.sum(i) - bit.sum(lend[tour[i]] - 1);
+	}
+	for (int i = 1; i <= N; i++) { cout << answer[i] << " "; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 3e5 + 5;
+const int LOGN = log2(MAXN) + 1;
+
+int depth[MAXN];
+// anc[i][j] is the 2^j-th parent of i.
+int anc[MAXN][LOGN];
+vector<int> adj[MAXN];
+
+void dfs(int node, int par) {
+	anc[node][0] = par;
+	depth[node] = depth[anc[node][0]] + 1;
+	// initializes binary jumping for the current node.
+	for (int i = 1; i < LOGN; i++) { anc[node][i] = anc[anc[node][i - 1]][i - 1]; }
+	for (int next : adj[node]) {
+		if (next != par) { dfs(next, node); }
+	}
+}
+
+// jump(i, j) returns jth ancestor of node i
+int jump(int node, int level) {
+	for (int i = 0; i < LOGN; i++) {
+		if (level & (1 << i)) { node = anc[node][i]; }
+	}
+	return (node > -1) ? node : 0;
+}
+
+// lca(i, j) returns least common ancestor of nodes i and j.
+int LCA(int a, int b) {
+	if (depth[a] < depth[b]) { swap(a, b); }
+	a = jump(a, depth[a] - depth[b]);
+	if (a == b) { return a; }
+	for (int i = LOGN - 1; i >= 0; i--) {
+		int newA = anc[a][i];
+		int newB = anc[b][i];
+		if (newA != newB) { a = newA, b = newB; }
+	}
+	return anc[a][0];
+}
+
+int main() {
+	int N;
+	int Q;
+	cin >> N;
+	for (int i = 0; i < N - 1; i++) {
+		int a;
+		int b;
+		cin >> a >> b;
+		a--;
+		b--;
+		adj[a].push_back(b);
+		adj[b].push_back(a);
+	}
+
+	dfs(0, 0);
+	cin >> Q;
+	for (int i = 1; i <= Q; i++) {
+		int start, end, energy;
+		cin >> start >> end >> energy;
+		start--;
+		end--;
+		int lca = LCA(start, end);
+		int path1 = depth[start] - depth[lca];
+		int path2 = depth[end] - depth[lca];
+		int result;
+		if (energy <= path1) {
+			// moves up from start towards the lca.
+			result = jump(start, energy) + 1;
+		} else if (energy <= path1 + path2) {
+			// moves up from start to the lca, then goes down towards end.
+			result = jump(end, path2 - (energy - path1)) + 1;
+		} else {
+			// reaches the end.
+			result = end + 1;
+		}
+		cout << result << "\n";
+	}
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <map>
+#include <vector>
+
+using std::cout;
+using std::endl;
+using std::pair;
+using std::vector;
+
+int main() {
+	int size;
+	std::cin >> size;
+	vector<int> arr(size);
+	for (int &i : arr) { std::cin >> i; }
+
+	int best_len = 1;
+	// given the ending limit, stores the longest consecutive sequence
+	std::map<int, pair<int, int>> ending_max_len;
+	std::map<int, int> come_from;
+	for (int i = 0; i < size; i++) {
+		int n = arr[i];
+		if (!ending_max_len.count(n - 1)) {
+			ending_max_len[n] = {1, i};
+			come_from[i] = -1;
+		} else {
+			int new_len = ending_max_len[n - 1].first + 1;
+			if (!ending_max_len.count(n) || ending_max_len[n].first < new_len) {
+				ending_max_len[n] = {new_len, i};
+				best_len = std::max(best_len, new_len);
+				come_from[i] = ending_max_len[n - 1].second;
+			}
+		}
+	}
+
+	int at_ind = -1;
+	for (const pair<int, pair<int, int>> &end : ending_max_len) {
+		if (end.second.first == best_len) { at_ind = end.second.second; }
+	}
+	vector<int> reverse_inds;
+	for (int i = 0; i < best_len; i++) {
+		reverse_inds.push_back(at_ind);
+		at_ind = come_from[at_ind];
+	}
+
+	cout << best_len << endl;
+	for (int i = best_len - 1; i > 0; i--) { cout << reverse_inds[i] + 1 << ' '; }
+	cout << reverse_inds.front() + 1 << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+
+using namespace std;
+
+int main() {
+	int n, m;
+	cin >> n >> m;
+	string a;
+	cin >> a;
+
+	vector<vector<int>> adj(n);
+	vector<int> in_degree(n);
+	for (int i = 0; i < m; i++) {
+		int a, b;
+		cin >> a >> b;
+		a--;
+		b--;
+		in_degree[b]++;
+		adj[a].push_back(b);
+	}
+
+	queue<int> queue;
+	// dp[i][j] is the frequency of letter j when we are at node i.
+	vector<vector<int>> dp(n, vector<int>(26));
+	for (int i = 0; i < n; i++) {
+		if (in_degree[i] == 0) {
+			queue.push(i);
+			dp[i][a[i] - 'a']++;
+		}
+	}
+
+	// Run topological sort.
+	int size = 0;
+	while (size < n && queue.size() > 0) {
+		int cur = queue.front();
+		queue.pop();
+		for (int next : adj[cur]) {
+			for (int j = 0; j < 26; j++) {
+				// Update the frequency with the next occurrence.
+				if (j == (a[next] - 'a')) {
+					dp[next][j] = max(dp[cur][j] + 1, dp[next][j]);
+				} else {
+					dp[next][j] = max(dp[cur][j], dp[next][j]);
+				}
+			}
+			// Add the next node to the queue.
+			if (--in_degree[next] == 0) { queue.push(next); }
+		}
+		size++;
+	}
+
+	// No answer.
+	if (size < n) {
+		cout << -1 << endl;
+		return 0;
+	}
+
+	// Find the maximum frequency across all nodes and letters.
+	int ans = 0;
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < 26; j++) { ans = max(ans, dp[i][j]); }
+	}
+	cout << ans << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	int N;
+	cin >> N;
+	priority_queue<int, vector<int>, greater<int>> pq;
+	long long ans = 0;
+	for (int i = 0; i < N; ++i) {
+		int p;
+		cin >> p;
+		ans -= p;
+		pq.push(p);
+		pq.push(p);
+		pq.pop();
+	}
+	for (int i = 0; i < N; ++i) {
+		ans += pq.top();
+		pq.pop();
+	}
+	cout << ans << "\n";
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const long long MOD = 1e9 + 7;
+
+template <class T> struct Matrix {
+	vector<vector<T>> v;
+	void init(int n, int m) { v = vector<vector<T>>(n, vector<T>(m)); }
+
+	Matrix operator*(Matrix b) {
+		int x = v.size();
+		int y = v[0].size();
+		int z = b.v[0].size();
+		assert(y == sz(b.v));
+		Matrix<T> ret;
+		ret.init(x, z);
+		for (int i = 0; i < x; i++) {
+			for (int j = 0; j < y; j++) {
+				for (int k = 0; k < z; k++) {
+					ret.v[i][k] += v[i][j] * b.v[j][k];
+					ret.v[i][k] %= MOD;
+				}
+			}
+		}
+		return ret;
+	}
+};
+
+int main() {
+	long long n, m;
+	cin >> n >> m;
+	m--;
+	vector<long long> v(n);
+	for (int i = 0; i < n; i++) cin >> v[i];
+	Matrix<long long> A, B;
+	A.init(n, n);
+	B.init(n, n);
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) {
+			if (__builtin_popcountll(v[i] ^ v[j]) % 3 == 0) { A.v[i][j] = 1; }
+		}
+	}
+
+	Matrix<long long> ret;
+	ret.init(n, n);
+	for (int i = 0; i < n; i++) { ret.v[i][i] = 1; }
+	for (long long b = m; b > 0; b /= 2) {
+		if (b & 1) { ret = ret * A; }
+		A = A * A;
+	}
+
+	long long ans = 0;
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) {
+			ans += ret.v[i][j];
+			ans %= MOD;
+		}
+	}
+	cout << ans << '\n';
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+// Used for topological sort
+vector<int> indegree = vector<int>(26);
+vector<vector<int>> conn = vector<vector<int>>(26, vector<int>());
+vector<int> sorted;
+
+void topological_sort() {
+	queue<int> q;
+	for (int i = 0; i < 26; i++) {
+		if (indegree[i] == 0) { q.push(i); }
+	}
+	while (!q.empty()) {
+		int pos = q.front();
+		q.pop();
+		sorted.push_back(pos);
+		for (auto c : conn[pos]) {
+			if ((--indegree[c]) == 0) { q.push(c); }
+		}
+	}
+}
+
+int main() {
+	int n;
+	// We make sure each pair of consecutive strings are in the right order
+	string cur, prev;
+
+	/*
+	 * No previous string to compare the first string to,
+	 * so we read it directly into prev
+	 */
+	cin >> n >> prev;
+	for (int i = 1; i < n; i++) {
+		cin >> cur;
+
+		// Maximum length to compare
+		int leng = min(prev.length(), cur.length());
+		// How long the prefix has been the same for
+		int samed = 0;
+
+		while (samed < leng) {
+			if (prev[samed] != cur[samed]) {
+				/*
+				 * As soon as we see a difference, we make sure
+				 * the alphabetic follows the order presented
+				 */
+				int ncur = cur[samed] - 'a', nprev = prev[samed] - 'a';
+				indegree[ncur]++;
+				conn[nprev].push_back(ncur);
+				break;
+			}
+			samed++;
+		}
+		/*
+		 * If cur is a prefix of prev, then it is already impossible
+		 * for cur to be lexicographically more than prev
+		 */
+		if ((samed == leng) && (prev.length() > cur.length())) {
+			cout << "Impossible" << endl;
+			return 0;
+		}
+		prev = cur;
+	}
+
+	topological_sort();
+
+	// If topological sort not completeable, it's impossible
+	if (sorted.size() < 26) {
+		cout << "Impossible" << endl;
+	} else {
+		// Print out numbers converted back to characters
+		for (int s : sorted) { cout << char(s + 'a'); }
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 100001;
+
+int N, Q;
+long long tsum[MAXN * 4], tmax[MAXN * 4];
+
+void update_mod(int l, int r, long long v, int t = 1, int tl = 1, int tr = N) {
+	if (r < tl || tr < l || tmax[t] < v) {
+		return;
+	} else if (tl == tr) {
+		int val = tmax[t] % v;
+		tsum[t] = tmax[t] = val;
+		return;
+	}
+
+	int tm = (tl + tr) / 2;
+	update_mod(l, r, v, t * 2, tl, tm);
+	update_mod(l, r, v, t * 2 + 1, tm + 1, tr);
+	tsum[t] = tsum[t * 2] + tsum[t * 2 + 1];
+	tmax[t] = max(tmax[t * 2], tmax[t * 2 + 1]);
+}
+
+void update_set(int i, long long v, int t = 1, int tl = 1, int tr = N) {
+	if (tl == tr) {
+		tsum[t] = tmax[t] = v;
+		return;
+	}
+
+	int tm = (tl + tr) / 2;
+	if (i <= tm) {
+		update_set(i, v, t * 2, tl, tm);
+	} else {
+		update_set(i, v, t * 2 + 1, tm + 1, tr);
+	}
+	tsum[t] = tsum[t * 2] + tsum[t * 2 + 1];
+	tmax[t] = max(tmax[t * 2], tmax[t * 2 + 1]);
+}
+
+long long query(int l, int r, int t = 1, int tl = 1, int tr = N) {
+	if (r < tl || tr < l) {
+		return 0;
+	} else if (l <= tl && tr <= r) {
+		return tsum[t];
+	}
+
+	int tm = (tl + tr) / 2;
+	return query(l, r, t * 2, tl, tm) + query(l, r, t * 2 + 1, tm + 1, tr);
+}
+
+int main() {
+	cin >> N >> Q;
+	for (int i = 1; i <= N; i++) {
+		long long a;
+		cin >> a;
+		update_set(i, a);
+	}
+	for (int q = 0; q < Q; q++) {
+		int t;
+		cin >> t;
+		if (t == 1) {
+			int l, r;
+			cin >> l >> r;
+			cout << query(l, r) << '\n';
+		} else if (t == 2) {
+			int l, r;
+			long long x;
+			cin >> l >> r >> x;
+			update_mod(l, r, x);
+		} else if (t == 3) {
+			int i;
+			long long x;
+			cin >> i >> x;
+			update_set(i, x);
+		}
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	int test_num;
+	cin >> test_num;
+	for (int t = 0; t < test_num; t++) {
+		int n, k;
+		cin >> n >> k;
+		vector<pair<int, int>> nums(n);
+		for (int i = 0; i < n; i++) {
+			cin >> nums[i].first;
+			nums[i].second = i + 1;
+		}
+		sort(nums.begin(), nums.end());
+
+		int mins = INT_MAX;
+		int curr = 0;
+		for (int i = 0; i < n - 1; i++) {
+			if ((nums[i].first ^ nums[i + 1].first) < mins) {
+				mins = (nums[i].first ^ nums[i + 1].first);
+				curr = i;
+			}
+		}
+
+		cout << nums[curr].second << " " << nums[curr + 1].second << " ";
+		cout << (nums[curr].first ^ ((1 << k) - 1)) << "\n";
+	}
+}
+
+New Solution
+
+#include <cstdio>
+#include <iostream>
+
+using namespace std;
+
+bool covered(int x, int y, int x1, int y1, int x2, int y2) {
+	/*
+	 * returns true if (x, y) is covered by the rectangle bounded by
+	 * (x1, y1) and (x2, y2) and false otherwise
+	 */
+	return x >= x1 && x <= x2 && y >= y1 && y <= y2;
+}
+
+int main() {
+	freopen("billboard.in", "r", stdin);
+	freopen("billboard.out", "w", stdout);
+
+	int x1, y1, x2, y2;
+	cin >> x1 >> y1 >> x2 >> y2;
+	int x3, y3, x4, y4;
+	cin >> x3 >> y3 >> x4 >> y4;
+
+	// count how many corners of the billboard are covered
+	int corner_num = 0;
+	if (covered(x1, y1, x3, y3, x4, y4)) corner_num++;
+	if (covered(x1, y2, x3, y3, x4, y4)) corner_num++;
+	if (covered(x2, y1, x3, y3, x4, y4)) corner_num++;
+	if (covered(x2, y2, x3, y3, x4, y4)) corner_num++;
+
+	// if fewer than 2 corners are covered, the whole rectangle must be covered
+	if (corner_num < 2) {
+		cout << (x2 - x1) * (y2 - y1);
+	} else if (corner_num == 4) {
+		// if all 4 corners are covered, then nothing needs to be covered
+		cout << 0;
+	} else {
+		// we only need to cover some portion of the rectangle
+		// find the intersection of the two rectangles
+		int xl = max(x1, x3);
+		int xr = min(x2, x4);
+		int yl = max(y1, y3);
+		int yr = min(y2, y4);
+		// subtract away the area of the intersection
+		cout << (x2 - x1) * (y2 - y1) - (xr - xl) * (yr - yl);
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+struct Rect {
+	int x1, y1, x2, y2;
+	int area() { return (y2 - y1) * (x2 - x1); }
+};
+
+int intersect(Rect p, Rect q) {
+	int xOverlap = max(0, min(p.x2, q.x2) - max(p.x1, q.x1));
+	int yOverlap = max(0, min(p.y2, q.y2) - max(p.y1, q.y1));
+	return xOverlap * yOverlap;
+}
+
+int main() {
+	freopen("billboard.in", "r", stdin);
+	freopen("billboard.out", "w", stdout);
+
+	Rect a, b, t;  // billboards a, b, and the truck
+	cin >> a.x1 >> a.y1 >> a.x2 >> a.y2;
+	cin >> b.x1 >> b.y1 >> b.x2 >> b.y2;
+	cin >> t.x1 >> t.y1 >> t.x2 >> t.y2;
+	cout << a.area() + b.area() - intersect(a, t) - intersect(b, t) << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+
+int main() {
+	freopen("homework.in", "r", stdin);
+	int n;
+	cin >> n;
+	vector<ll> questions(n);
+	for (int i = 0; i < n; i++) { cin >> questions[i]; }
+	int left = -1;
+	int right = n;
+
+	vector<ll> total_score(n);
+	vector<ll> min_score(n);
+	vector<ll> max_score_values;
+
+	total_score[n - 1] = questions[n - 1];
+	min_score[n - 1] = questions[n - 1];
+
+	ll curr_question, curr_score, idx;
+	for (int i = n - 2; i > 0; i--) {
+		curr_question = questions[i];
+		// calculating sum of scores from index i to N
+		total_score[i] = curr_question + total_score[i + 1];
+
+		// minimum score from scores in indexes i to N
+		min_score[i] = min(min_score[i + 1], curr_question);
+
+		// excluding the least score question to calculate average
+		curr_score = total_score[i] - min_score[i];
+		idx = (n - (i + 1));
+
+		if (curr_score * right > left * idx) {
+			left = curr_score;
+			right = idx;
+			max_score_values = {i};
+		} else if (curr_score * right == left * idx) {
+			max_score_values.push_back(i);
+		}
+	}
+
+	sort(max_score_values.begin(), max_score_values.end());
+
+	freopen("homework.out", "w", stdout);
+	for (ll k : max_score_values) { cout << k << "\n"; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	freopen("cowdance.in", "r", stdin);
+	freopen("cowdance.out", "w", stdout);
+
+	int n, t;
+	cin >> n >> t;
+	int ar[n];
+
+	for (int i = 0; i < n; i++) { cin >> ar[i]; }
+
+	int hi = n, lo = 1;
+	int sol = n;
+
+	while (lo <= hi) {
+		int mid = lo + (hi - lo) / 2;
+		int time = 0, j = 0;
+		priority_queue<int> pq;
+		int size = 0;
+		while (size < mid && j < n) {
+			pq.push(-ar[j]);
+			size++;
+			j++;
+		}
+
+		while ((int)pq.size()) {
+			time += max(0, -pq.top() - time);
+			pq.pop();
+			if (j < n) {
+				pq.push(-(ar[j] + time));
+				j++;
+			}
+		}
+
+		if (time > t) {
+			lo = mid + 1;
+		} else {
+			sol = min(sol, mid);
+			hi = mid - 1;
+		}
+	}
+
+	cout << sol << '\n';
+}
+
+New Solution
+
+#include <algorithm>
+#include <cstdio>
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+const int MAX_CARDS = 1e5;
+bool elsieHas[MAX_CARDS + 1];
+
+int main() {
+	freopen("highcard.in", "r", stdin);
+	freopen("highcard.out", "w", stdout);
+	int n;
+	cin >> n;
+	for (int i = 0; i < n; i++) {
+		int card;
+		cin >> card;
+		elsieHas[card] = true;
+	}
+
+	vector<int> elsie;
+	vector<int> bessie;
+
+	// Because we loop over the values in increasing order,
+	// the two lists will be in sorted order.
+	for (int i = 1; i <= n * 2; i++) {
+		// If Elsie has this card:
+		if (elsieHas[i]) {
+			elsie.push_back(i);
+		} else {
+			bessie.push_back(i);
+		}
+	}
+
+	int points = 0, bessieIndex = 0, elsieIndex = 0;
+	while (bessieIndex < n && elsieIndex < n) {
+		// If Bessie wins:
+		if (bessie[bessieIndex] > elsie[elsieIndex]) {
+			points++;
+			bessieIndex++;
+			elsieIndex++;
+			// Otherwise, choose the next highest card from Bessie's hand.
+		} else {
+			bessieIndex++;
+		}
+	}
+	cout << points;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+
+ll solve(ll a, ll b) {
+	if (a == b) {
+		return 0;
+	} else if (a > b) {
+		/*
+		 * Divide a greedily until a <= b, add 1 in case a is odd to enable
+		 * division.
+		 */
+		ll is_odd = a % 2;
+		return 1 + is_odd + solve((a + is_odd) / 2, b);
+	} else {
+		/*
+		 * Otherwise, work on b to reach a by division. Alternatively,
+		 * if it's better, perform subtraction until a is reached.
+		 */
+		ll is_odd = b % 2;
+		return min(b - a, 1 + is_odd + solve(a, b / 2));
+	}
+}
+
+int main() {
+	int n;
+	cin >> n;
+	for (int i = 0; i < n; i++) {
+		ll a, b;
+		cin >> a >> b;
+		cout << solve(a, b) << endl;
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+
+#define MAXN 100005
+#define bitinc(x) (x & -x);
+
+using namespace std;
+
+int n, arr[MAXN], bit[4 * MAXN], in[MAXN], ot[MAXN], par[MAXN][22];
+vector<int> adj[MAXN];
+
+int timer = 1;
+// does initial DFS to find the time in/out for each subtree-range.
+void dfs(int v = 0, int p = 0) {
+	in[v] = timer++;
+	par[v][0] = p;
+	for (int i = 1; i < 22; i++) par[v][i] = par[par[v][i - 1]][i - 1];
+	for (int x : adj[v]) {
+		if (x == p) continue;
+		dfs(x, v);
+	}
+	ot[v] = timer++;
+}
+
+// prefix xor. reversable = done onto itself
+int XOR(int ind) {
+	int xo = 0;
+	while (ind > 0) {
+		xo ^= bit[ind];
+		ind -= bitinc(ind);
+	}
+	return xo;
+}
+void upd(int ind, int val) {
+	while (ind <= timer) {
+		bit[ind] ^= val;
+		ind += bitinc(ind);
+	}
+}
+
+bool anc(int u, int v) { return (in[u] <= in[v] && ot[u] >= ot[v]); }
+
+// method finding all lca's
+int lca(int u, int v) {
+	if (anc(u, v)) return u;
+	for (int i = 21; i >= 0; i--) {
+		if (par[u][i] >= 0 && !anc(par[u][i], v)) u = par[u][i];
+	}
+	return par[u][0];
+}
+
+int main() {
+	freopen("cowland.in", "r", stdin);
+	freopen("cowland.out", "w", stdout);
+	int q;
+	cin >> n >> q;
+	for (int i = 0; i < n; i++) cin >> arr[i];
+	for (int i = 1; i < n; i++) {
+		int u, v;
+		cin >> u >> v;
+		--u;
+		--v;
+		adj[u].push_back(v);
+		adj[v].push_back(u);
+	}
+	dfs();
+	// add each vertex query right now.
+	for (int i = 0; i < n; i++) {
+		upd(in[i], arr[i]);
+		upd(ot[i], arr[i]);
+	}
+	// rep. for each query
+	for (int que = 0; que < q; que++) {
+		int t;
+		cin >> t;
+		if (t == 1) {
+			int s, x;
+			cin >> s >> x;
+			--s;
+			// erase the initial arr[s] value.
+			upd(in[s], arr[s]);
+			upd(ot[s], arr[s]);
+			arr[s] = x;
+			// update the arr[s] value to x.
+			upd(in[s], arr[s]);
+			upd(ot[s], arr[s]);
+		} else {
+			int u, v;
+			cin >> u >> v;
+			--u;
+			--v;
+			int w = lca(u, v);
+			cout << ((XOR(in[u]) ^ XOR(in[v])) ^ arr[w]) << endl;
+		}
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	freopen("248.in", "r", stdin);
+	int n;
+	cin >> n;
+
+	vector<int> a(n);
+	for (int i = 0; i < n; i++) { cin >> a[i]; }
+
+	// dp[i][j] = final element the range i..j gets merged into,
+	// otherwise it's -1 if it cannot be merged into a single element
+	vector<vector<int>> dp(n, vector<int>(n, -1));
+
+	int ans = 0;
+	for (int len = n - 1; len >= 0; len++) {
+		dp[len][len] = a[len];
+		for (int r = len; r < n; r++) {
+			for (int k = len; k < r; k++) {
+				if (dp[len][k] != -1 and dp[len][k] == dp[k + 1][r]) {
+					dp[len][r] = dp[len][k] + 1;
+				}
+			}
+			ans = max(ans, dp[len][r]);
+		}
+	}
+
+	freopen("248.out", "w", stdout);
+	cout << ans << endl;
+}
+
+New Solution
+
+//BeginCodeSnip{C++ Short Template}
+#include <bits/stdc++.h> // see /general/running-code-locally
+using namespace std;
+
+using ll = long long;
+
+using vi = vector<int>;
+#define pb push_back
+#define all(x) begin(x), end(x)
+#define sz(x) (int) (x).size()
+
+using pi = pair<int,int>;
+#define f first
+#define s second
+#define mp make_pair
+
+void setIO(string name = "") {
+	cin.tie(0)->sync_with_stdio(0); // see /general/fast-io
+	if (sz(name)) {
+		freopen((name + ".in").c_str(), "r", stdin); // see /general/input-output
+		freopen((name + ".out").c_str(), "w", stdout);
+	}
+}
+//EndCodeSnip
+
+const int MAX_N = 300;
+
+int A[MAX_N], dp[MAX_N][MAX_N];
+
+int main() {
+	setIO();
+
+	int n;
+	cin >> n;
+
+	for (int i = 0; i < n; i++) cin >> A[i];
+
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) { dp[i][j] = MAX_N + 1; }
+	}
+
+	for (int i = 0; i < MAX_N; i++) dp[i][i] = 1;
+
+	for (int s = 0; s < n; s++) {
+		for (int i = 0; i < n - s; i++) {
+			for (int j = i; j < i + s; j++) {
+				int k = i + s;
+				if (A[i] == A[k]) dp[i][k] = min(dp[i][k], dp[i][j] + dp[j + 1][k] - 1);
+				dp[i][k] = min(dp[i][k], dp[i][j] + dp[j + 1][k]);
+			}
+		}
+	}
+
+	cout << dp[0][n - 1] << endl;
+}

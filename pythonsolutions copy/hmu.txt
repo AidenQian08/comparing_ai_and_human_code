@@ -1,0 +1,959 @@
+n, k = map(int, input().split())
+a = list(map(int, input().split()))
+
+ans = 0
+for i in range(1, 1 << k):
+	prime_product = 1
+
+	for j in range(k):
+		# check if we are using a[j] in this number
+		if i & (1 << j):
+			prime_product *= a[j]
+
+	# convert to binary representation and count number of 1's,
+	# which is equal to the number of primes we have multiplied
+	if bin(i).count("1") % 2:
+		ans += n // prime_product
+	else:
+		ans -= n // prime_product
+
+print(ans)
+
+New Solution
+
+from math import gcd
+
+n = int(input())
+
+arr = list(map(int, input().split()))
+
+ans = 1
+for i in range(n - 1):
+	for j in range(i + 1, n):
+		ans = max(ans, gcd(arr[i], arr[j]))
+
+print(ans)
+
+New Solution
+
+n, m, k = map(int, input().split())
+arr = list(map(int, input().split()))
+
+updates = []
+for _ in range(m):
+	updates.append(list(map(int, input().split())))
+
+s = [0] * (m + 2)
+add = [0] * (n + 2)
+
+for _ in range(k):
+	x, y = map(int, input().split())
+	s[x] += 1
+	s[y + 1] -= 1
+
+for i in range(1, m + 1):
+	# Apply prefix sums
+	s[i] += s[i - 1]
+
+	# At the same time compute the second difference array
+	add[updates[i - 1][0]] += s[i] * updates[i - 1][2]
+	add[updates[i - 1][1] + 1] -= s[i] * updates[i - 1][2]
+
+for i in range(1, n + 1):
+	# Apply prefix sums
+	add[i] += add[i - 1]
+	print(add[i] + arr[i - 1], end=" ")
+
+New Solution
+
+for _ in range(int(input())):
+	total_width, total_height = map(int, input().split())
+	x1, y1, x2, y2 = map(int, input().split())
+	w1 = x2 - x1
+	h1 = y2 - y1
+	w2, h2 = map(int, input().split())
+
+	ans = float("inf")
+
+	# Calculating minimum and maximum X and Y values needed to fit in their places
+	left_place = w2
+	right_place = total_width - w2
+	top_place = total_height - h2
+	bottom_place = h2
+
+	# Calculating distance needed to move first rectangle
+	amount_needed_left = max(left_place - x1, 0)
+	amount_needed_right = max(x2 - right_place, 0)
+	amount_needed_top = max(y2 - top_place, 0)
+	amount_needed_bottom = max(bottom_place - y1, 0)
+
+	# Checking bounds of the rectangles
+	if w1 + w2 > total_width:
+		amount_needed_left = float("inf")
+		amount_needed_right = float("inf")
+
+	if h1 + h2 > total_height:
+		amount_needed_top = float("inf")
+		amount_needed_bottom = float("inf")
+
+	# neat trick to get the min out of multiple elements
+	ans = min(
+		amount_needed_left, amount_needed_right, amount_needed_top, amount_needed_bottom
+	)
+
+	# if ans is float('inf'), there is no way to fit the two rectangles in the room
+	print(ans if ans != float("inf") else -1)
+
+New Solution
+
+class Rect:
+	def __init__(self, a: int, b: int, c: int, d: int):
+		self.x1, self.y1, self.x2, self.y2 = a, b, c, d
+
+
+"""
+Main Idea: If B intersects entirely in the x or y direction, cut it.
+This method cuts rectangle A based on rectangle B. (A - white sheet, B - black sheet)
+We can cut rectangle A if B covers all of x1->x2 or y1->y2.
+"""
+
+
+def cut(A: Rect, B: Rect) -> Rect:
+	# If B cuts A from the left side
+	if A.x1 >= B.x1 and B.x2 >= A.x1 and B.y1 <= A.y1 and B.y2 >= A.y2:
+		A.x1 = B.x2
+		A.x2 = max(A.x2, B.x2)  # If B covers A entirely
+
+	# If B cuts A from the right side
+	if A.x2 >= B.x1 and B.x2 >= A.x2 and B.y1 <= A.y1 and B.y2 >= A.y2:
+		A.x2 = B.x1
+		A.x1 = min(A.x1, B.x1)  # If B covers A entirely
+
+	# If B cuts A from the bottom side
+	if A.y1 >= B.y1 and B.y2 >= A.y1 and B.x1 <= A.x1 and B.x2 >= A.x2:
+		A.y1 = B.y2
+		A.y2 = max(A.y2, B.y2)  # If B covers A entirely
+
+	# If B cuts A from the top side
+	if A.y2 >= B.y1 and B.y2 >= A.y2 and B.x1 <= A.x1 and B.x2 >= A.x2:
+		A.y2 = B.y1
+		A.y1 = min(A.y1, B.y1)  # If B covers A entirely
+
+	return A
+
+
+X = list(map(int, input().split()))
+Y = list(map(int, input().split()))
+Z = list(map(int, input().split()))
+
+A = Rect(X[0], X[1], X[2], X[3])
+B = Rect(Y[0], Y[1], Y[2], Y[3])
+C = Rect(Z[0], Z[1], Z[2], Z[3])
+
+A = cut(A, B)
+A = cut(A, C)
+
+# Print NO only if the remaining cut area is 0.
+print("NO" if A.x2 - A.x1 == 0 or A.y2 - A.y1 == 0 else "YES")
+
+New Solution
+
+with open("planting.in") as read:
+	field_num = int(read.readline())
+	deg = [0 for _ in range(field_num + 1)]  # 1-indexed
+	for _ in range(field_num - 1):
+		field1, field2 = [int(i) for i in read.readline().split()]
+		deg[field1] += 1
+		deg[field2] += 1
+
+max_deg = max(deg)
+print(max_deg + 1, file=open("planting.out", "w"))
+
+New Solution
+
+from collections import deque
+
+# possible directions to visit all connected regions
+DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
+
+c = []
+
+with open("mooyomooyo.in") as r:
+	a, b = map(int, r.readline().split())
+	for i in range(a):
+		c.append(list(map(int, list(r.readline().strip()))))
+
+mid = 5
+
+
+def gravity(graph, s, coords):
+	for i in range(s // 2):
+		for j in range(mid):
+			graph[i][j], graph[j][i] = graph[j][i], graph[i][j]
+
+	for y, x in coords:
+		graph[y].pop(x)
+		graph[y].append(0)
+
+	for i in range(mid):
+		for j in range(s // 2):
+			graph[i][j], graph[j][i] = graph[j][i], graph[i][j]
+
+	return graph
+
+
+def mark_connected(x, y, graph, visited):
+	q = deque()
+	q.append((x, y))
+	visited[y][x] = True
+	coords = [(x, y)]
+
+	while q:
+		x, y = q.pop()
+		for dx, dy in DIRECTIONS:
+			nx, ny = x + dx, y + dy
+			# boundaries
+			if 0 <= nx < 10 and 0 <= ny < a:
+				# check if already visited
+				if graph[ny][nx] == graph[y][x] and not visited[ny][nx]:
+					q.appendleft((nx, ny))
+					visited[ny][nx] = True
+					coords.append((nx, ny))
+	return coords
+
+
+def mooyo(graph):
+	visited = [[False] * 10 for _ in range(a)]
+	all_coords = []
+
+	for i in range(a):
+		for j in range(10):
+			# check if visited
+			if graph[i][j] != 0 and not visited[i][j]:
+				temp = mark_connected(j, i, graph, visited)
+				if len(temp) >= b:
+					all_coords += temp
+
+	if not all_coords:
+		return graph
+
+	for x, y in all_coords:
+		graph[y][x] = 0
+
+	for x in range(10):
+		blocks = []
+		for y in range(a):
+			if graph[y][x] != 0:
+				blocks.append(graph[y][x])
+				graph[y][x] = 0
+
+		y = a - 1
+		while blocks:
+			node = blocks.pop()
+			graph[y][x] = node
+			y -= 1
+
+	return mooyo(graph)
+
+
+ans = mooyo(c)
+with open("mooyomooyo.out", "w") as out:
+	for i in ans:
+		print("".join([str(x) for x in i]), file=out)
+
+New Solution
+
+import heapq
+
+cows = []
+with open("convention2.in") as read:
+	for c in range(int(read.readline())):
+		start, duration = [int(i) for i in read.readline().split()]
+		cows.append((c, start, duration))
+
+# sort by arrival time
+cows.sort(key=lambda c: c[1])
+
+time = 0
+curr = 0
+longest_wait = 0
+
+# sorted by priority so that the highest seniority starts eating first
+waiting = []
+# as long as we haven't processed all cows or there are still cows waiting
+while curr < len(cows) or waiting:
+	# this cow can be processed
+	if curr < len(cows) and cows[curr][1] <= time:
+		heapq.heappush(waiting, cows[curr])
+		curr += 1
+	# no cow waiting, skip to the next cow
+	elif not waiting:
+		# set time to the ending time of the next cow
+		time = cows[curr][1] + cows[curr][2]
+		curr += 1
+	else:
+		# process the next cow
+		next_cow = heapq.heappop(waiting)
+		longest_wait = max(longest_wait, time - next_cow[1])
+
+		# set the time to when this cow finishes
+		time += next_cow[2]
+
+print(longest_wait, file=open("convention2.out", "w"))
+
+New Solution
+
+from typing import List, Tuple
+
+
+def neighbors(r: int, c: int) -> List[Tuple[int, int]]:
+	""":return: the 4 cardinal neighbors of a position"""
+	return [(r - 1, c), (r + 1, c), (r, c - 1), (r, c + 1)]
+
+
+with open("countcross.in") as read:
+	side_len, cow_num, road_num = [int(i) for i in read.readline().split()]
+
+	roads = set()
+	for _ in range(road_num):
+		sr, sc, er, ec = [int(i) - 1 for i in read.readline().split()]
+		roads.add((sr, sc, er, ec))
+		roads.add((er, ec, sr, sc))
+
+	has_cow = [[False for _ in range(side_len)] for _ in range(side_len)]
+	for _ in range(cow_num):
+		r, c = [int(i) - 1 for i in read.readline().split()]
+		has_cow[r][c] = True
+
+visited = [[False for _ in range(side_len)] for _ in range(side_len)]
+
+
+def connected_cow_num(r: int, c: int, prev_r: int, prev_c: int) -> int:
+	""":return: the # of cows that a position can reach & marks them as visited"""
+	# check if we're out of bounds,
+	if (
+		r < 0
+		or c < 0
+		or r >= side_len
+		or c >= side_len
+		# someplace we've gone before,
+		or visited[r][c]
+		# or if we've just crossed a road
+		or (r, c, prev_r, prev_c) in roads
+	):
+		return 0
+
+	visited[r][c] = True
+	cow_num = has_cow[r][c]
+	for nr, nc in neighbors(r, c):
+		cow_num += connected_cow_num(nr, nc, r, c)
+	return cow_num
+
+
+cow_components = []
+for r in range(side_len):
+	for c in range(side_len):
+		if not visited[r][c]:
+			comp_sz = connected_cow_num(r, c, r, c)
+			if comp_sz != 0:
+				cow_components.append(comp_sz)
+
+distant_pairs = 0
+for i in range(len(cow_components)):
+	for j in range(i + 1, len(cow_components)):
+		# all pairs of cows from these two components are considered distant
+		distant_pairs += cow_components[i] * cow_components[j]
+
+print(distant_pairs, file=open("countcross.out", "w"))
+
+New Solution
+
+import heapq
+
+with open("helpcross.in") as read:
+	num_chickens, num_cows = [int(i) for i in read.readline().split()]
+
+	chickens = [int(read.readline()) for _ in range(num_chickens)]
+
+	cows = []
+	for _ in range(num_cows):
+		cows.append(tuple(int(i) for i in read.readline().split()))
+
+chickens.sort()
+# sort by starting time, tiebreak by ending time
+cows.sort()
+
+num_helped = 0
+cow_at = 0
+available_cows = []
+for c in chickens:
+	# add all the cows whose start times now include the chicken's time
+	while cow_at < num_cows and cows[cow_at][0] <= c:
+		heapq.heappush(available_cows, cows[cow_at][1])
+		cow_at += 1
+
+	"""
+	remove all the ending times that end too early for the chicken
+	since available_cows is a heap, the first element is the smallest
+	"""
+	while available_cows and available_cows[0] < c:
+		heapq.heappop(available_cows)
+
+	# have the cow help the chicken w/ the earliest ending time
+	if available_cows:
+		num_helped += 1
+		heapq.heappop(available_cows)
+
+print(num_helped, file=open("helpcross.out", "w"))
+
+New Solution
+
+COW_NUM = 7
+
+with open("notlast.in") as read:
+	raw = {}
+	for _ in range(int(read.readline())):
+		name, amt = read.readline().split()
+		amt = int(amt)
+		if name not in raw:
+			raw[name] = 0
+		raw[name] += amt
+
+cows = [(amt, name) for name, amt in raw.items()]
+cows.sort()
+
+ind = 0
+"""
+only move the pointer if all cows produced some milk, as
+any unmentioned cows will have produced 0 milk
+"""
+if len(cows) == COW_NUM:
+	while ind < len(cows) and cows[ind][0] == cows[0][0]:
+		ind += 1
+
+written = open("notlast.out", "w")
+if ind < len(cows) and (ind + 1 == len(cows) or cows[ind][0] != cows[ind + 1][0]):
+	print(cows[ind][1], file=written)
+else:
+	print("Tie", file=written)
+
+New Solution
+
+from collections import defaultdict
+
+
+pairs = []
+with open("citystate.in") as read:
+	for _ in range(int(read.readline())):
+		city, state = read.readline().strip().split()
+		city = city[:2]  # We only care about the first two letters of the city
+		pairs.append((city, state))
+
+seen = defaultdict(int)
+total = 0
+for c, s in pairs:
+	if c != s:
+		total += seen[s + c]
+	seen[c + s] += 1
+
+print(total, file=open("citystate.out", "w"))
+
+New Solution
+
+MAX_OPS = 100
+
+x, y, k, m = map(int, open("pails.in", "r").read().split())
+
+sol = float("inf")
+vis = [
+	[[False for a in range(MAX_OPS + 1)] for b in range(MAX_OPS + 1)]
+	for c in range(MAX_OPS + 1)
+]
+
+
+def ff(cur_x: int, cur_y: int, cur_k: int) -> int:
+	global sol
+
+	if cur_k > k or vis[cur_x][cur_y][cur_k]:
+		return
+
+	vis[cur_x][cur_y][cur_k] = True
+	sol = min(sol, abs(m - (cur_x + cur_y)))
+
+	# case 1
+	ff(x, cur_y, cur_k + 1)
+	ff(cur_x, y, cur_k + 1)
+
+	# case 2
+	ff(0, cur_y, cur_k + 1)
+	ff(cur_x, 0, cur_k + 1)
+
+	# case 3
+	if cur_x > y - cur_y:
+		ff(cur_x - y + cur_y, y, cur_k + 1)
+	else:
+		ff(0, cur_y + cur_x, cur_k + 1)
+
+	if cur_y > x - cur_x:
+		ff(x, cur_y - x + cur_x, cur_k + 1)
+	else:
+		ff(cur_x + cur_y, 0, cur_k + 1)
+
+
+ff(0, 0, 0)
+print(sol, file=open("pails.out", "w"))
+
+New Solution
+
+import sys
+
+sys.setrecursionlimit(100000)  # Raise recursion limit as the default will error
+
+filein = open("lightson.in", "r")
+N, m = map(int, filein.readline().split())
+
+lit_rooms = 1
+visited = [[False for i in range(N)] for j in range(N)]
+illuminated = [[False for i in range(N)] for j in range(N)]
+switches = [[[] for i in range(N)] for j in range(N)]
+
+# Read in light switches input
+for i in range(m):
+	x, y, a, b = map(int, filein.readline().split())
+	switches[x - 1][y - 1].append((a - 1, b - 1))
+
+# Checks if a room is connected to the main component
+def check_connected(x, y):
+	dir_x = [-1, 0, 1, 0]
+	dir_y = [0, -1, 0, 1]
+
+	# Iterate through neighbors
+	for i in range(4):
+		new_x = x + dir_x[i]
+		new_y = y + dir_y[i]
+
+		# Ignore neighbor if out of bounds
+		if new_x < 0 or new_y < 0 or new_x > N - 1 or new_y > N - 1:
+			continue
+
+		# If a neighbor is visited, return true
+		if visited[new_x][new_y]:
+			return True
+
+	# If no neighbors have been visited, return false
+	return False
+
+
+# Floodfill method with source room (x, y)
+def floodfill(x, y):
+	global lit_rooms
+
+	# Ignore room if its out of bounds, already visited, or not lit
+	if (
+		x < 0
+		or y < 0
+		or x > N - 1
+		or y > N - 1
+		or visited[x][y]
+		or not illuminated[x][y]
+	):
+		return
+
+	# Ignore this room if it isn't connected to main component
+	# (i.e. it's inaccessible to Bessie)
+	# Don't return on the starting coordinate (1, 1)
+	if not check_connected(x, y) and not (x == 0 and y == 0):
+		return
+
+	# Set room to visited
+	visited[x][y] = True
+
+	dir_x = [-1, 0, 1, 0]
+	dir_y = [0, -1, 0, 1]
+
+	# Iterate through neighbors and floodfill from them
+	for i in range(4):
+		floodfill(x + dir_x[i], y + dir_y[i])
+
+	# Turn on all lights from current room
+	for i in range(len(switches[x][y])):
+		room_x = switches[x][y][i][0]
+		room_y = switches[x][y][i][1]
+
+		# If room hasn't been lit yet, add it to our count of rooms that
+		# have been lit
+		if not illuminated[room_x][room_y]:
+			lit_rooms += 1
+
+		# Set room led to by switch to lit
+		illuminated[room_x][room_y] = True
+
+		# Floodfill form new room that is lit
+		floodfill(room_x, room_y)
+
+
+# Set the top left room to lit (since it's lit initially)
+illuminated[0][0] = True
+
+# Start floodfill from top-left room
+floodfill(0, 0)
+
+print(lit_rooms, file=open("lightson.out", "w"))
+
+New Solution
+
+c, n = map(int, input().split())
+teams = [0] * n
+min_edits = [float("inf")] * (1 << c)
+
+for i in range(n):
+	breeds = input()
+
+	# convert teams to bitmasks
+	for j in range(c):
+		if breeds[j] == "G":
+			teams[i] += 1 << (c - j - 1)
+
+	min_edits[teams[i]] = 0
+
+
+for edit in range(c):
+	for mask in range(1 << c):
+		if min_edits[mask] != float("inf"):
+			# mask ^ (1 << edit) flips the edit-th bit of mask
+			min_edits[mask ^ (1 << edit)] = min(
+				min_edits[mask ^ (1 << edit)], min_edits[mask] + 1
+			)
+
+for i in range(n):
+	# teams[i] ^ ((1 << c) - 1) flips all the bits of teams[i]
+	print(c - min_edits[teams[i] ^ ((1 << c) - 1)])
+
+New Solution
+
+from typing import NamedTuple
+
+ZODIAC = [
+	"OX",
+	"TIGER",
+	"RABBIT",
+	"DRAGON",
+	"SNAKE",
+	"HORSE",
+	"GOAT",
+	"MONKEY",
+	"ROOSTER",
+	"DOG",
+	"PIG",
+	"RAT",
+]
+
+
+class Relation(NamedTuple):
+	name: str
+	prev: bool  # is this a "previous" or "next" relation?
+	year: int
+	relative: str
+
+
+relations = []
+for _ in range(int(input())):
+	relation = input().upper().split()
+	relations.append(
+		Relation(
+			relation[0],
+			relation[3] == "PREVIOUS",
+			ZODIAC.index(relation[4]),
+			relation[7],
+		)
+	)
+
+birth_years = {"BESSIE": 0}
+for r in relations:
+	change = -1 if r.previous else 1
+	# +change because it has to be at least 1 year off
+	this_year = birth_years[r.relative] + change
+	while this_year % len(ZODIAC) != r.year:
+		this_year += change
+	birth_years[r.name] = this_year
+
+dist = abs(birth_years["BESSIE"] - birth_years["ELSIE"])
+print(dist)
+
+New Solution
+
+from typing import List
+from bisect import bisect_right
+
+
+def find_lis(arr: List[int]) -> int:
+	"""Same as the code in the LIS module besides the usage of bisect_right."""
+	min_endings = []
+	for i in arr:
+		pos = bisect_right(min_endings, i)
+		if pos == len(min_endings):
+			min_endings.append(i)
+		else:
+			min_endings[pos] = i
+	return len(min_endings)
+
+
+size, block_size = [int(i) for i in input().split()]
+arr = sorted((int(i), v) for v, i in enumerate(input().split()))
+
+block_arr = [-1 for _ in range(size)]
+for i in range(size):
+	block_arr[arr[i][1]] = i // block_size
+
+print(size - find_lis(block_arr))
+
+New Solution
+
+n = int(input())
+v = list(map(int, input().split()))
+
+res = 0
+"""
+For every bit position
+check if it's set on in the xor-sum of every subsequence
+"""
+for i in range(30):
+	s = 0
+	"""
+	Count the prefix sums
+	The # of 0 xor-sum prefxises starts from 1 to count the prefixes with
+	xor-sum 1
+	"""
+	pref = [1, 0]
+	for a in v:
+		s ^= (a >> i) & 1
+		"""
+		Count the # of sequences ending at this position with xor-sum
+		non-zero by counting the prefixes of the inversed bit, i.e.
+		pref[i] ^ pref[j] = 1. Update the answer by adding the # of such
+		sequnces multiplied by the respective power of two.
+		"""
+		res += pref[s ^ 1] * (1 << i)
+		# update the prexies
+		pref[s] += 1
+
+print(res - sum(v))
+
+New Solution
+
+n = int(input().strip())
+
+# Initialize prefix array
+pref = [0] * (n + 1)
+
+# Calculate the number of trailing zeros in each number up to n
+for i in range(2, n + 1):
+	num = i
+	while num % 2 == 0:
+		pref[i] += 1
+		num //= 2
+	pref[i] += pref[i - 1]
+
+ans = 0
+
+data = list(map(int, input().strip().split()))
+
+# Calculate the result using XOR
+for i in range(n):
+	num = data[i]
+	if pref[n - 1] - pref[i] - pref[n - i - 1] == 0:
+		ans ^= num
+
+print(ans)
+
+New Solution
+
+import math
+from collections import defaultdict
+
+for _ in range(int(input())):
+	n = int(input())
+
+	# max_size[i][gcd] = max size of subarray ending at i with GCD gcd
+	max_size = [defaultdict(int) for _ in range(n)]
+	a = list(map(int, input().split()))
+
+	for i in range(n):
+		max_size[i][a[i]] = 1
+
+	for i in range(1, n):
+		# extend subarrays
+		for gcd, size in max_size[i - 1].items():
+			new_gcd = math.gcd(gcd, a[i])
+			max_size[i][new_gcd] = max(max_size[i][new_gcd], size + 1)
+
+	ans = [0] * (n + 1)
+	for i in range(n):
+		for gcd, size in max_size[i].items():
+			ans[size] = max(ans[size], gcd)
+
+	for i in range(1, n + 1):
+		print(ans[i], end=" " if i < n else "\n")
+
+New Solution
+
+horse_num = int(input())
+stable_num = int(input())
+stable_horses = sorted([0, horse_num + 1] + [int(input()) for _ in range(stable_num)])
+
+"""
+lowest_ops[i][j] = min operations if we only consider horses
+from that exist in the index interval (i, j)
+ex: lowest_ops[1][4] and stable_horses = [0, 1, 3, 7, 10, 11]
+	means that we only consider horses from (1, 10)
+"""
+lowest_ops = [
+	[float("inf") for _ in range(stable_num + 2)] for _ in range(stable_num + 2)
+]
+for i in range(stable_num + 2):
+	lowest_ops[i][i] = 0
+	if i + 1 < stable_num + 2:
+		lowest_ops[i][i + 1] = stable_horses[i + 1] - stable_horses[i] - 1
+	if i + 2 < stable_num + 2:
+		lowest_ops[i][i + 2] = stable_horses[i + 2] - stable_horses[i] - 1
+
+for num in range(4, stable_num + 2 + 1):
+	for start in range(0, (stable_num + 2) - (num - 1)):
+		end = start + num - 1
+		"""
+		first handle the beginning and ending edge cases,
+		where the smallest or largest element has become the root
+		"""
+		lowest_ops[start][end] = min(
+			lowest_ops[start][end],
+			lowest_ops[start][start + 1]
+			+ lowest_ops[start + 1][end]
+			+ stable_horses[end]
+			- stable_horses[start + 1],
+		)
+		lowest_ops[start][end] = min(
+			lowest_ops[start][end],
+			lowest_ops[end - 1][end]
+			+ lowest_ops[start][end - 1]
+			+ stable_horses[end - 1]
+			- stable_horses[start],
+		)
+
+		"""
+		then get to the actual part where we combine
+		two parts with top being the root
+		"""
+		for top in range(start + 2, end - 1):
+			lowest_ops[start][end] = min(
+				lowest_ops[start][end],
+				lowest_ops[start][top]
+				+ lowest_ops[top][end]
+				+ stable_horses[end]
+				- stable_horses[start]
+				- 1,
+			)
+
+print(lowest_ops[0][stable_num + 1])
+
+New Solution
+
+import sys
+
+MAX_N = 20
+image = [[''] * MAX_N for _ in range(MAX_N)]
+visited = [[False] * MAX_N for _ in range(MAX_N)]
+"""
+PCL delimited by the top left corner (i1, j1) & bottom right corner (i2, j2)
+"""
+class PCL:
+    def __init__(self, i1, j1, i2, j2):
+        self.i1 = i1
+        self.j1 = j1
+        self.i2 = i2
+        self.j2 = j2
+
+    def is_inside(self, other):
+        return (self.i1 >= other.i1 and self.i2 <= other.i2 and
+                self.j1 >= other.j1 and self.j2 <= other.j2)
+# Floodfill to find connected regions
+i_min, i_max, j_min, j_max = 0, 0, 0, 0
+
+def floodfill(i, j, color):
+    if (i < i_min or j < j_min or i > i_max or j > j_max or
+            visited[i][j] or image[i][j] != color):
+        return
+
+    visited[i][j] = True
+
+    floodfill(i + 1, j, color)
+    floodfill(i - 1, j, color)
+    floodfill(i, j + 1, color)
+    floodfill(i, j - 1, color)
+
+# Check whether a given region is a PCL
+def is_pcl(i1, j1, i2, j2):
+	# keep track of num of regions for each color A-Z
+    region_count = [0] * 26
+
+	# set bounds for floodfill
+    global i_min, i_max, j_min, j_max
+    i_min, i_max, j_min, j_max = i1, i2, j1, j2
+
+	# Count # of connected regions for each color present in bounds
+    for i in range(i1, i2 + 1):
+        for j in range(j1, j2 + 1):
+            if not visited[i][j]:
+                curr_color = image[i][j]
+                region_count[ord(curr_color) - ord('A')] += 1
+                floodfill(i, j, curr_color)
+
+    for i in range(MAX_N):
+        visited[i] = [False] * MAX_N
+
+    color_count = 0
+    color_with_one_region = False
+    color_with_more_regions = False
+    for count in region_count:
+        if count != 0:
+            color_count += 1
+        if count == 1:
+            color_with_one_region = True
+        if count > 1:
+            color_with_more_regions = True
+
+    return (color_count == 2 and color_with_one_region and
+            color_with_more_regions)
+
+def main():
+    input = sys.stdin.read
+    data = input().splitlines()
+    n = int(data[0])
+    for i in range(n):
+        for j in range(n):
+            image[i][j] = data[i + 1][j]
+
+    pcl_list = []
+	# Brute force every rectangle to find PCLs
+    for i1 in range(n):
+        for j1 in range(n):
+            for i2 in range(n):
+                for j2 in range(n):
+                    if is_pcl(i1, j1, i2, j2):
+                        pcl_list.append(PCL(i1, j1, i2, j2))
+
+    pcl_count = 0
+	# If a PCL is inside another PCL, don't count it
+    for i in range(len(pcl_list)):
+        valid_pcl = True
+        for j in range(len(pcl_list)):
+            if i == j:
+                continue
+            if pcl_list[i].is_inside(pcl_list[j]):
+                valid_pcl = False
+                break
+        pcl_count += valid_pcl
+
+    print(pcl_count)
+
+if __name__ == "__main__":
+    main()

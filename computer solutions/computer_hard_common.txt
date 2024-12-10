@@ -1,0 +1,1513 @@
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int n, q;
+    cin >> n >> q;
+    vector<int> x(n + 1); // Array elements (1-based index)
+    for (int i = 1; i <= n; i++) {
+        cin >> x[i];
+    }
+
+    // Step 1: Preprocess the operations needed to make the array increasing
+    vector<long long> ops(n + 1, 0);  // ops[i] is the cost to make x[i] <= x[i+1]
+    for (int i = 1; i < n; i++) {
+        if (x[i] > x[i + 1]) {
+            ops[i] = x[i] - x[i + 1];
+        }
+    }
+
+    // Step 2: Build a prefix sum array for ops
+    vector<long long> prefix_ops(n + 1, 0);  // prefix_ops[i] = sum of ops from 1 to i
+    for (int i = 1; i <= n; i++) {
+        prefix_ops[i] = prefix_ops[i - 1] + ops[i];
+    }
+
+    // Step 3: Answer each query
+    while (q--) {
+        int a, b;
+        cin >> a >> b;
+        cout << prefix_ops[b - 1] - prefix_ops[a - 1] << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+int main() {
+    int n;
+    string prefix;
+    cin >> n >> prefix;
+    
+    int k = prefix.size();
+    int open = 0, close = 0;
+    
+    // Step 1: Calculate the number of unmatched opening and closing brackets from the prefix
+    for (char c : prefix) {
+        if (c == '(') {
+            open++;
+        } else {
+            if (open > 0) {
+                open--;
+            } else {
+                close++;
+            }
+        }
+    }
+    
+    // Remaining number of open and close brackets needed to complete the sequence
+    int open_needed = open;
+    int close_needed = close;
+    int remaining = n - k;  // Remaining characters to fill
+    
+    // Step 2: Check if the remaining length is valid (must be even)
+    if (remaining % 2 != 0 || open_needed + close_needed > remaining) {
+        cout << 0 << endl;
+        return 0;
+    }
+    
+    int total_open = (remaining + open_needed - close_needed) / 2;
+    int total_close = remaining / 2 - total_open;
+    
+    if (total_open < 0 || total_close < 0) {
+        cout << 0 << endl;
+        return 0;
+    }
+    
+    // Step 3: Calculate factorials and inverse factorials
+    vector<long long> fact(n + 1, 1), inv_fact(n + 1, 1);
+    
+    // Helper function to calculate modular exponentiation
+    auto mod_exp = [](long long base, long long exp, long long mod) -> long long {
+        long long result = 1;
+        while (exp > 0) {
+            if (exp % 2 == 1) {
+                result = (result * base) % mod;
+            }
+            base = (base * base) % mod;
+            exp /= 2;
+        }
+        return result;
+    };
+    
+    // Calculate factorials and inverse factorials
+    for (int i = 2; i <= n; i++) {
+        fact[i] = fact[i - 1] * i % MOD;
+    }
+    
+    // Inverse of factorial using Fermat's little theorem
+    inv_fact[n] = mod_exp(fact[n], MOD - 2, MOD);
+    for (int i = n - 1; i > 0; i--) {
+        inv_fact[i] = inv_fact[i + 1] * (i + 1) % MOD;
+    }
+    
+    // Step 4: Calculate the number of valid sequences using binomial coefficients
+    auto binomial = [&](int a, int b) -> long long {
+        if (a < b || b < 0) return 0;
+        return fact[a] * inv_fact[b] % MOD * inv_fact[a - b] % MOD;
+    };
+    
+    long long result = binomial(remaining, total_open);
+    cout << result << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <stack>
+using namespace std;
+
+const int MAXN = 100000;
+vector<int> adj[MAXN + 1]; // adjacency list of the graph
+vector<pair<int, int>> edges; // stores the edges (original input)
+vector<int> used; // tracks if an edge is used in the Eulerian circuit
+vector<int> outdeg(MAXN + 1, 0); // tracks outdegree of each node
+vector<pair<int, int>> result; // stores the directed edges (solution)
+
+void eulerian_dfs(int node) {
+    stack<int> s;
+    s.push(node);
+    
+    while (!s.empty()) {
+        int u = s.top();
+        if (!adj[u].empty()) {
+            int v = adj[u].back();
+            adj[u].pop_back(); // remove the edge u-v from u's list
+            
+            if (!used[v]) {
+                used[v] = 1;
+                s.pop();
+            }
+        }
+    }
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+int main() {
+    int n, x;
+    cin >> n >> x;
+    
+    vector<int> t(n);
+    for (int i = 0; i < n; i++) {
+        cin >> t[i];
+    }
+
+    // Sort the skill levels to simplify team penalty calculations
+    sort(t.begin(), t.end());
+
+    // DP array where dp[i] is the number of ways to partition the first i coders
+    vector<int> dp(n + 1, 0);
+    dp[0] = 1;  // There's 1 way to partition 0 coders
+
+    // Iterate over each coder
+    for (int i = 1; i <= n; i++) {
+        int min_skill = t[i - 1];
+        int max_skill = t[i - 1];
+        // Try to form a valid team ending at coder i-1
+        for (int j = i - 1; j >= 0; j--) {
+            min_skill = min(min_skill, t[j]);
+            max_skill = max(max_skill, t[j]);
+            // If the penalty (max - min) exceeds x, stop considering this partition
+            if (max_skill - min_skill > x) break;
+            dp[i] = (dp[i] + dp[j]) % MOD;
+        }
+    }
+
+    // The result is dp[n], which gives the number of ways to partition all n coders
+    cout << dp[n] << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    string bit_string;
+    cin >> bit_string;
+
+    int n = bit_string.length();
+    int m;
+    cin >> m;
+
+    vector<int> changes(m);
+    for (int i = 0; i < m; i++) {
+        cin >> changes[i];
+        changes[i]--; // to 0-based indexing
+    }
+
+    // Step 1: Calculate initial contiguous equal bit substrings
+    vector<int> lengths(n, 0);
+    int max_len = 1;
+    int current_len = 1;
+
+    for (int i = 1; i < n; i++) {
+        if (bit_string[i] == bit_string[i - 1]) {
+            current_len++;
+        } else {
+            max_len = max(max_len, current_len);
+            current_len = 1;
+        }
+    }
+    max_len = max(max_len, current_len);
+
+    // Step 2: Apply changes and update the maximum length
+    for (int i = 0; i < m; i++) {
+        int pos = changes[i];
+        // Flip the bit at pos
+        bit_string[pos] = (bit_string[pos] == '0') ? '1' : '0';
+
+        // Update lengths around the flipped bit
+        int left = pos;
+        while (left > 0 && bit_string[left] == bit_string[left - 1]) {
+            left--;
+        }
+
+        int right = pos;
+        while (right < n - 1 && bit_string[right] == bit_string[right + 1]) {
+            right++;
+        }
+
+        // Calculate the new maximum length
+        max_len = max(max_len, right - left + 1);
+
+        // Output the result after the change
+        cout << max_len << endl;
+    }
+
+    return 0;
+}
+
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+const int MAXN = 200000;
+vector<set<int>> non_edges(MAXN + 1);  // non-edges for each vertex
+vector<bool> visited(MAXN + 1, false);
+vector<int> component_sizes;
+
+int n, m;
+
+// DFS to explore a connected component
+int dfs(int node) {
+    visited[node] = true;
+    int size = 1; // start with current node
+    for (int neighbor = 1; neighbor <= n; neighbor++) {
+        if (!visited[neighbor] && non_edges[node].find(neighbor) == non_edges[node].end()) {
+            size += dfs(neighbor);
+        }
+    }
+    return size;
+}
+
+int main() {
+    cin >> n >> m;
+
+    // Read the non-edges
+    for (int i = 0; i < m; i++) {
+        int x, y;
+        cin >> x >> y;
+        non_edges[x].insert(y);
+        non_edges[y].insert(x);
+    }
+
+    // Find connected components
+    for (int i = 1; i <= n; i++) {
+        if (!visited[i]) {
+            int size = dfs(i);
+            component_sizes.push_back(size);
+        }
+    }
+
+    // Sort the component sizes
+    sort(component_sizes.begin(), component_sizes.end());
+
+    // Output the result
+    cout << component_sizes.size() << endl; // number of components
+    for (int size : component_sizes) {
+        cout << size << " ";
+    }
+    cout << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <queue>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+
+    vector<long long> primes(n);
+    for (int i = 0; i < n; i++) {
+        cin >> primes[i];
+    }
+
+    int k;
+    cin >> k;
+
+    // Min-heap to store the numbers
+    priority_queue<long long, vector<long long>, greater<long long>> min_heap;
+
+    // Set to track already seen numbers
+    set<long long> seen;
+
+    // Start with 1
+    min_heap.push(1);
+    seen.insert(1);
+
+    long long current = 1;
+
+    for (int i = 0; i < k; i++) {
+        // Get the smallest number from the heap
+        current = min_heap.top();
+        min_heap.pop();
+
+        // Generate new numbers by multiplying with each prime
+        for (long long prime : primes) {
+            long long new_number = current * prime;
+            if (new_number > 1e18) continue; // Avoid overflow
+            if (seen.find(new_number) == seen.end()) {
+                min_heap.push(new_number);
+                seen.insert(new_number);
+            }
+        }
+    }
+
+    // The k-th number is stored in current after k pops
+    cout << current << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+#include <queue>
+
+using namespace std;
+
+const int MAXN = 200005;
+vector<int> adj[MAXN]; // adjacency list to store the graph
+vector<bool> visited(MAXN, false); // track visited cities
+vector<pair<int, int>> episodes; // store the episodes as (x, y, z)
+
+// Function to form episodes from a city
+void find_episodes(int node) {
+    vector<int> unvisited_neighbors;
+    
+    // Check the neighbors of this node
+    for (int neighbor : adj[node]) {
+        if (!visited[neighbor]) {
+            unvisited_neighbors.push_back(neighbor);
+        }
+    }
+    
+    // Try to pair up neighbors to form episodes
+    for (int i = 1; i < unvisited_neighbors.size(); i += 2) {
+        int x = node;
+        int y = unvisited_neighbors[i - 1];
+        int z = unvisited_neighbors[i];
+        
+        // Form an episode (x, y, z)
+        episodes.push_back({x, y, z});
+        
+        // Mark these roads as used (by marking the neighbors as visited)
+        visited[y] = true;
+        visited[z] = true;
+    }
+}
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+
+    // Read the roads
+    for (int i = 0; i < m; i++) {
+        int u, v;
+        cin >> u >> v;
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    // Traverse all nodes and try to form episodes
+    for (int i = 1; i <= n; i++) {
+        if (!visited[i]) {
+            find_episodes(i);
+        }
+    }
+
+    // Output the number of episodes and the episodes themselves
+    cout << episodes.size() << endl;
+    for (auto &episode : episodes) {
+        cout << episode.first << " " << episode.second << " " << episode.third << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+// Function to check if it is possible to eat all asterisks within time `T`
+bool can_eat_all_in_time(const vector<int>& packmen, const vector<int>& asterisks, int T) {
+    int asterisk_idx = 0; // Index of the next asterisk to be eaten
+    for (int p : packmen) {
+        int left = p - T;
+        int right = p + T;
+        while (asterisk_idx < asterisks.size() && asterisks[asterisk_idx] <= right) {
+            int dist = abs(asterisks[asterisk_idx] - p);
+            if (dist + min(dist, right - asterisks[asterisk_idx]) <= T) {
+                asterisk_idx++;
+            } else {
+                break;
+            }
+        }
+    }
+    return asterisk_idx == asterisks.size();
+}
+
+int main() {
+    int n;
+    cin >> n;
+    string field;
+    cin >> field;
+
+    vector<int> packmen;
+    vector<int> asterisks;
+
+    // Parse the input to collect packmen and asterisks positions
+    for (int i = 0; i < n; i++) {
+        if (field[i] == 'P') {
+            packmen.push_back(i);
+        } else if (field[i] == '*') {
+            asterisks.push_back(i);
+        }
+    }
+
+    // Binary search for the minimum time
+    int left = 0, right = n, result = -1;
+    while (left <= right) {
+        int mid = (left + right) / 2;
+        if (can_eat_all_in_time(packmen, asterisks, mid)) {
+            result = mid;
+            right = mid - 1;  // Try to find a smaller time
+        } else {
+            left = mid + 1;   // Increase time
+        }
+    }
+
+    cout << result << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Task {
+    int l, m, w;
+};
+
+vector<string> res;
+int n;
+vector<Task> tasks;
+
+// Function to try all possible assignments
+bool solve(int i, int l, int m, int w) {
+    if (i == n) {
+        // Check if all attitudes are the same
+        return l == m && m == w;
+    }
+
+    // Try taking Lynn and Meliana (LM)
+    if (solve(i + 1, l + tasks[i].l, m + tasks[i].m, w)) {
+        res.push_back("LM");
+        return true;
+    }
+
+    // Try taking Meliana and Worrigan (MW)
+    if (solve(i + 1, l, m + tasks[i].m, w + tasks[i].w)) {
+        res.push_back("MW");
+        return true;
+    }
+
+    // Try taking Lynn and Worrigan (LW)
+    if (solve(i + 1, l + tasks[i].l, m, w + tasks[i].w)) {
+        res.push_back("LW");
+        return true;
+    }
+
+    // If none of the choices worked, return false
+    return false;
+}
+
+int main() {
+    cin >> n;
+    tasks.resize(n);
+    
+    // Read the tasks
+    for (int i = 0; i < n; ++i) {
+        cin >> tasks[i].l >> tasks[i].m >> tasks[i].w;
+    }
+
+    // Try solving the problem
+    if (solve(0, 0, 0, 0)) {
+        reverse(res.begin(), res.end());
+        for (auto &s : res) {
+            cout << s << endl;
+        }
+    } else {
+        cout << "Impossible" << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<int> indegree(N + 1, 0);
+
+    // Read edges and update indegree
+    for (int i = 0; i < N - 1; ++i) {
+        int a, b;
+        cin >> a >> b;
+        indegree[b]++;
+    }
+
+    // Find the node with indegree N-1
+    for (int i = 1; i <= N; ++i) {
+        if (indegree[i] == N - 1) {
+            cout << i << endl;
+            return 0;
+        }
+    }
+
+    // If no such node exists, output -1
+    cout << -1 << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<set<string>> animals(N);
+    
+    // Read input and store characteristics for each animal
+    for (int i = 0; i < N; i++) {
+        string name;
+        int K;
+        cin >> name >> K;
+        for (int j = 0; j < K; j++) {
+            string characteristic;
+            cin >> characteristic;
+            animals[i].insert(characteristic);
+        }
+    }
+    
+    int max_common = 0;
+
+    // Compare each pair of animals to find the maximum number of shared characteristics
+    for (int i = 0; i < N; i++) {
+        for (int j = i + 1; j < N; j++) {
+            int common = 0;
+            for (const string& c : animals[i]) {
+                if (animals[j].count(c)) {
+                    common++;
+                }
+            }
+            max_common = max(max_common, common);
+        }
+    }
+    
+    // The answer is the maximum number of shared characteristics + 1
+    cout << max_common + 1 << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<int> cows(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> cows[i];
+    }
+
+    // Find the longest sorted suffix
+    int suffix_start = N - 1;
+    while (suffix_start > 0 && cows[suffix_start - 1] < cows[suffix_start]) {
+        suffix_start--;
+    }
+
+    // The number of moves required is the number of cows before the sorted suffix
+    cout << suffix_start << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int bubbleSortCountMoos(vector<int>& A) {
+    int N = A.size();
+    int mooCount = 0;
+    bool sorted = false;
+
+    while (!sorted) {
+        sorted = true;
+        mooCount++;  // Each while loop iteration corresponds to one "moo"
+        for (int i = 0; i < N - 1; ++i) {
+            if (A[i] > A[i + 1]) {
+                swap(A[i], A[i + 1]);
+                sorted = false;
+            }
+        }
+    }
+
+    return mooCount;
+}
+
+int main() {
+    int N;
+    cin >> N;
+    vector<int> A(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> A[i];
+    }
+
+    int result = bubbleSortCountMoos(A);
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<pair<int, int>> points(N);
+    unordered_map<int, vector<int>> x_points, y_points;
+    
+    // Read points and categorize them based on their x and y coordinates
+    for (int i = 0; i < N; ++i) {
+        int x, y;
+        cin >> x >> y;
+        points[i] = {x, y};
+        x_points[x].push_back(y);
+        y_points[y].push_back(x);
+    }
+    
+    long long total_area = 0;
+    
+    // Process each unique x coordinate
+    for (auto &[x, ys] : x_points) {
+        sort(ys.begin(), ys.end());
+        int m = ys.size();
+        vector<long long> prefix_sum(m, 0);
+        prefix_sum[0] = ys[0];
+        
+        for (int i = 1; i < m; ++i) {
+            prefix_sum[i] = prefix_sum[i-1] + ys[i];
+        }
+        
+        for (int i = 0; i < m; ++i) {
+            long long left_sum = (i * 1LL * ys[i]) - prefix_sum[i];
+            long long right_sum = (prefix_sum[m-1] - prefix_sum[i]) - (m-1-i) * 1LL * ys[i];
+            total_area = (total_area + left_sum + right_sum) % MOD;
+        }
+    }
+    
+    // Process each unique y coordinate
+    for (auto &[y, xs] : y_points) {
+        sort(xs.begin(), xs.end());
+        int m = xs.size();
+        vector<long long> prefix_sum(m, 0);
+        prefix_sum[0] = xs[0];
+        
+        for (int i = 1; i < m; ++i) {
+            prefix_sum[i] = prefix_sum[i-1] + xs[i];
+        }
+        
+        for (int i = 0; i < m; ++i) {
+            long long left_sum = (i * 1LL * xs[i]) - prefix_sum[i];
+            long long right_sum = (prefix_sum[m-1] - prefix_sum[i]) - (m-1-i) * 1LL * xs[i];
+            total_area = (total_area + left_sum + right_sum) % MOD;
+        }
+    }
+    
+    cout << total_area << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+#include <string>
+
+using namespace std;
+
+int main() {
+    int N, M;
+    cin >> N >> M;
+
+    vector<string> spotty(N);
+    vector<string> plain(N);
+
+    for (int i = 0; i < N; ++i) {
+        cin >> spotty[i];
+    }
+
+    for (int i = 0; i < N; ++i) {
+        cin >> plain[i];
+    }
+
+    int count = 0;
+
+    // Iterate over all possible triplets of positions
+    for (int i = 0; i < M; ++i) {
+        for (int j = i + 1; j < M; ++j) {
+            for (int k = j + 1; k < M; ++k) {
+                set<string> spotty_triplets;
+                bool valid = true;
+
+                // Collect all triplets from the spotty cows
+                for (int s = 0; s < N; ++s) {
+                    string triplet = "";
+                    triplet += spotty[s][i];
+                    triplet += spotty[s][j];
+                    triplet += spotty[s][k];
+                    spotty_triplets.insert(triplet);
+                }
+
+                // Check if any plain cow has a matching triplet
+                for (int p = 0; p < N; ++p) {
+                    string triplet = "";
+                    triplet += plain[p][i];
+                    triplet += plain[p][j];
+                    triplet += plain[p][k];
+
+                    if (spotty_triplets.count(triplet)) {
+                        valid = false;
+                        break;
+                    }
+                }
+
+                // If no matches were found, this triplet is valid
+                if (valid) {
+                    count++;
+                }
+            }
+        }
+    }
+
+    cout << count << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+#include <set>
+#include <map>
+
+using namespace std;
+
+const int MAXN = 250;
+int N;
+vector<vector<int>> grid(MAXN, vector<int>(MAXN));
+vector<vector<bool>> visited(MAXN, vector<bool>(MAXN));
+int dx[4] = {0, 1, 0, -1};
+int dy[4] = {1, 0, -1, 0};
+
+// Check if a position is within bounds
+bool inBounds(int x, int y) {
+    return x >= 0 && x < N && y >= 0 && y < N;
+}
+
+// Single cow flood fill
+int dfsSingleCow(int x, int y, int cowID) {
+    int area = 1;
+    visited[x][y] = true;
+    for (int d = 0; d < 4; d++) {
+        int nx = x + dx[d];
+        int ny = y + dy[d];
+        if (inBounds(nx, ny) && !visited[nx][ny] && grid[nx][ny] == cowID) {
+            area += dfsSingleCow(nx, ny, cowID);
+        }
+    }
+    return area;
+}
+
+// Two-cow flood fill
+int dfsTwoCows(int x, int y, int cowID1, int cowID2, vector<vector<bool>>& visitedTeam) {
+    int area = 1;
+    visitedTeam[x][y] = true;
+    for (int d = 0; d < 4; d++) {
+        int nx = x + dx[d];
+        int ny = y + dy[d];
+        if (inBounds(nx, ny) && !visitedTeam[nx][ny]) {
+            if (grid[nx][ny] == cowID1 || grid[nx][ny] == cowID2) {
+                area += dfsTwoCows(nx, ny, cowID1, cowID2, visitedTeam);
+            }
+        }
+    }
+    return area;
+}
+
+int main() {
+    cin >> N;
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            cin >> grid[i][j];
+        }
+    }
+
+    int maxSingleCow = 0;
+    map<pair<int, int>, int> maxTwoCows;
+
+    // Calculate the largest region for any single cow
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (!visited[i][j]) {
+                int area = dfsSingleCow(i, j, grid[i][j]);
+                maxSingleCow = max(maxSingleCow, area);
+            }
+        }
+    }
+
+    // Calculate the largest region for any two cows team
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            for (int d = 0; d < 4; d++) {
+                int ni = i + dx[d];
+                int nj = j + dy[d];
+                if (inBounds(ni, nj) && grid[i][j] != grid[ni][nj]) {
+                    int cowID1 = grid[i][j];
+                    int cowID2 = grid[ni][nj];
+                    if (maxTwoCows[{min(cowID1, cowID2), max(cowID1, cowID2)}] == 0) {
+                        vector<vector<bool>> visitedTeam(N, vector<bool>(N, false));
+                        int area = dfsTwoCows(i, j, cowID1, cowID2, visitedTeam);
+                        maxTwoCows[{min(cowID1, cowID2), max(cowID1, cowID2)}] = max(maxTwoCows[{min(cowID1, cowID2), max(cowID1, cowID2)}], area);
+                    }
+                }
+            }
+        }
+    }
+
+    int maxTwoCowsRegion = 0;
+    for (auto& entry : maxTwoCows) {
+        maxTwoCowsRegion = max(maxTwoCowsRegion, entry.second);
+    }
+
+    cout << maxSingleCow << endl;
+    cout << maxTwoCowsRegion << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <climits>
+
+using namespace std;
+
+const int INF = 1e9 + 7;
+
+int main() {
+    int N, M, K;
+    cin >> N >> M >> K;
+    
+    string S;
+    cin >> S;
+    
+    vector<vector<int>> a(M, vector<int>(M));
+    
+    // Read the transformation cost matrix
+    for (int i = 0; i < M; ++i) {
+        for (int j = 0; j < M; ++j) {
+            cin >> a[i][j];
+        }
+    }
+    
+    // Floyd-Warshall to compute shortest paths for all pairs
+    for (int k = 0; k < M; ++k) {
+        for (int i = 0; i < M; ++i) {
+            for (int j = 0; j < M; ++j) {
+                a[i][j] = min(a[i][j], a[i][k] + a[k][j]);
+            }
+        }
+    }
+    
+    // Cumulative cost for transforming the substring into each button
+    vector<vector<int>> cost(N + 1, vector<int>(M, 0));
+    
+    for (int i = 1; i <= N; ++i) {
+        int ch = S[i-1] - 'a';
+        for (int j = 0; j < M; ++j) {
+            cost[i][j] = cost[i-1][j] + a[ch][j];
+        }
+    }
+    
+    // DP array to store the minimum cost
+    vector<int> dp(N + 1, INF);
+    dp[0] = 0;
+    
+    for (int i = K; i <= N; ++i) {
+        for (int j = 0; j < M; ++j) {
+            dp[i] = min(dp[i], dp[i - K] + cost[i][j] - cost[i - K][j]);
+        }
+    }
+    
+    for (int i = K + 1; i <= N; ++i) {
+        for (int j = 0; j < M; ++j) {
+            dp[i] = min(dp[i], dp[i - 1] + cost[i][j] - cost[i - 1][j]);
+        }
+    }
+
+    cout << dp[N] << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int MAX_COORD = 201;
+int paint[MAX_COORD][MAX_COORD] = {0}; // 2D array to store the number of coats
+int prefix[MAX_COORD][MAX_COORD] = {0}; // Prefix sums to calculate areas
+int gain[MAX_COORD][MAX_COORD] = {0}; // Gain for adding rectangles
+
+void applyDifference(int x1, int y1, int x2, int y2) {
+    paint[x1][y1]++;
+    paint[x1][y2]--;
+    paint[x2][y1]--;
+    paint[x2][y2]++;
+}
+
+void computePrefixSums() {
+    for (int i = 0; i < MAX_COORD; ++i) {
+        for (int j = 0; j < MAX_COORD; ++j) {
+            if (i > 0) paint[i][j] += paint[i - 1][j];
+            if (j > 0) paint[i][j] += paint[i][j - 1];
+            if (i > 0 && j > 0) paint[i][j] -= paint[i - 1][j - 1];
+        }
+    }
+}
+
+void computeGainForRectangles(int K) {
+    for (int i = 1; i < MAX_COORD; ++i) {
+        for (int j = 1; j < MAX_COORD; ++j) {
+            prefix[i][j] = (paint[i - 1][j - 1] == K ? 1 : 0);
+            if (i > 0) prefix[i][j] += prefix[i - 1][j];
+            if (j > 0) prefix[i][j] += prefix[i][j - 1];
+            if (i > 0 && j > 0) prefix[i][j] -= prefix[i - 1][j - 1];
+        }
+    }
+
+    for (int i1 = 0; i1 < MAX_COORD; ++i1) {
+        for (int j1 = 0; j1 < MAX_COORD; ++j1) {
+            for (int i2 = i1 + 1; i2 <= MAX_COORD; ++i2) {
+                for (int j2 = j1 + 1; j2 <= MAX_COORD; ++j2) {
+                    int area = prefix[i2][j2];
+                    if (i1 > 0) area -= prefix[i1 - 1][j2];
+                    if (j1 > 0) area -= prefix[i2][j1 - 1];
+                    if (i1 > 0 && j1 > 0) area += prefix[i1 - 1][j1 - 1];
+                    gain[i1][j1] = max(gain[i1][j1], area);
+                }
+            }
+        }
+    }
+}
+
+int findBestTwoRectangles() {
+    int best = 0;
+    for (int i1 = 0; i1 < MAX_COORD; ++i1) {
+        for (int j1 = 0; j1 < MAX_COORD; ++j1) {
+            for (int i2 = i1 + 1; i2 < MAX_COORD; ++i2) {
+                for (int j2 = j1 + 1; j2 < MAX_COORD; ++j2) {
+                    best = max(best, gain[i1][j1] + gain[i2][j2]);
+                }
+            }
+        }
+    }
+    return best;
+}
+
+int main() {
+    int N, K;
+    cin >> N >> K;
+
+    for (int i = 0; i < N; ++i) {
+        int x1, y1, x2, y2;
+        cin >> x1 >> y1 >> x2 >> y2;
+        applyDifference(x1, y1, x2, y2);
+    }
+
+    computePrefixSums();
+    computeGainForRectangles(K);
+    int result = findBestTwoRectangles();
+
+    cout << result << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int INF = 1e9;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<int> log(N);
+    for (int i = 0; i < N; i++) {
+        cin >> log[i];
+    }
+    
+    vector<vector<int>> dp(N, vector<int>(N + 1, INF));
+    
+    // Initialize dp for the first day
+    dp[0][1] = (log[0] != 0) ? 1 : 0;
+    
+    // Fill dp array
+    for (int i = 1; i < N; i++) {
+        for (int j = 1; j <= i + 1; j++) {
+            int tampered = 0;
+            for (int k = i; k >= 0; k--) {
+                if (log[k] != i - k) tampered++;
+                if (j > 1) {
+                    dp[i][j] = min(dp[i][j], dp[k-1][j-1] + tampered);
+                } else if (k == 0 && j == 1) {
+                    dp[i][j] = tampered;
+                }
+            }
+        }
+    }
+    
+    // Output the minimum number of tampered entries for each possible number of breakouts
+    for (int i = 1; i <= N; i++) {
+        cout << dp[N-1][i] << endl;
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int N, B;
+    cin >> N >> B;
+
+    vector<int> snow_depth(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> snow_depth[i];
+    }
+
+    vector<pair<int, int>> boots(B);
+    for (int i = 0; i < B; ++i) {
+        cin >> boots[i].first >> boots[i].second;
+    }
+
+    for (int i = 0; i < B; ++i) {
+        int max_snow_depth = boots[i].first;
+        int max_step_size = boots[i].second;
+        
+        int current_tile = 0;
+        bool can_reach = true;
+
+        while (current_tile < N - 1) {
+            int next_tile = current_tile;
+            // Try to find the furthest reachable tile within the max step size
+            for (int step = 1; step <= max_step_size && current_tile + step < N; ++step) {
+                if (snow_depth[current_tile + step] <= max_snow_depth) {
+                    next_tile = current_tile + step;
+                }
+            }
+            if (next_tile == current_tile) {
+                can_reach = false;
+                break;
+            }
+            current_tile = next_tile;
+        }
+
+        cout << (can_reach ? 1 : 0) << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <tuple>
+#include <map>
+#include <set>
+
+using namespace std;
+
+const int INF = 1e9 + 7;
+
+struct Pie {
+    int bessie_taste;
+    int elsie_taste;
+};
+
+int main() {
+    int N, D;
+    cin >> N >> D;
+    
+    vector<Pie> bessie_pies(N);
+    vector<Pie> elsie_pies(N);
+    
+    for (int i = 0; i < N; i++) {
+        cin >> bessie_pies[i].bessie_taste >> bessie_pies[i].elsie_taste;
+    }
+    for (int i = 0; i < N; i++) {
+        cin >> elsie_pies[i].bessie_taste >> elsie_pies[i].elsie_taste;
+    }
+    
+    vector<int> bessie_dist(N, INF);
+    vector<int> elsie_dist(N, INF);
+    
+    queue<pair<int, bool>> q; // (index, is_bessie_pie)
+    
+    // Start BFS from all pies with tastiness 0 according to the opposite cow
+    for (int i = 0; i < N; i++) {
+        if (bessie_pies[i].elsie_taste == 0) {
+            bessie_dist[i] = 1;
+            q.push({i, true});
+        }
+        if (elsie_pies[i].bessie_taste == 0) {
+            elsie_dist[i] = 1;
+            q.push({i, false});
+        }
+    }
+    
+    while (!q.empty()) {
+        auto [idx, is_bessie_pie] = q.front();
+        q.pop();
+        
+        if (is_bessie_pie) {
+            int current_dist = bessie_dist[idx];
+            for (int i = 0; i < N; i++) {
+                if (elsie_dist[i] == INF &&
+                    elsie_pies[i].elsie_taste >= bessie_pies[idx].elsie_taste &&
+                    elsie_pies[i].elsie_taste <= bessie_pies[idx].elsie_taste + D) {
+                    elsie_dist[i] = current_dist + 1;
+                    q.push({i, false});
+                }
+            }
+        } else {
+            int current_dist = elsie_dist[idx];
+            for (int i = 0; i < N; i++) {
+                if (bessie_dist[i] == INF &&
+                    bessie_pies[i].bessie_taste >= elsie_pies[idx].bessie_taste &&
+                    bessie_pies[i].bessie_taste <= elsie_pies[idx].bessie_taste + D) {
+                    bessie_dist[i] = current_dist + 1;
+                    q.push({i, true});
+                }
+            }
+        }
+    }
+    
+    for (int i = 0; i < N; i++) {
+        cout << (bessie_dist[i] == INF ? -1 : bessie_dist[i]) << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <map>
+using namespace std;
+
+const int MAXN = 100005;
+
+vector<int> adj[MAXN];
+int in_time[MAXN], out_time[MAXN], timer = 0;
+vector<int> euler(MAXN);
+map<int, vector<int>> color_positions;
+
+void dfs(int node, int parent) {
+    in_time[node] = timer;
+    euler[timer++] = node;
+    for (int neighbor : adj[node]) {
+        if (neighbor != parent) {
+            dfs(neighbor, node);
+        }
+    }
+    out_time[node] = timer - 1;
+}
+
+class FenwickTree {
+public:
+    vector<long long> bit;
+    int n;
+    FenwickTree(int n) : n(n) {
+        bit.assign(n + 1, 0);
+    }
+    void update(int idx, long long delta) {
+        while (idx <= n) {
+            bit[idx] += delta;
+            idx += idx & -idx;
+        }
+    }
+    long long query(int idx) {
+        long long sum = 0;
+        while (idx > 0) {
+            sum += bit[idx];
+            idx -= idx & -idx;
+        }
+        return sum;
+    }
+    long long range_query(int l, int r) {
+        return query(r) - query(l - 1);
+    }
+};
+
+int main() {
+    int N, Q;
+    cin >> N >> Q;
+
+    for (int i = 1; i < N; ++i) {
+        int a, b;
+        cin >> a >> b;
+        adj[a].push_back(b);
+        adj[b].push_back(a);
+    }
+
+    dfs(1, -1);
+
+    FenwickTree fenwick(N);
+    vector<int> colors(MAXN, 0);
+
+    while (Q--) {
+        int type;
+        cin >> type;
+        if (type == 1) {
+            int x, c;
+            cin >> x >> c;
+            int left = in_time[x] + 1;
+            int right = out_time[x] + 1;
+
+            for (int pos : color_positions[c]) {
+                if (left <= pos && pos <= right) {
+                    fenwick.update(pos, -1);
+                }
+            }
+
+            color_positions[c].push_back(left);
+            fenwick.update(left, 1);
+        } else {
+            int x;
+            cin >> x;
+            int left = in_time[x] + 1;
+            int right = out_time[x] + 1;
+            cout << fenwick.range_query(left, right) << endl;
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+class UnionFind {
+public:
+    vector<int> parent, rank, max_dist, end1, end2;
+    UnionFind(int n) {
+        parent.resize(n + 1);
+        rank.resize(n + 1, 0);
+        max_dist.resize(n + 1, 0);
+        end1.resize(n + 1);
+        end2.resize(n + 1);
+        for (int i = 1; i <= n; ++i) {
+            parent[i] = i;
+            end1[i] = end2[i] = i;
+        }
+    }
+
+    int find(int u) {
+        if (u != parent[u]) {
+            parent[u] = find(parent[u]);
+        }
+        return parent[u];
+    }
+
+    void union_sets(int u, int v) {
+        int root_u = find(u);
+        int root_v = find(v);
+
+        if (root_u != root_v) {
+            if (rank[root_u] > rank[root_v]) {
+                swap(root_u, root_v);
+            }
+            parent[root_u] = root_v;
+
+            int possible_dist1 = (max_dist[root_u] + 1) / 2 + (max_dist[root_v] + 1) / 2 + 1;
+            int new_dist = max({max_dist[root_u], max_dist[root_v], possible_dist1});
+
+            max_dist[root_v] = new_dist;
+
+            if (rank[root_u] == rank[root_v]) {
+                rank[root_v]++;
+            }
+        }
+    }
+
+    int get_max_distance(int u) {
+        return max_dist[find(u)];
+    }
+};
+
+int main() {
+    int Q;
+    cin >> Q;
+
+    int barn_count = 0;
+    UnionFind uf(Q); // Maximum of Q barns, since Q operations.
+
+    for (int i = 0; i < Q; ++i) {
+        char type;
+        int x;
+        cin >> type >> x;
+
+        if (type == 'B') {
+            barn_count++;
+            if (x == -1) {
+                // New isolated barn
+            } else {
+                uf.union_sets(barn_count, x);
+            }
+        } else if (type == 'Q') {
+            cout << uf.get_max_distance(x) << endl;
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+const int MOD = 1000000009;
+
+int main() {
+    int N, M, K;
+    cin >> N >> M >> K;
+    
+    vector<int> FJ(N), FP(M);
+    
+    for (int i = 0; i < N; i++) {
+        cin >> FJ[i];
+    }
+    
+    for (int i = 0; i < M; i++) {
+        cin >> FP[i];
+    }
+    
+    sort(FJ.begin(), FJ.end());
+    sort(FP.begin(), FP.end());
+    
+    vector<vector<vector<int>>> dp(N + 1, vector<vector<int>>(M + 1, vector<int>(K + 1, 0)));
+    
+    // Base case: dp[0][0][0] = 1; There is exactly one way to select 0 cows from both teams: by selecting nothing.
+    dp[0][0][0] = 1;
+    
+    for (int i = 0; i <= N; i++) {
+        for (int j = 0; j <= M; j++) {
+            for (int k = 0; k <= K; k++) {
+                if (i > 0) dp[i][j][k] = (dp[i][j][k] + dp[i-1][j][k]) % MOD;
+                if (j > 0) dp[i][j][k] = (dp[i][j][k] + dp[i][j-1][k]) % MOD;
+                if (i > 0 && j > 0 && k > 0 && FJ[i-1] > FP[j-1]) {
+                    dp[i][j][k] = (dp[i][j][k] + dp[i-1][j-1][k-1]) % MOD;
+                }
+            }
+        }
+    }
+    
+    cout << dp[N][M][K] << endl;
+
+    return 0;
+}

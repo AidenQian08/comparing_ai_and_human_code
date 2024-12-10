@@ -1,0 +1,1469 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <map>
+
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<int> a(N), b(N), index(N + 1);
+    
+    for (int i = 0; i < N; ++i) {
+        cin >> a[i];
+    }
+    
+    for (int i = 0; i < N; ++i) {
+        cin >> b[i];
+        index[b[i]] = i;  // store the position of each element in permutation b
+    }
+
+    vector<int> pos_in_b(N);
+    for (int i = 0; i < N; ++i) {
+        pos_in_b[i] = index[a[i]];  // map elements of a to their position in b
+    }
+
+    // Find longest increasing subsequence in pos_in_b
+    vector<int> lis;
+    for (int i = 0; i < N; ++i) {
+        auto it = lower_bound(lis.begin(), lis.end(), pos_in_b[i]);
+        if (it == lis.end()) {
+            lis.push_back(pos_in_b[i]);
+        } else {
+            *it = pos_in_b[i];
+        }
+    }
+
+    cout << lis.size() << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+
+using namespace std;
+
+struct Edge {
+    int u, v, w, id;
+};
+
+struct DSU {
+    vector<int> parent, rank;
+
+    DSU(int n) {
+        parent.resize(n);
+        rank.resize(n, 0);
+        for (int i = 0; i < n; ++i) parent[i] = i;
+    }
+
+    int find(int x) {
+        if (parent[x] == x) return x;
+        return parent[x] = find(parent[x]);
+    }
+
+    bool unite(int x, int y) {
+        x = find(x);
+        y = find(y);
+        if (x != y) {
+            if (rank[x] < rank[y]) swap(x, y);
+            parent[y] = x;
+            if (rank[x] == rank[y]) ++rank[x];
+            return true;
+        }
+        return false;
+    }
+};
+
+int n, m, q;
+vector<Edge> edges;
+vector<vector<int>> queries;
+
+bool check_query(const vector<int>& subset) {
+    DSU dsu(n);
+    set<int> subset_set(subset.begin(), subset.end());
+
+    // Check if all subset edges can be part of MST
+    for (int idx : subset) {
+        Edge& e = edges[idx - 1]; // Convert 1-based index to 0-based
+        dsu.unite(e.u, e.v);
+    }
+
+    // Try to add other edges to complete the MST
+    for (const Edge& e : edges) {
+        if (subset_set.count(e.id) == 0) {
+            dsu.unite(e.u, e.v);
+        }
+    }
+
+    // Check if all vertices are connected
+    int root = dsu.find(0);
+    for (int i = 1; i < n; ++i) {
+        if (dsu.find(i) != root) return false;
+    }
+
+    return true;
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+
+    cin >> n >> m;
+    edges.resize(m);
+
+    for (int i = 0; i < m; ++i) {
+        int u, v, w;
+        cin >> u >> v >> w;
+        edges[i] = {u - 1, v - 1, w, i + 1}; // Convert to 0-based indices
+    }
+
+    cin >> q;
+    queries.resize(q);
+
+    for (int i = 0; i < q; ++i) {
+        int k;
+        cin >> k;
+        queries[i].resize(k);
+        for (int j = 0; j < k; ++j) {
+            cin >> queries[i][j];
+        }
+    }
+
+    for (const auto& query : queries) {
+        if (check_query(query)) {
+            cout << "YES\n";
+        } else {
+            cout << "NO\n";
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int MAXN = 100000;
+
+vector<long long> fib(MAXN + 1, 0);
+
+void precompute_fibonacci() {
+    fib[1] = 1;
+    fib[2] = 1;
+    for (int i = 3; i <= MAXN; i++) {
+        fib[i] = (fib[i - 1] + fib[i - 2]) % MOD;
+    }
+}
+
+class SegmentTree {
+public:
+    SegmentTree(int n) : n(n) {
+        tree.resize(4 * n, 0);
+        lazy.resize(4 * n, 0);
+    }
+
+    void update_range(int l, int r, int x) {
+        update_range(1, 0, n - 1, l, r, x);
+    }
+
+    long long query_range(int l, int r) {
+        return query_range(1, 0, n - 1, l, r);
+    }
+
+private:
+    vector<long long> tree, lazy;
+    int n;
+
+    void propagate(int node, int start, int end) {
+        if (lazy[node] != 0) {
+            tree[node] += lazy[node] * (end - start + 1);
+            tree[node] %= MOD;
+            if (start != end) {
+                lazy[node * 2] += lazy[node];
+                lazy[node * 2 + 1] += lazy[node];
+            }
+            lazy[node] = 0;
+        }
+    }
+
+    void update_range(int node, int start, int end, int l, int r, int x) {
+        propagate(node, start, end);
+        if (start > r || end < l) {
+            return;
+        }
+        if (start >= l && end <= r) {
+            lazy[node] += x;
+            propagate(node, start, end);
+            return;
+        }
+        int mid = (start + end) / 2;
+        update_range(node * 2, start, mid, l, r, x);
+        update_range(node * 2 + 1, mid + 1, end, l, r, x);
+        tree[node] = (tree[node * 2] + tree[node * 2 + 1]) % MOD;
+    }
+
+    long long query_range(int node, int start, int end, int l, int r) {
+        propagate(node, start, end);
+        if (start > r || end < l) {
+            return 0;
+        }
+        if (start >= l && end <= r) {
+            return tree[node] % MOD;
+        }
+        int mid = (start + end) / 2;
+        long long left_query = query_range(node * 2, start, mid, l, r);
+        long long right_query = query_range(node * 2 + 1, mid + 1, end, l, r);
+        return (left_query + right_query) % MOD;
+    }
+};
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+
+    int n, m;
+    cin >> n >> m;
+
+    vector<long long> a(n);
+    for (int i = 0; i < n; i++) {
+        cin >> a[i];
+    }
+
+    precompute_fibonacci();
+    
+    SegmentTree st(n);
+
+    for (int i = 0; i < m; i++) {
+        int tpi, l, r, x;
+        cin >> tpi >> l >> r;
+        if (tpi == 1) {
+            cin >> x;
+            st.update_range(l - 1, r - 1, x);
+        } else if (tpi == 2) {
+            long long result = 0;
+            for (int j = l; j <= r; j++) {
+                result = (result + fib[j]) % MOD;
+            }
+            cout << result << '\n';
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+
+    vector<int> a(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+
+    long long max_score = 0;
+    long long current_score = 0;
+    long long best_prefix_sum = 0;
+    
+    // Iterate through the array to find the best possible score.
+    for (int i = 0; i < n; ++i) {
+        current_score += a[i];
+        best_prefix_sum = max(best_prefix_sum, current_score);
+        if (current_score < 0) current_score = 0;
+    }
+
+    cout << best_prefix_sum << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <algorithm>
+
+using namespace std;
+
+const int MAXN = 100005;
+
+vector<int> tree[MAXN];
+int color[MAXN], answer[MAXN], subtreeSize[MAXN], maxFreq[MAXN];
+unordered_map<int, int> colorCount[MAXN];
+long long colorSum[MAXN];
+
+void dfs(int v, int p) {
+    subtreeSize[v] = 1;
+    colorCount[v][color[v]] = 1;
+    maxFreq[v] = 1;
+    colorSum[v] = color[v];
+
+    for (int u : tree[v]) {
+        if (u == p) continue;
+        dfs(u, v);
+
+        if (subtreeSize[u] > subtreeSize[v]) {
+            swap(colorCount[v], colorCount[u]);
+            swap(maxFreq[v], maxFreq[u]);
+            swap(colorSum[v], colorSum[u]);
+        }
+
+        for (auto& entry : colorCount[u]) {
+            int c = entry.first;
+            int cnt = entry.second;
+            colorCount[v][c] += cnt;
+
+            if (colorCount[v][c] > maxFreq[v]) {
+                maxFreq[v] = colorCount[v][c];
+                colorSum[v] = c;
+            } else if (colorCount[v][c] == maxFreq[v]) {
+                colorSum[v] += c;
+            }
+        }
+    }
+
+    answer[v] = colorSum[v];
+}
+
+int main() {
+    int n;
+    cin >> n;
+
+    for (int i = 1; i <= n; i++) {
+        cin >> color[i];
+    }
+
+    for (int i = 0; i < n - 1; i++) {
+        int x, y;
+        cin >> x >> y;
+        tree[x].push_back(y);
+        tree[y].push_back(x);
+    }
+
+    dfs(1, -1);
+
+    for (int i = 1; i <= n; i++) {
+        cout << answer[i] << " ";
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <iomanip>
+
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    
+    vector<int> houses(n);
+    for (int i = 0; i < n; i++) {
+        cin >> houses[i];
+    }
+    
+    sort(houses.begin(), houses.end());
+    
+    if (n <= 3) {
+        cout << fixed << setprecision(6) << 0.0 << endl;
+        for (int i = 0; i < n; i++) {
+            cout << fixed << setprecision(6) << houses[i] << " ";
+        }
+        for (int i = n; i < 3; i++) {
+            cout << fixed << setprecision(6) << houses[n-1] << " ";
+        }
+        cout << endl;
+        return 0;
+    }
+    
+    double d = max((houses[1] - houses[0]) / 2.0, (houses[n-1] - houses[n-2]) / 2.0);
+    for (int i = 1; i < n - 1; i++) {
+        d = max(d, (houses[i+1] - houses[i]) / 2.0);
+    }
+    
+    cout << fixed << setprecision(6) << d << endl;
+    cout << fixed << setprecision(6) << houses[0] + d << " " 
+         << fixed << setprecision(6) << houses[n / 2] + d << " " 
+         << fixed << setprecision(6) << houses[n-1] - d << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(0);
+    
+    int t;
+    cin >> t;
+    
+    while (t--) {
+        int n, q;
+        cin >> n >> q;
+        
+        vector<int> a(n + 1), sum(n + 1), xor_sum(n + 1);
+        
+        for (int i = 1; i <= n; ++i) {
+            cin >> a[i];
+            sum[i] = sum[i - 1] + a[i];
+            xor_sum[i] = xor_sum[i - 1] ^ a[i];
+        }
+        
+        int L, R;
+        cin >> L >> R;
+        
+        int max_f = -1;
+        int min_length = n;
+        int best_l = L, best_r = L;
+        
+        for (int l = L; l <= R; ++l) {
+            for (int r = l; r <= R; ++r) {
+                int current_sum = sum[r] - sum[l - 1];
+                int current_xor = xor_sum[r] - xor_sum[l - 1];
+                int f_value = current_sum - current_xor;
+                int length = r - l + 1;
+                
+                if (f_value > max_f || (f_value == max_f && length < min_length)) {
+                    max_f = f_value;
+                    min_length = length;
+                    best_l = l;
+                    best_r = r;
+                }
+            }
+        }
+        
+        cout << best_l << " " << best_r << endl;
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <algorithm>
+#include <cmath>
+using namespace std;
+
+int main() {
+    int t;
+    cin >> t;
+    while (t--) {
+        int W, H;
+        cin >> W >> H;
+        int x1, y1, x2, y2;
+        cin >> x1 >> y1 >> x2 >> y2;
+        int w, h;
+        cin >> w >> h;
+
+        int dx = max(0, w - x1) + max(0, x2 + w - W);
+        int dy = max(0, h - y1) + max(0, y2 + h - H);
+        double moveX = dx > 0 ? min(max(0, w - x1), max(0, x2 + w - W)) : 0;
+        double moveY = dy > 0 ? min(max(0, h - y1), max(0, y2 + h - H)) : 0;
+
+        double ans = 1e9;
+
+        if (w <= x1 || w <= W - x2) ans = 0;
+        else ans = min(ans, moveX);
+
+        if (h <= y1 || h <= H - y2) ans = 0;
+        else ans = min(ans, moveY);
+
+        if (w + (x2 - x1) <= W && h + (y2 - y1) <= H) {
+            ans = 0;
+        } else if (w + (x2 - x1) > W && h + (y2 - y1) > H) {
+            cout << "-1\n";
+            continue;
+        }
+        
+        cout << fixed << ans << endl;
+    }
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+typedef long long ll;
+
+ll n;
+int k;
+vector<ll> primes;
+
+ll inclusion_exclusion(int index, ll lcm, int sign) {
+    if (index == k) {
+        if (lcm == 1) return 0;  // no prime numbers selected
+        return sign * (n / lcm);  // return the count of multiples of lcm
+    }
+
+    ll include = inclusion_exclusion(index + 1, lcm * primes[index] / __gcd(lcm, primes[index]), -sign);
+    ll exclude = inclusion_exclusion(index + 1, lcm, sign);
+    return include + exclude;
+}
+
+int main() {
+    cin >> n >> k;
+    primes.resize(k);
+    for (int i = 0; i < k; ++i) {
+        cin >> primes[i];
+    }
+
+    cout << inclusion_exclusion(0, 1, 1) << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <map>
+#include <algorithm>
+using namespace std;
+
+const int MAXN = 200005;
+
+struct Query {
+    int l, r, idx;
+};
+
+int n, q;
+int arr[MAXN], result[MAXN], last_occurrence[MAXN];
+Query queries[MAXN];
+int bit[MAXN];
+
+// Function to update the Binary Indexed Tree
+void update(int idx, int val) {
+    while (idx <= n) {
+        bit[idx] += val;
+        idx += idx & -idx;
+    }
+}
+
+// Function to get the sum from 1 to idx in the Binary Indexed Tree
+int query(int idx) {
+    int sum = 0;
+    while (idx > 0) {
+        sum += bit[idx];
+        idx -= idx & -idx;
+    }
+    return sum;
+}
+
+// Mo's algorithm like sorting by the right value of each query
+bool cmp(Query &a, Query &b) {
+    return a.r < b.r;
+}
+
+int main() {
+    cin >> n >> q;
+    for (int i = 1; i <= n; ++i) {
+        cin >> arr[i];
+    }
+
+    for (int i = 0; i < q; ++i) {
+        cin >> queries[i].l >> queries[i].r;
+        queries[i].idx = i;
+    }
+
+    // Sort queries by their right value
+    sort(queries, queries + q, cmp);
+
+    // Initialize last occurrence and Binary Indexed Tree
+    fill(last_occurrence, last_occurrence + MAXN, -1);
+
+    int cur_r = 0;
+
+    // Process each query
+    for (int i = 0; i < q; ++i) {
+        int l = queries[i].l, r = queries[i].r, idx = queries[i].idx;
+
+        // Process the current range
+        while (cur_r < r) {
+            cur_r++;
+            if (last_occurrence[arr[cur_r]] != -1) {
+                update(last_occurrence[arr[cur_r]], -1);
+            }
+            last_occurrence[arr[cur_r]] = cur_r;
+            update(cur_r, 1);
+        }
+
+        result[idx] = query(r) - query(l - 1);
+    }
+
+    // Output the result for each query
+    for (int i = 0; i < q; ++i) {
+        cout << result[queries[i].idx] << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+using namespace std;
+
+const int INF = 1e9;
+
+int n, m;
+vector<int> adj[2505];
+
+int bfs(int start) {
+    vector<int> dist(n + 1, INF);
+    queue<int> q;
+    dist[start] = 0;
+    q.push(start);
+
+    int min_cycle = INF;
+
+    while (!q.empty()) {
+        int node = q.front();
+        q.pop();
+
+        for (int neighbor : adj[node]) {
+            if (dist[neighbor] == INF) {
+                dist[neighbor] = dist[node] + 1;
+                q.push(neighbor);
+            } else if (dist[neighbor] >= dist[node]) {
+                min_cycle = min(min_cycle, dist[node] + dist[neighbor] + 1);
+            }
+        }
+    }
+
+    return min_cycle;
+}
+
+int main() {
+    cin >> n >> m;
+    for (int i = 0; i < m; ++i) {
+        int a, b;
+        cin >> a >> b;
+        adj[a].push_back(b);
+        adj[b].push_back(a);
+    }
+
+    int girth = INF;
+    for (int i = 1; i <= n; ++i) {
+        girth = min(girth, bfs(i));
+    }
+
+    if (girth == INF) {
+        cout << -1 << endl;
+    } else {
+        cout << girth << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <set>
+#include <map>
+using namespace std;
+
+int main() {
+    int x, n;
+    cin >> x >> n;
+
+    set<int> lights;
+    map<int, int> gaps;
+
+    lights.insert(0);
+    lights.insert(x);
+    gaps[x] = 1;
+
+    for (int i = 0; i < n; ++i) {
+        int p;
+        cin >> p;
+
+        auto it = lights.lower_bound(p);
+        int right = *it;
+        int left = *prev(it);
+
+        // Remove the old gap
+        gaps[right - left]--;
+        if (gaps[right - left] == 0) {
+            gaps.erase(right - left);
+        }
+
+        // Add the new gaps
+        gaps[right - p]++;
+        gaps[p - left]++;
+
+        // Insert the new light
+        lights.insert(p);
+
+        // Output the largest gap
+        cout << gaps.rbegin()->first << " ";
+    }
+    cout << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+using namespace std;
+
+struct Movie {
+    int start, end;
+};
+
+bool compareMovies(const Movie &a, const Movie &b) {
+    return a.end < b.end;
+}
+
+int main() {
+    int n, k;
+    cin >> n >> k;
+
+    vector<Movie> movies(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> movies[i].start >> movies[i].end;
+    }
+
+    sort(movies.begin(), movies.end(), compareMovies);
+
+    multiset<int> endTimes;
+    for (int i = 0; i < k; ++i) {
+        endTimes.insert(0);  // All members start free at time 0
+    }
+
+    int count = 0;
+    for (const auto &movie : movies) {
+        auto it = endTimes.upper_bound(movie.start);
+        if (it != endTimes.begin()) {
+            --it;
+            endTimes.erase(it);
+            endTimes.insert(movie.end);
+            ++count;
+        }
+    }
+
+    cout << count << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <climits>
+
+using namespace std;
+
+struct Cow {
+    int s, t, c;  // start stall, end stall, required cooling
+};
+
+struct AirConditioner {
+    int a, b, p, m;  // start stall, end stall, cooling power, cost
+};
+
+int N, M;
+vector<Cow> cows;
+vector<AirConditioner> airConditioners;
+
+// Function to check if the current set of air conditioners satisfies all cows
+bool isCoolingSufficient(vector<int>& cooling) {
+    for (const auto& cow : cows) {
+        for (int i = cow.s; i <= cow.t; ++i) {
+            if (cooling[i] < cow.c) {
+                return false;  // Not enough cooling for this cow
+            }
+        }
+    }
+    return true;
+}
+
+int main() {
+    cin >> N >> M;
+
+    cows.resize(N);
+    airConditioners.resize(M);
+
+    for (int i = 0; i < N; ++i) {
+        cin >> cows[i].s >> cows[i].t >> cows[i].c;
+    }
+
+    for (int i = 0; i < M; ++i) {
+        cin >> airConditioners[i].a >> airConditioners[i].b >> airConditioners[i].p >> airConditioners[i].m;
+    }
+
+    int minCost = INT_MAX;
+
+    // Try all possible subsets of air conditioners using bitmasking
+    for (int mask = 0; mask < (1 << M); ++mask) {
+        vector<int> cooling(101, 0);  // cooling array for all 100 stalls
+        int cost = 0;
+
+        for (int i = 0; i < M; ++i) {
+            if (mask & (1 << i)) {
+                // This air conditioner is used
+                cost += airConditioners[i].m;
+                for (int j = airConditioners[i].a; j <= airConditioners[i].b; ++j) {
+                    cooling[j] += airConditioners[i].p;
+                }
+            }
+        }
+
+        if (isCoolingSufficient(cooling)) {
+            minCost = min(minCost, cost);
+        }
+    }
+
+    cout << minCost << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<int> degree(N + 1, 0);  // To store the degree of each node
+    for (int i = 0; i < N - 1; ++i) {
+        int u, v;
+        cin >> u >> v;
+        degree[u]++;
+        degree[v]++;
+    }
+
+    // The minimum number of grass types required is the maximum degree of any node plus 1
+    // because each node's adjacent and nearly-adjacent nodes need different grass types.
+    int max_degree = *max_element(degree.begin(), degree.end());
+    cout << max_degree + 1 << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+// Function to calculate the difference between two teams
+int difference(const string& a, const string& b) {
+    int diff = 0;
+    for (int i = 0; i < a.size(); ++i) {
+        if (a[i] != b[i]) {
+            ++diff;
+        }
+    }
+    return diff;
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+
+    int C, N;
+    cin >> C >> N;
+
+    vector<string> teams(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> teams[i];
+    }
+
+    // For each team, find the maximum difference with other teams
+    for (int i = 0; i < N; ++i) {
+        int max_diff = 0;
+        for (int j = 0; j < N; ++j) {
+            if (i != j) {
+                max_diff = max(max_diff, difference(teams[i], teams[j]));
+            }
+        }
+        cout << max_diff << '\n';
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <cmath>
+using namespace std;
+
+// Sieve of Eratosthenes to generate prime numbers up to a given limit
+vector<int> sieve(int limit) {
+    vector<bool> is_prime(limit + 1, true);
+    is_prime[0] = is_prime[1] = false;
+    for (int i = 2; i * i <= limit; ++i) {
+        if (is_prime[i]) {
+            for (int j = i * i; j <= limit; j += i) {
+                is_prime[j] = false;
+            }
+        }
+    }
+    vector<int> primes;
+    for (int i = 2; i <= limit; ++i) {
+        if (is_prime[i]) {
+            primes.push_back(i);
+        }
+    }
+    return primes;
+}
+
+// Grundy number for a room with n cows
+int grundy(int n, const vector<int>& primes) {
+    if (n == 0) return 0;
+    if (n == 1) return 1;
+    for (int p : primes) {
+        if (p > n) break;
+        if (n % p == 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// Determine the game result for one test case
+string game_result(const vector<int>& rooms, const vector<int>& primes) {
+    int xor_sum = 0;
+    for (int cows : rooms) {
+        xor_sum ^= grundy(cows, primes);
+    }
+    return xor_sum == 0 ? "Farmer Nhoj" : "Farmer John";
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    int t;
+    cin >> t;
+
+    vector<int> primes = sieve(1000); // Generate primes up to 1000
+
+    while (t--) {
+        int n;
+        cin >> n;
+        vector<int> rooms(n);
+        for (int i = 0; i < n; ++i) {
+            cin >> rooms[i];
+        }
+        cout << game_result(rooms, primes) << "\n";
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+const int MOD = 12;
+
+int N;
+vector<int> clocks;
+vector<vector<int>> adj;
+vector<bool> visited;
+
+void dfs(int node, int parent, int& odd_count, int& even_count, int depth) {
+    visited[node] = true;
+    if (depth % 2 == 0) {
+        even_count += (12 - clocks[node]) % 12;
+    } else {
+        odd_count += (12 - clocks[node]) % 12;
+    }
+    for (int neighbor : adj[node]) {
+        if (!visited[neighbor]) {
+            dfs(neighbor, node, odd_count, even_count, depth + 1);
+        }
+    }
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(0);
+
+    cin >> N;
+    clocks.resize(N);
+    adj.resize(N);
+    visited.resize(N);
+
+    // Read the initial clock settings.
+    for (int i = 0; i < N; ++i) {
+        cin >> clocks[i];
+        clocks[i] %= MOD;
+    }
+
+    // Read the edges (corridors between rooms).
+    for (int i = 0; i < N - 1; ++i) {
+        int a, b;
+        cin >> a >> b;
+        --a, --b;  // Converting to 0-based indexing
+        adj[a].push_back(b);
+        adj[b].push_back(a);
+    }
+
+    // We will perform a DFS from any arbitrary node, here node 0.
+    int odd_count = 0, even_count = 0;
+    dfs(0, -1, odd_count, even_count, 0);
+
+    odd_count %= MOD;
+    even_count %= MOD;
+
+    // Now check the conditions based on the sums for odd and even levels.
+    if (odd_count == even_count) {
+        // All rooms can potentially be the starting point.
+        cout << N << '\n';
+    } else if ((odd_count + 1) % MOD == even_count) {
+        // Only even-indexed rooms can be the starting point.
+        cout << 1 << '\n';
+    } else if ((even_count + 1) % MOD == odd_count) {
+        // Only odd-indexed rooms can be the starting point.
+        cout << N - 1 << '\n';
+    } else {
+        // No valid starting point exists.
+        cout << 0 << '\n';
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <map>
+#include <algorithm>
+using namespace std;
+
+const int MAX_COMBINATIONS = 32; // 2^5 combinations of subsets of a set of size 5
+typedef long long ll;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<vector<int>> cows(N, vector<int>(5));
+    map<vector<int>, ll> subset_count;
+    
+    // Read cow favorite flavors
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < 5; ++j) {
+            cin >> cows[i][j];
+        }
+        // Sort each cow's list of flavors so that we can generate subsets in a deterministic order
+        sort(cows[i].begin(), cows[i].end());
+        
+        // Generate all subsets of size 1 to 5 for each cow and count occurrences of each subset
+        for (int mask = 1; mask < MAX_COMBINATIONS; ++mask) {
+            vector<int> subset;
+            for (int j = 0; j < 5; ++j) {
+                if (mask & (1 << j)) {
+                    subset.push_back(cows[i][j]);
+                }
+            }
+            subset_count[subset]++;
+        }
+    }
+
+    ll total_pairs = (ll)N * (N - 1) / 2; // Total number of pairs of cows
+    ll compatible_pairs = 0;
+
+    // Calculate the number of compatible pairs using inclusion-exclusion principle
+    for (const auto& entry : subset_count) {
+        ll cnt = entry.second;
+        int size_of_subset = entry.first.size();
+        if (size_of_subset % 2 == 1) {
+            compatible_pairs += cnt * (cnt - 1) / 2;
+        } else {
+            compatible_pairs -= cnt * (cnt - 1) / 2;
+        }
+    }
+
+    // The number of non-compatible pairs is total pairs minus compatible pairs
+    cout << total_pairs - compatible_pairs << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+// Helper function to calculate factorial modulo MOD
+vector<long long> factorial;
+void calculate_factorial(int maxN) {
+    factorial.resize(maxN + 1);
+    factorial[0] = 1;
+    for (int i = 1; i <= maxN; ++i) {
+        factorial[i] = factorial[i - 1] * i % MOD;
+    }
+}
+
+// Function to calculate modular inverse using Fermat's Little Theorem
+long long mod_inverse(long long x, long long mod) {
+    long long result = 1, exp = mod - 2;
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = result * x % mod;
+        }
+        x = x * x % mod;
+        exp /= 2;
+    }
+    return result;
+}
+
+// Function to calculate nCr modulo MOD
+long long nCr(int n, int r, int mod) {
+    if (r > n) return 0;
+    return factorial[n] * mod_inverse(factorial[r], mod) % mod * mod_inverse(factorial[n - r], mod) % mod;
+}
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<int> A(N);
+    long long total_moves = 0;
+    for (int i = 0; i < N; ++i) {
+        cin >> A[i];
+        total_moves += A[i];
+    }
+
+    // Calculate factorials up to the total number of moves
+    calculate_factorial(total_moves);
+
+    // Initialize dp table to store the number of valid routes with minimum direction changes
+    vector<vector<long long>> dp(N + 1, vector<long long>(total_moves + 1, 0));
+    dp[0][0] = 1;
+
+    // Iterate over each level and calculate the number of valid routes for each possible remaining moves
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j <= total_moves; ++j) {
+            if (dp[i][j] == 0) continue;
+
+            // Go left or right from the current position
+            for (int moves = 0; moves <= A[i]; ++moves) {
+                dp[i + 1][j + moves] = (dp[i + 1][j + moves] + dp[i][j] * nCr(A[i], moves, MOD) % MOD) % MOD;
+            }
+        }
+    }
+
+    // Output the result for the minimum number of direction changes
+    cout << dp[N][total_moves] % MOD << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+using namespace std;
+
+using ll = long long;
+
+int main() {
+    ll l, r;
+    int q;
+    cin >> l >> r >> q;
+    vector<pair<char, string>> ops(q);
+    for (int i = 0; i < q; ++i) {
+        cin >> ops[i].first >> ops[i].second;
+    }
+
+    // Start with initial string "a"
+    string cur = "a";
+    vector<ll> lengths = {1};  // Track the length of the string over time
+
+    // Simulate the operations to calculate lengths
+    for (int i = 0; i < q; ++i) {
+        string temp;
+        map<char, string> replacements;
+        for (char c = 'a'; c <= 'z'; ++c) {
+            replacements[c] = string(1, c);
+        }
+
+        replacements[ops[i].first] = ops[i].second;
+        ll new_len = 0;
+
+        for (char c : cur) {
+            new_len += replacements[c].size();
+        }
+        lengths.push_back(new_len);
+        cur = replacements[cur[0]];
+    }
+
+    // Output the result
+    string result = cur.substr(l - 1, r - l + 1);
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<pair<int, int>> segments(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> segments[i].first >> segments[i].second;
+    }
+
+    // Sort segments by their left endpoint
+    sort(segments.begin(), segments.end());
+
+    // Calculate powers of 2 modulo MOD
+    vector<long long> pow2(N + 1);
+    pow2[0] = 1;
+    for (int i = 1; i <= N; ++i) {
+        pow2[i] = (pow2[i - 1] * 2) % MOD;
+    }
+
+    // Calculate the sum of complexities
+    long long total_sum = 0;
+
+    // For each subset of segments
+    for (int mask = 1; mask < (1 << N); ++mask) {
+        int complexity = 1;  // Initial complexity is 1 for a non-empty subset
+        int max_right = -1;  // Track the maximum right endpoint seen so far
+
+        // Iterate over each segment
+        for (int i = 0; i < N; ++i) {
+            if (mask & (1 << i)) {
+                // If the segment intersects with the previous, complexity doesn't increase
+                if (segments[i].first > max_right) {
+                    complexity++;  // We found a new region
+                }
+                max_right = max(max_right, segments[i].second);  // Update the max right endpoint
+            }
+        }
+
+        total_sum = (total_sum + complexity) % MOD;
+    }
+
+    cout << total_sum << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <iomanip>
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+    vector<double> f(N + 2, 0); // f(0) = 0 and f(N+1) = 0 are implicit
+    vector<double> E(N + 2, 0); // E stores the expected values
+
+    // Reading f(1), ..., f(N)
+    for (int i = 1; i <= N; ++i) {
+        cin >> f[i];
+    }
+
+    // We will solve for expected values starting from N-1 backwards
+    for (int i = N; i >= 1; --i) {
+        // Optimal strategy: either jump and get f(i) or flip a coin
+        E[i] = max(f[i], 0.5 * (E[i - 1] + E[i + 1]));
+    }
+
+    // Output 1e5 * expected value for each position rounded down
+    for (int i = 1; i <= N; ++i) {
+        cout << static_cast<long long>(E[i] * 1e5) << "\n";
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+const ll INF = 1e18;
+
+struct Slingshot {
+    ll x, y, t;
+};
+
+struct Manure {
+    ll a, b;
+};
+
+int main() {
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+    
+    int N, M;
+    cin >> N >> M;
+    
+    vector<Slingshot> slingshots(N);
+    vector<Manure> manure(M);
+    
+    for (int i = 0; i < N; ++i) {
+        cin >> slingshots[i].x >> slingshots[i].y >> slingshots[i].t;
+    }
+    
+    for (int i = 0; i < M; ++i) {
+        cin >> manure[i].a >> manure[i].b;
+    }
+
+    // Process each manure pile
+    for (int i = 0; i < M; ++i) {
+        ll a = manure[i].a;
+        ll b = manure[i].b;
+        
+        // Best time without slingshot
+        ll best_time = abs(b - a);
+
+        // Check using slingshot
+        for (int j = 0; j < N; ++j) {
+            ll time_via_sling = abs(a - slingshots[j].x) + slingshots[j].t + abs(b - slingshots[j].y);
+            best_time = min(best_time, time_via_sling);
+        }
+
+        cout << best_time << "\n";
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+
+const int MAXN = 100000;
+int N, K;
+int side1[MAXN+1], side2[MAXN+1], pos1[MAXN+1], pos2[MAXN+1];
+int bit[MAXN+1];
+
+void update(int idx, int val) {
+    while (idx <= N) {
+        bit[idx] += val;
+        idx += idx & -idx;
+    }
+}
+
+int query(int idx) {
+    int sum = 0;
+    while (idx > 0) {
+        sum += bit[idx];
+        idx -= idx & -idx;
+    }
+    return sum;
+}
+
+int main() {
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+
+    cin >> N >> K;
+
+    for (int i = 1; i <= N; ++i) {
+        cin >> side1[i];
+        pos1[side1[i]] = i;
+    }
+
+    for (int i = 1; i <= N; ++i) {
+        cin >> side2[i];
+        pos2[side2[i]] = i;
+    }
+
+    vector<pair<int, int>> pairs;
+    for (int i = 1; i <= N; ++i) {
+        for (int j = i + 1; j <= N; ++j) {
+            if (abs(side1[i] - side1[j]) > K) {
+                pairs.push_back({side1[i], side1[j]});
+            }
+        }
+    }
+
+    ll unfriendly_pairs = 0;
+
+    sort(pairs.begin(), pairs.end(), [](pair<int, int>& a, pair<int, int>& b) {
+        return pos2[a.first] < pos2[b.first];
+    });
+
+    for (auto& p : pairs) {
+        int breed1 = p.first, breed2 = p.second;
+        if (pos2[breed1] > pos2[breed2]) {
+            unfriendly_pairs++;
+        }
+    }
+
+    cout << unfriendly_pairs << "\n";
+
+    return 0;
+}

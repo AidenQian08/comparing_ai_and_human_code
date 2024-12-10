@@ -1,0 +1,891 @@
+def at_most_k_distinct(arr, k):
+    from collections import defaultdict
+
+    def count_subarrays_with_at_most_k(arr, k):
+        count = defaultdict(int)
+        l = 0
+        res = 0
+        for r in range(len(arr)):
+            if count[arr[r]] == 0:
+                k -= 1
+            count[arr[r]] += 1
+
+            while k < 0:
+                count[arr[l]] -= 1
+                if count[arr[l]] == 0:
+                    k += 1
+                l += 1
+            
+            res += r - l + 1
+        return res
+
+    return count_subarrays_with_at_most_k(arr, k)
+
+# Input reading
+import sys
+input = sys.stdin.read
+data = input().split()
+n = int(data[0])
+k = int(data[1])
+arr = list(map(int, data[2:]))
+
+# Calculate the number of subarrays with at most k distinct values
+result = at_most_k_distinct(arr, k)
+print(result)
+
+New Solution
+
+def count_valid_bracket_sequences(n):
+    if n % 2 != 0:
+        return 0  # If n is odd, it's not possible to have valid sequences
+    
+    # Using a modulo as specified in the problem statement
+    MOD = 10**9 + 7
+    
+    # Using dynamic programming to compute the Catalan number for n/2
+    catalan = [0] * (n//2 + 1)
+    catalan[0] = 1
+    
+    for i in range(1, n//2 + 1):
+        catalan[i] = (catalan[i-1] * (2*(2*i-1)) // (i+1)) % MOD
+    
+    return catalan[n//2]
+
+# Reading input
+import sys
+input = sys.stdin.read
+n = int(input().strip())
+
+# Output the number of valid bracket sequences
+print(count_valid_bracket_sequences(n))
+
+New Solution
+
+def find_teleportation_counts(n, teleporters):
+    # Array to store the result for each planet
+    result = [0] * n
+    
+    # Array to check if the planet's result has been computed
+    visited = [-1] * n
+    
+    for i in range(n):
+        if visited[i] == -1:
+            current = i
+            count = 0
+            path = []
+            
+            # Traverse until a cycle is found or we reach a computed planet
+            while visited[current] == -1:
+                path.append(current)
+                visited[current] = i  # Mark this node with current planet id
+                current = teleporters[current] - 1
+                count += 1
+            
+            # If the current is part of a cycle we started
+            if visited[current] == i:
+                cycle_length = 0
+                while path[-1] != current:
+                    cycle_length += 1
+                    result[path.pop()] = count
+                    count -= 1
+                
+                cycle_length += 1
+                while path:
+                    result[path.pop()] = cycle_length
+            else:
+                # Propagate the results backwards if no cycle
+                while path:
+                    result[path.pop()] = result[current] + count
+                    count -= 1
+    
+    return result
+
+# Input reading
+n = int(input())
+teleporters = list(map(int, input().split()))
+
+# Get results
+results = find_teleportation_counts(n, teleporters)
+
+# Output the results
+print(" ".join(map(str, results)))
+
+New Solution
+
+MOD = 10**9 + 7
+
+def mod_exp(a, b, c, mod):
+    if a == 0:
+        return 0
+    if b == 0 and c == 0:
+        return 1
+    
+    exp = pow(b, c, mod - 1)  # Compute b^c % (mod-1)
+    return pow(a, exp, mod)    # Compute a^exp % mod
+
+n = int(input())
+results = []
+for _ in range(n):
+    a, b, c = map(int, input().split())
+    results.append(mod_exp(a, b, c, MOD))
+
+# Output all results
+print("\n".join(map(str, results)))
+
+New Solution
+
+import sys
+sys.setrecursionlimit(200000)
+from collections import defaultdict, deque
+
+def dfs(v):
+    visited[v] = 1
+    stack.append(v)
+    for u in graph[v]:
+        if visited[u] == 0:
+            if dfs(u):
+                return True
+        elif visited[u] == 1:
+            # A cycle is detected
+            start = u
+            cycle = []
+            while stack[-1] != start:
+                cycle.append(stack.pop())
+            cycle.append(start)
+            cycle.append(stack.pop())
+            cycle.reverse()
+            print(len(cycle))
+            print(" ".join(map(str, cycle)))
+            return True
+    visited[v] = 2
+    stack.pop()
+    return False
+
+n, m = map(int, input().split())
+graph = defaultdict(list)
+
+for _ in range(m):
+    a, b = map(int, input().split())
+    graph[a].append(b)
+
+visited = [0] * (n + 1)
+stack = []
+
+for i in range(1, n + 1):
+    if visited[i] == 0:
+        if dfs(i):
+            sys.exit(0)
+
+print("IMPOSSIBLE")
+
+New Solution
+
+class UnionFind:
+    def __init__(self, n):
+        self.parent = list(range(n))
+        self.rank = [0] * n
+
+    def find(self, x):
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x, y):
+        rootX = self.find(x)
+        rootY = self.find(y)
+        if rootX != rootY:
+            if self.rank[rootX] > self.rank[rootY]:
+                self.parent[rootY] = rootX
+            elif self.rank[rootX] < self.rank[rootY]:
+                self.parent[rootX] = rootY
+            else:
+                self.parent[rootY] = rootX
+                self.rank[rootX] += 1
+            return True
+        return False
+
+def minimum_repair_cost(n, roads):
+    roads.sort(key=lambda x: x[2])  # Sort by cost
+    uf = UnionFind(n)
+    total_cost = 0
+    edges_used = 0
+
+    for a, b, cost in roads:
+        if uf.union(a - 1, b - 1):  # Union the cities (0-indexed)
+            total_cost += cost
+            edges_used += 1
+        if edges_used == n - 1:  # Early stopping if MST is formed
+            return total_cost
+
+    return "IMPOSSIBLE" if edges_used < n - 1 else total_cost
+
+# Example usage:
+n, m = 5, 6
+roads = [
+    (1, 2, 3),
+    (2, 3, 5),
+    (2, 4, 2),
+    (3, 4, 8),
+    (5, 1, 7),
+    (5, 4, 4),
+]
+print(minimum_repair_cost(n, roads))  # Output should be 14
+
+New Solution
+
+from collections import deque
+
+def is_bipartite(n, friendships):
+    # Adjacency list for the graph
+    adj = [[] for _ in range(n)]
+    
+    for a, b in friendships:
+        adj[a - 1].append(b - 1)
+        adj[b - 1].append(a - 1)
+    
+    # To store team assignments: 0 = unvisited, 1 = team 1, 2 = team 2
+    team = [0] * n
+    
+    def bfs(start):
+        queue = deque([start])
+        team[start] = 1  # Start with team 1
+        
+        while queue:
+            node = queue.popleft()
+            current_team = team[node]
+            next_team = 2 if current_team == 1 else 1
+            
+            for neighbor in adj[node]:
+                if team[neighbor] == 0:  # Not yet visited
+                    team[neighbor] = next_team
+                    queue.append(neighbor)
+                elif team[neighbor] == current_team:
+                    return False
+        return True
+    
+    # Try to color each connected component
+    for i in range(n):
+        if team[i] == 0:  # Not visited yet
+            if not bfs(i):
+                return "IMPOSSIBLE"
+    
+    return " ".join(map(str, team))
+
+# Example usage:
+n, m = 5, 3
+friendships = [(1, 2), (1, 3), (4, 5)]
+print(is_bipartite(n, friendships))  # Output should be a valid assignment like "1 2 2 1 2"
+
+New Solution
+
+def count_subarrays_with_sum(n, x, arr):
+    prefix_sum = 0
+    prefix_counts = {0: 1}
+    count = 0
+    
+    for num in arr:
+        prefix_sum += num
+        if prefix_sum - x in prefix_counts:
+            count += prefix_counts[prefix_sum - x]
+        
+        if prefix_sum in prefix_counts:
+            prefix_counts[prefix_sum] += 1
+        else:
+            prefix_counts[prefix_sum] = 1
+            
+    return count
+
+# Example usage:
+n = 5
+x = 7
+arr = [2, 4, 1, 2, 7]
+print(count_subarrays_with_sum(n, x, arr))  # Output: 3
+
+New Solution
+
+def count_trees_in_rectangles(n, q, forest, queries):
+    # Create a prefix sum array
+    prefix = [[0] * (n + 1) for _ in range(n + 1)]
+    
+    # Build the 2D prefix sum array
+    for i in range(1, n + 1):
+        for j in range(1, n + 1):
+            prefix[i][j] = (1 if forest[i-1][j-1] == '*' else 0) \
+                            + prefix[i-1][j] \
+                            + prefix[i][j-1] \
+                            - prefix[i-1][j-1]
+    
+    results = []
+    for y1, x1, y2, x2 in queries:
+        trees = prefix[y2][x2] - prefix[y1-1][x2] - prefix[y2][x1-1] + prefix[y1-1][x1-1]
+        results.append(trees)
+    
+    return results
+
+# Example usage:
+n = 4
+q = 3
+forest = [
+    ".*..",
+    "*.**",
+    "**..",
+    "****"
+]
+queries = [(2, 2, 3, 4), (3, 1, 3, 1), (1, 1, 2, 2)]
+
+result = count_trees_in_rectangles(n, q, forest, queries)
+for r in result:
+    print(r)
+
+New Solution
+
+def find_two_values(n, x, a):
+    # Create a dictionary to store the index of each element
+    index_map = {}
+    
+    for i in range(n):
+        complement = x - a[i]
+        if complement in index_map:
+            # We found the pair that sums to x
+            return index_map[complement] + 1, i + 1
+        index_map[a[i]] = i
+    
+    # If no pair is found, return "IMPOSSIBLE"
+    return "IMPOSSIBLE"
+
+# Example usage:
+n, x = 4, 8
+a = [2, 7, 5, 1]
+result = find_two_values(n, x, a)
+print(result)  # Output should be (2, 4)
+
+New Solution
+
+def min_difference(n, weights):
+    total_sum = sum(weights)
+    min_diff = float('inf')
+
+    # Iterate over all possible subsets using bitmasking
+    for i in range(1 << n):
+        subset_sum = 0
+        for j in range(n):
+            if i & (1 << j):
+                subset_sum += weights[j]
+        # Calculate the difference between the two groups
+        diff = abs((total_sum - subset_sum) - subset_sum)
+        min_diff = min(min_diff, diff)
+
+    return min_diff
+
+# Example usage:
+n = 5
+weights = [3, 2, 7, 4, 1]
+result = min_difference(n, weights)
+print(result)  # Output should be 1
+
+New Solution
+
+from itertools import permutations
+
+def generate_unique_permutations(s):
+    # Generate all permutations
+    perms = sorted(set(''.join(p) for p in permutations(s)))
+    
+    # Print the number of unique permutations
+    print(len(perms))
+    
+    # Print each unique permutation
+    for perm in perms:
+        print(perm)
+
+# Example usage
+s = "aabac"
+generate_unique_permutations(s)
+
+New Solution
+
+def paint_barn(n, k, rectangles):
+    # Initialize the difference array
+    diff = [[0] * 1002 for _ in range(1002)]
+    
+    # Apply the difference array technique
+    for x1, y1, x2, y2 in rectangles:
+        diff[x1][y1] += 1
+        diff[x2][y1] -= 1
+        diff[x1][y2] -= 1
+        diff[x2][y2] += 1
+    
+    # Calculate the prefix sum to determine coats of paint
+    count = 0
+    coats = [[0] * 1001 for _ in range(1001)]
+    for i in range(1001):
+        for j in range(1001):
+            if i > 0:
+                diff[i][j] += diff[i-1][j]
+            if j > 0:
+                diff[i][j] += diff[i][j-1]
+            if i > 0 and j > 0:
+                diff[i][j] -= diff[i-1][j-1]
+            coats[i][j] = diff[i][j]
+            if coats[i][j] == k:
+                count += 1
+    
+    return count
+
+# Example input
+n = 3
+k = 2
+rectangles = [(1, 1, 5, 5), (4, 4, 7, 6), (3, 3, 8, 7)]
+print(paint_barn(n, k, rectangles))  # Output should be 8
+
+New Solution
+
+def flood_fill(grid, x, y, n, visited):
+    stack = [(x, y)]
+    area = 0
+    perimeter = 0
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    
+    while stack:
+        cx, cy = stack.pop()
+        if visited[cx][cy]:
+            continue
+        
+        visited[cx][cy] = True
+        area += 1
+        local_perimeter = 0
+        
+        for dx, dy in directions:
+            nx, ny = cx + dx, cy + dy
+            if 0 <= nx < n and 0 <= ny < n:
+                if grid[nx][ny] == '#':
+                    if not visited[nx][ny]:
+                        stack.append((nx, ny))
+                else:
+                    local_perimeter += 1
+            else:
+                local_perimeter += 1
+                
+        perimeter += local_perimeter
+    
+    return area, perimeter
+
+def find_largest_blob(grid, n):
+    visited = [[False] * n for _ in range(n)]
+    max_area = 0
+    min_perimeter = float('inf')
+    
+    for i in range(n):
+        for j in range(n):
+            if grid[i][j] == '#' and not visited[i][j]:
+                area, perimeter = flood_fill(grid, i, j, n, visited)
+                if area > max_area or (area == max_area and perimeter < min_perimeter):
+                    max_area = area
+                    min_perimeter = perimeter
+    
+    return max_area, min_perimeter
+
+# Example usage:
+n = 6
+grid = [
+    "##....",
+    "....#.",
+    ".#..#.",
+    ".#####",
+    "...###",
+    "....##"
+]
+
+area, perimeter = find_largest_blob(grid, n)
+print(area, perimeter)  # Output should be 13 22
+
+New Solution
+
+def find_cycles(shuffle, n):
+    visited = [False] * n
+    in_cycle = [False] * n
+    
+    def dfs(node):
+        cycle = []
+        while not visited[node]:
+            visited[node] = True
+            cycle.append(node)
+            node = shuffle[node]
+        
+        # Check if we found a cycle
+        if node in cycle:
+            cycle_start = cycle.index(node)
+            for i in range(cycle_start, len(cycle)):
+                in_cycle[cycle[i]] = True
+
+    for i in range(n):
+        if not visited[i]:
+            dfs(i)
+
+    return sum(in_cycle)
+
+# Example usage:
+n = 4
+shuffle = [3, 2, 1, 3]  # Input shuffle should be 0-indexed
+shuffle = [x-1 for x in shuffle]  # Convert to 0-indexed
+print(find_cycles(shuffle, n))  # Output should be 3
+
+New Solution
+
+def find_min_k(mailboxes):
+    n = len(mailboxes)
+    for k in range(1, n + 1):
+        seen = set()
+        unique = True
+        for i in range(n - k + 1):
+            substring = mailboxes[i:i + k]
+            if substring in seen:
+                unique = False
+                break
+            seen.add(substring)
+        if unique:
+            return k
+    return n
+
+# Example usage
+N = 7
+mailboxes = "ABCDABC"
+print(find_min_k(mailboxes))  # Output: 4
+
+New Solution
+
+def compute_tarp_area(lm_x1, lm_y1, lm_x2, lm_y2, cf_x1, cf_y1, cf_x2, cf_y2):
+    # Calculate the area of the lawnmower billboard
+    lm_area = (lm_x2 - lm_x1) * (lm_y2 - lm_y1)
+    
+    # Find the overlapping coordinates
+    overlap_x1 = max(lm_x1, cf_x1)
+    overlap_y1 = max(lm_y1, cf_y1)
+    overlap_x2 = min(lm_x2, cf_x2)
+    overlap_y2 = min(lm_y2, cf_y2)
+    
+    # Calculate the overlapping area
+    if overlap_x1 < overlap_x2 and overlap_y1 < overlap_y2:
+        overlap_area = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
+    else:
+        overlap_area = 0
+    
+    # The exposed area is the total area minus the overlapping area
+    exposed_area = lm_area - overlap_area
+    return exposed_area
+
+# Example usage:
+lm_x1, lm_y1, lm_x2, lm_y2 = 2, 1, 7, 4
+cf_x1, cf_y1, cf_x2, cf_y2 = 5, -1, 10, 3
+print(compute_tarp_area(lm_x1, lm_y1, lm_x2, lm_y2, cf_x1, cf_y1, cf_x2, cf_y2))  # Output: 15
+
+New Solution
+
+def calculate_visible_area(x1, y1, x2, y2, truck_x1, truck_y1, truck_x2, truck_y2):
+    # Calculate the area of the billboard
+    billboard_area = (x2 - x1) * (y2 - y1)
+    
+    # Find the overlapping coordinates with the truck
+    overlap_x1 = max(x1, truck_x1)
+    overlap_y1 = max(y1, truck_y1)
+    overlap_x2 = min(x2, truck_x2)
+    overlap_y2 = min(y2, truck_y2)
+    
+    # Calculate the overlapping area with the truck
+    if overlap_x1 < overlap_x2 and overlap_y1 < overlap_y2:
+        overlap_area = (overlap_x2 - overlap_x1) * (overlap_y2 - overlap_y1)
+    else:
+        overlap_area = 0
+    
+    # The visible area is the billboard area minus the overlapping area
+    visible_area = billboard_area - overlap_area
+    return visible_area
+
+def main():
+    # Reading input
+    x1, y1, x2, y2 = map(int, input().split())
+    x3, y3, x4, y4 = map(int, input().split())
+    truck_x1, truck_y1, truck_x2, truck_y2 = map(int, input().split())
+    
+    # Calculate visible areas
+    visible_area_1 = calculate_visible_area(x1, y1, x2, y2, truck_x1, truck_y1, truck_x2, truck_y2)
+    visible_area_2 = calculate_visible_area(x3, y3, x4, y4, truck_x1, truck_y1, truck_x2, truck_y2)
+    
+    # Sum the visible areas
+    total_visible_area = visible_area_1 + visible_area_2
+    
+    # Print the result
+    print(total_visible_area)
+
+# Example usage:
+main()
+
+New Solution
+
+import sys
+from collections import defaultdict, deque
+
+def topological_sort(n, adj):
+    indegree = [0] * n
+    for u in range(n):
+        for v in adj[u]:
+            indegree[v] += 1
+            
+    queue = deque([i for i in range(n) if indegree[i] == 0])
+    topo_order = []
+    
+    while queue:
+        node = queue.popleft()
+        topo_order.append(node)
+        for neighbor in adj[node]:
+            indegree[neighbor] -= 1
+            if indegree[neighbor] == 0:
+                queue.append(neighbor)
+    
+    if len(topo_order) == n:
+        return topo_order
+    else:
+        return None  # cycle detected
+
+def solve():
+    n, m = map(int, input().split())
+    s = input().strip()
+    adj = defaultdict(list)
+    
+    for _ in range(m):
+        u, v = map(int, input().split())
+        adj[u-1].append(v-1)
+    
+    topo_order = topological_sort(n, adj)
+    
+    if topo_order is None:
+        print(-1)
+        return
+    
+    dp = [[0] * 26 for _ in range(n)]
+    
+    for node in topo_order:
+        dp[node][ord(s[node]) - ord('a')] += 1
+        for neighbor in adj[node]:
+            for i in range(26):
+                dp[neighbor][i] = max(dp[neighbor][i], dp[node][i])
+    
+    max_value = max(max(row) for row in dp)
+    print(max_value)
+
+# Example usage:
+solve()
+
+New Solution
+
+from collections import defaultdict
+
+def dfs(node, color):
+    colors[node] = color
+    sizes[color] += 1
+    for neighbor in tree[node]:
+        if colors[neighbor] == -1:
+            dfs(neighbor, 1 - color)
+
+n = int(input())
+tree = defaultdict(list)
+for _ in range(n-1):
+    u, v = map(int, input().split())
+    tree[u].append(v)
+    tree[v].append(u)
+
+# Initialize colors and sizes of the two sets
+colors = [-1] * (n + 1)
+sizes = [0, 0]
+
+# Start DFS from node 1 with color 0
+dfs(1, 0)
+
+# Calculate the maximum number of additional edges
+max_edges = sizes[0] * sizes[1] - (n - 1)
+print(max_edges)
+
+New Solution
+
+def solve():
+    t = int(input())
+    for _ in range(t):
+        n, k = map(int, input().split())
+        a = list(map(int, input().split()))
+        
+        max_val = 0
+        best_i = best_j = best_x = 0
+        
+        for i in range(n):
+            for j in range(i + 1, n):
+                for x in range(2 ** k):
+                    val = (a[i] ^ x) & (a[j] ^ x)
+                    if val > max_val:
+                        max_val = val
+                        best_i = i + 1
+                        best_j = j + 1
+                        best_x = x
+        
+        print(best_i, best_j, best_x)
+
+# Sample execution
+solve()
+
+New Solution
+
+def calculate_area(t, cases):
+    results = []
+    for i in range(t):
+        n, d, h = cases[i][0]
+        y = cases[i][1]
+        
+        total_area = 0.5 * d * h * n  # Area if there were no overlaps
+        
+        for j in range(1, n):
+            overlap_height = h - (y[j] - y[j-1])
+            if overlap_height > 0:
+                overlap_area = 0.5 * d * overlap_height
+                total_area -= overlap_area
+        
+        results.append(total_area)
+    
+    return results
+
+# Input handling
+t = int(input())
+cases = []
+for _ in range(t):
+    n, d, h = map(int, input().split())
+    y = list(map(int, input().split()))
+    cases.append(((n, d, h), y))
+
+# Calculate and print the results
+results = calculate_area(t, cases)
+for result in results:
+    print(f"{result:.6f}")
+
+New Solution
+
+from collections import defaultdict
+import math
+
+def solve():
+    t = int(input())
+    results = []
+    
+    for _ in range(t):
+        n = int(input())
+        s = input().strip()
+        
+        d_count = 0
+        k_count = 0
+        ratio_count = defaultdict(int)
+        current_ratio = (0, 0)
+        result = []
+        
+        for char in s:
+            if char == 'D':
+                d_count += 1
+            else:
+                k_count += 1
+            
+            if k_count == 0:
+                current_ratio = (d_count, 0)
+            elif d_count == 0:
+                current_ratio = (0, k_count)
+            else:
+                g = math.gcd(d_count, k_count)
+                current_ratio = (d_count // g, k_count // g)
+            
+            ratio_count[current_ratio] += 1
+            result.append(ratio_count[current_ratio])
+        
+        results.append(" ".join(map(str, result)))
+    
+    print("\n".join(results))
+
+# Input and Output
+solve()
+
+New Solution
+
+from collections import deque
+
+def is_escape_possible(n, m, maze):
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    
+    def in_bounds(x, y):
+        return 0 <= x < n and 0 <= y < m
+    
+    # Block cells around 'B'
+    for i in range(n):
+        for j in range(m):
+            if maze[i][j] == 'B':
+                for dx, dy in directions:
+                    nx, ny = i + dx, j + dy
+                    if in_bounds(nx, ny) and maze[nx][ny] == '.':
+                        maze[nx][ny] = '#'
+    
+    # BFS to check if all 'G's can reach (n-1, m-1)
+    queue = deque([(n-1, m-1)])
+    visited = [[False] * m for _ in range(n)]
+    visited[n-1][m-1] = True
+    
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if in_bounds(nx, ny) and not visited[nx][ny] and maze[nx][ny] != '#':
+                visited[nx][ny] = True
+                queue.append((nx, ny))
+    
+    for i in range(n):
+        for j in range(m):
+            if maze[i][j] == 'G' and not visited[i][j]:
+                return False
+            if maze[i][j] == 'B' and visited[i][j]:
+                return False
+    return True
+
+def solve():
+    t = int(input())
+    for _ in range(t):
+        n, m = map(int, input().split())
+        maze = [list(input().strip()) for _ in range(n)]
+        
+        if is_escape_possible(n, m, maze):
+            print("Yes")
+        else:
+            print("No")
+
+# Example Input
+solve()
+
+New Solution
+
+import math
+
+def min_seconds_to_non_decreasing(a):
+    max_diff = 0
+    for i in range(len(a) - 1):
+        if a[i] > a[i + 1]:
+            max_diff = max(max_diff, a[i] - a[i + 1])
+    
+    if max_diff == 0:
+        return 0
+    
+    # Calculate the minimum number of steps required
+    return math.ceil(math.log2(max_diff + 1))
+
+def solve():
+    t = int(input())
+    results = []
+    for _ in range(t):
+        n = int(input())
+        a = list(map(int, input().split()))
+        results.append(min_seconds_to_non_decreasing(a))
+    
+    print("\n".join(map(str, results)))
+
+# Example Input/Output Handling
+solve()

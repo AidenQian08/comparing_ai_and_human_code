@@ -1,0 +1,1490 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+using pii = pair<int, int>;
+
+// BeginCodeSnip{Suffix Automaton}
+/**
+ * Generates the Suffix Automaton of a given string
+ * Complexity: O(|S|)
+ */
+struct SuffixAuto {
+	struct State {
+		int len, link, pos;
+		int next[26];
+		State(int len = 0, int link = -1, int pos = -1)
+		    : len(len), link(link), pos(pos) {
+			memset(next, -1, sizeof(next));
+		}
+	};
+
+	vector<State> states;
+
+	SuffixAuto() {}
+
+	SuffixAuto(const string &S) {
+		states.reserve(2 * S.size());
+		last = state();
+		for (char c : S) { extend(c); }
+	}
+
+	void extend(char l) {
+		int c = encode(l);
+		int cur = state(states[last].len + 1, -1, states[last].len), P = last;
+		while (P != -1 && states[P].next[c] == -1) {
+			states[P].next[c] = cur;
+			P = states[P].link;
+		}
+		if (P == -1) {
+			states[cur].link = 0;
+		} else {
+			int Q = states[P].next[c];
+			if (states[P].len + 1 == states[Q].len) {
+				states[cur].link = Q;
+			} else {
+				int C = state(states[P].len + 1, states[Q].link, -1);
+				copy(states[Q].next, states[Q].next + 26, states[C].next);
+				while (P != -1 && states[P].next[c] == Q) {
+					states[P].next[c] = C;
+					P = states[P].link;
+				}
+				states[Q].link = states[cur].link = C;
+			}
+		}
+		last = cur;
+	}
+
+	int run(string &P) {
+		int s = 0;
+		for (char _c : P) {
+			int c = encode(_c);
+			s = states[s].next[c];
+			if (s == -1) { return -1; }
+		}
+		return s;
+	}
+
+  private:
+	int last;
+
+	int encode(char c) { return c - 'a'; }
+
+	inline int state(int len = 0, int link = -1, int pos = -1) {
+		states.emplace_back(len, link, pos);
+		return states.size() - 1;
+	}
+};
+// EndCodeSnip
+
+const int MAXN = 1e5 + 1;
+
+string S;
+SuffixAuto sa;
+
+// answer for query
+int Q, ans[MAXN];
+// queries per state
+vector<pii> queries[MAXN];
+// suffix link tree (at most 2 * |S| nodes)
+vector<int> suffix_link_tree[MAXN * 2];
+
+vector<int> ord;  // visited nodes in dfs
+
+void dfs(int u) {
+	int l = ord.size();
+	if (sa.states[u].pos != -1) { ord.PB(sa.states[u].pos); }
+
+	for (int v : suffix_link_tree[u]) { dfs(v); }
+
+	if (queries[u].size()) {
+		int r = ord.size();
+		sort(ord.begin() + l, ord.end());
+		for (auto [q, K] : queries[u]) {
+			int t = INT_MAX;
+			for (int i = l; i + K - 1 < r; i++) { t = min(t, ord[i + K - 1] - ord[i]); }
+			if (t != INT_MAX) {
+				ans[q] += t;
+			} else {
+				ans[q] = -1;
+			}
+		}
+	}
+}
+
+int main() {
+	cin >> S >> Q;
+	sa = SuffixAuto(S);
+	for (int i = 1; i < sa.states.size(); i++) {
+		suffix_link_tree[sa.states[i].link].push_back(i);
+	}
+	for (int i = 0; i < Q; i++) {
+		int K;
+		string P;
+		cin >> K >> P;
+		int s = sa.run(P);
+		if (s == -1) {
+			ans[i] = -1;
+		} else {
+			queries[s].EB(i, K);
+			ans[i] = P.size();
+		}
+	}
+
+	dfs(0);
+
+	for (int i = 0; i < Q; i++) { cout << ans[i] << '\n'; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+/**
+ * Calculate the sum of all elements in arr, represented by the binary mask, and
+ * take modulo mod.
+ */
+int unmask(int mask, const vector<int> &arr, int mod) {
+	int current_sum = 0;
+	for (int bit = 0; bit < arr.size(); bit++) {
+		if ((mask >> bit & 1) == 1) {
+			current_sum += arr[bit];
+			current_sum %= mod;
+		}
+	}
+	return current_sum;
+}
+
+int main() {
+	int n, m;
+	cin >> n >> m;
+
+	// split the input array into two parts
+	vector<int> left_arr((n + 1) / 2);
+	vector<int> right_arr(n / 2);
+	for (int &i : left_arr) { cin >> i; }
+	for (int &i : right_arr) { cin >> i; }
+
+	// stores the sums of all combinations from the left_arr modulo m
+	set<int> left_sums;
+	for (int mask = 0; mask < (1 << left_arr.size()); mask++) {
+		left_sums.insert(unmask(mask, left_arr, m));
+	}
+
+	// the best value from all combinations of left_arr
+	int best = *left_sums.rbegin();
+	for (int mask = 0; mask < (1 << right_arr.size()); mask++) {
+		int current_sum = unmask(mask, right_arr, m);
+		/*
+		 * a possible new maximum value is the sum of current_sum and the
+		 * largest value below m - current_sum from the combinations in left_arr
+		 */
+		best = max(best, *prev(left_sums.lower_bound(m - current_sum)) + current_sum);
+	}
+
+	cout << best << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+
+using namespace std;
+
+using ll = long long;
+
+int main() {
+	int n, k;
+	cin >> n >> k;
+
+	// Use Pascal's Identity to precalculate combinations.
+	ll c[n + 1][k + 1];
+	fill_n(&c[0][0], (n + 1) * (k + 1), 0);
+	for (int i = 0; i <= n; i++) { c[i][0] = 1; }
+	for (int i = 1; i <= n; i++) {
+		for (int j = 1; j <= k; j++) { c[i][j] = c[i - 1][j] + c[i - 1][j - 1]; }
+	}
+
+	ll ans = 0;
+	// Iterate over number of positions to shuffle.
+	for (int i = 0; i <= k; i++) {
+
+		// Calculate number of valid permutations result in all positions
+		// shuffled.
+		int a[i];
+		for (int j = 0; j < i; j++) a[j] = j;
+		int amt = 0;
+		do {
+			bool valid = 1;
+			for (int j = 0; j < i; j++)
+				if (a[j] == j) valid = 0;
+			if (valid) amt++;
+		} while (next_permutation(a, a + i));
+
+		// Add the number of valid permutations of i elements multiplied by the
+		// number of ways to choose i elements.
+		ans += c[n][i] * amt;
+	}
+
+	cout << ans << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int n;
+vector<vector<int>> adj;  // adjacency list
+vector<bool> visited;     // stores which nodes have been visited
+
+double ans;
+
+void dfs(int node, int current_length, double current_probability) {
+	visited[node] = true;
+	int possible_moves = 0;
+	// count the number of cities we can move to
+	for (int x : adj[node]) {
+		if (!visited[x]) { possible_moves++; }
+	}
+
+	if (!possible_moves) {
+		// if there are no cities to move to, the path has ended
+		ans += current_length * current_probability;
+	} else {
+		// update the new probability by dividing it
+		// by the number of possible cities
+		double new_probability = current_probability / possible_moves;
+		for (int x : adj[node]) {
+			if (!visited[x]) { dfs(x, current_length + 1, new_probability); }
+		}
+	}
+}
+
+int main() {
+	cin >> n;
+	adj.resize(n + 1);
+	visited.resize(n + 1);
+
+	for (int i = 1; i < n; i++) {
+		int a, b;
+		cin >> a >> b;
+		adj[a].push_back(b);
+		adj[b].push_back(a);
+	}
+
+	// the traversal starts with node 1, path length 0, and probability 100%.
+	dfs(1, 0, 1);
+
+	cout << setprecision(10) << ans << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int max_lines;
+vector<int> word_lengths;
+string ad;
+
+/** @return if most optimized ad of given width satisfies constraints */
+bool width_valid(int width) {
+	int lines = 0;
+	int curr_width = 0;
+
+	for (int word_length : word_lengths) {
+		// if individual word is wider than ad width, we need a greater width
+		if (word_length > width) { return false; }
+
+		// if we overflow, we need a new line
+		if (curr_width + word_length > width) {
+			lines++;
+			curr_width = word_length;
+		} else {
+			curr_width += word_length;  // add word to current line
+		}
+	}
+
+	if (curr_width > 0) { lines++; }
+	return lines <= max_lines;
+}
+
+int main() {
+	cin >> max_lines;
+	// ignore '\n' character before getline
+	cin.ignore();
+	getline(cin, ad);
+
+	// get sizes of each word, including trailing spaces and trailing hyphens
+	word_lengths.push_back(0);
+	for (char i : ad) {
+		word_lengths.back()++;
+		// spaces and hyphens work the same, start new word after adding char
+		if (i == ' ' || i == '-') { word_lengths.push_back(0); }
+	}
+
+	/*
+	 * find the lowest width that doesn't use greater than max_lines
+	 * binary search code: https://usaco.guide/silver/binary-search
+	 */
+	int lo = 0;
+	int hi = (int)ad.size();
+	hi++;
+	while (lo < hi) {
+		int mid = lo + (hi - lo) / 2;
+		if (width_valid(mid)) {
+			hi = mid;
+		} else {
+			lo = mid + 1;
+		}
+	}
+
+	cout << lo << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+#include <ext/pb_ds/assoc_container.hpp>
+
+using namespace std;
+using namespace __gnu_pbds;
+
+typedef long long ll;
+typedef vector<int> vi;
+typedef pair<int, int> pii;
+template <class T>
+using Tree =
+    tree<T, null_type, less<T>, rb_tree_tag, tree_order_statistics_node_update>;
+
+#define FOR(i, a, b) for (int i = a; i < (b); i++)
+#define F0R(i, a) for (int i = 0; i < (a); i++)
+#define FORd(i, a, b) for (int i = (b) - 1; i >= a; i--)
+#define F0Rd(i, a) for (int i = (a) - 1; i >= 0; i--)
+
+#define sz(x) (int)(x).size()
+#define mp make_pair
+#define pb push_back
+#define f first
+#define s second
+#define lb lower_bound
+#define ub upper_bound
+
+const int MOD = 1000000007;
+
+int main() {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	int a, b, c;
+	cin >> a >> b >> c;
+	ll a1 = 0, a2 = 0;
+	vector<pii> v;
+	int m;
+	cin >> m;
+	F0R(i, m) {
+		int val;
+		string type;
+		cin >> val >> type;
+		if (type == "USB") v.pb(mp(val, 0));
+		else v.pb(mp(val, 1));
+	}
+	sort(v.begin(), v.end());
+	for (auto z : v) {
+		if (z.s == 0) {
+			if (a) a--, a1++, a2 += z.f;
+			else if (c) c--, a1++, a2 += z.f;
+		} else {
+			if (b) b--, a1++, a2 += z.f;
+			else if (c) c--, a1++, a2 += z.f;
+		}
+	}
+	cout << a1 << " " << a2;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+// returns the first index in the array that is >= value, or arr.size() if no
+// such index exists
+int firstAtLeast(const vector<int> &arr, int value) {
+	int lo = 0, hi = arr.size();
+	while (lo < hi) {
+		int mid = (lo + hi) / 2;
+		if (arr[mid] >= value) hi = mid;
+		else lo = mid + 1;
+	}
+	return lo;
+}
+
+int main() {
+	int n, m;
+	cin >> n >> m;
+	vector<int> cities, towers;
+
+	for (int i = 0; i < n; i++) {
+		int city;
+		cin >> city;
+		cities.push_back(city);
+	}
+
+	for (int i = 0; i < m; i++) {
+		int tower;
+		cin >> tower;
+		towers.push_back(tower);
+	}
+
+	int minR = 0;
+	for (int i = 0; i < n; i++) {
+		int towerRight = firstAtLeast(towers, cities[i]);
+		int towerLeft = towerRight - 1;
+
+		int minRForThisCity = 2e9;
+		if (towerRight < m) {
+			assert(towers[towerRight] >= cities[i]);
+			minRForThisCity = min(minRForThisCity, towers[towerRight] - cities[i]);
+		}
+		if (towerLeft >= 0) {
+			assert(towers[towerLeft] <= cities[i]);
+			minRForThisCity = min(minRForThisCity, cities[i] - towers[towerLeft]);
+		}
+
+		minR = max(minR, minRForThisCity);
+	}
+
+	cout << minR << endl;
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+using std::cout;
+using std::endl;
+using std::vector;
+
+/**
+ * https://codeforces.com/problemset/problem/701/C
+ * 7
+ * bcAAcbc should output 3
+ * 6
+ * aaBCCe should output 5
+ */
+int main() {
+	int flat_num;
+	std::cin >> flat_num;
+	vector<char> flats(flat_num);
+	std::unordered_set<char> types;
+	for (char &p : flats) {
+		std::cin >> p;
+		types.insert(p);
+	}
+
+	int shortest_interval = INT32_MAX;
+	std::unordered_map<char, int> curr_pokemon;
+	int closest_left = 0;
+	for (int right = 0; right < flat_num; right++) {
+		curr_pokemon[flats[right]]++;
+		// check if removing the left one would remove a needed type
+		while (closest_left + 1 <= right && curr_pokemon.count(flats[closest_left]) &&
+		       curr_pokemon[flats[closest_left]] > 1) {
+			curr_pokemon[flats[closest_left]]--;
+			closest_left++;
+		}
+		/*
+		 * of course, it's a possibility the current arrangement
+		 * wasn't valid at all, so we need to check for that
+		 */
+		if (curr_pokemon.size() == types.size()) {
+			shortest_interval = std::min(shortest_interval, right - closest_left + 1);
+		}
+	}
+	cout << shortest_interval << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long ll;
+
+int main() {
+	int n;
+	int k;
+	cin >> n >> k;
+	vector<int> arr(n);
+	for (int i = 0; i < n; i++) { cin >> arr[i]; }
+
+	int left = 0;
+	int right = 0;
+	ll ans = 0;
+	int distinct = 0;
+	map<int, int> freq;
+	while (left < n) {
+		while (right < n) {
+			if (freq.count(arr[right]) == 0 && distinct == k) { break; }
+
+			// Put the new array element in the map.
+			if (freq.count(arr[right]) == 0) {
+				freq[arr[right]] = 1;
+				distinct++;
+			} else {
+				freq[arr[right]]++;
+			}
+			right++;
+		}
+
+		// Add the new subarrays.
+		ans += (right - left);
+
+		// Slide the window rightwards.
+		if (freq[arr[left]] == 1) {
+			distinct--;
+			freq.erase(arr[left]);
+		} else {
+			freq[arr[left]] -= 1;
+		}
+		left++;
+	}
+
+	cout << ans << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+namespace geo {
+const double EPS = 1e-9;
+
+template <typename T> class point {
+	static_assert(is_arithmetic<T>::value, "T must be an arithmetic type");
+
+  public:
+	T x, y;
+
+	point() : x(T{}), y(T{}) {}
+
+	point(const T &_x, const T &_y) : x(_x), y(_y) {}
+
+	template <typename S> operator point<S>() const {
+		return point<S>(static_cast<S>(x), static_cast<S>(y));
+	}
+
+	template <typename S> point &operator=(const point<S> &p) {
+		x = p.x;
+		y = p.y;
+		return *this;
+	}
+
+	point &operator+=(const point &p) {
+		x += p.x;
+		y += p.y;
+		return *this;
+	}
+
+	point &operator-=(const point &p) {
+		x -= p.x;
+		y -= p.y;
+		return *this;
+	}
+
+	point &operator*=(const T &s) {
+		x *= s;
+		y *= s;
+		return *this;
+	}
+
+	void swap(point &p) {
+		swap(x, p.x);
+		swap(y, p.y);
+	}
+};
+
+template <typename T> point<T> make_point(const T &x, const T &y) {
+	return point<T>(x, y);
+}
+
+template <typename T> void swap(point<T> &p, point<T> &q) { p.swap(q); }
+
+template <typename T> point<T> operator-(const point<T> &p) {
+	return point<T>(-p.x, -p.y);
+}
+
+template <typename T> point<T> operator+(point<T> p, const point<T> &q) {
+	return p += q;
+}
+
+template <typename T> point<T> operator-(point<T> p, const point<T> &q) {
+	return p -= q;
+}
+
+template <typename T> point<T> operator*(point<T> p, const T &s) { return p *= s; }
+
+template <typename T> point<T> operator*(const T &s, point<T> p) { return p *= s; }
+
+template <typename T> T cross(const point<T> &p, const point<T> &q) {
+	long double ret = (long double)p.x * q.y - (long double)p.y * q.x;
+	if (abs(ret) > 1e18) return ret > 0 ? 1 : -1;
+	return p.x * q.y - p.y * q.x;
+}
+
+template <typename T> T operator^(const point<T> &p, const point<T> &q) {
+	return cross(p, q);
+}
+
+template <typename T> bool operator==(const point<T> &p, const point<T> &q) {
+	if constexpr (is_integral<T>::value) return p.x == q.x && p.y == q.y;
+	else return abs(p.x - q.x) <= EPS && abs(p.y - q.y) <= EPS;
+}
+
+template <typename T> bool operator!=(const point<T> &p, const point<T> &q) {
+	return !(p == q);
+}
+
+template <typename T> bool operator<(const point<T> &p, const point<T> &q) {
+	return p.x < q.x || (p.x == q.x && p.y < q.y);
+}
+
+template <typename T> bool operator>(const point<T> &p, const point<T> &q) {
+	return q < p;
+}
+
+template <typename T> bool operator<=(const point<T> &p, const point<T> &q) {
+	return !(p > q);
+}
+
+template <typename T> bool operator>=(const point<T> &p, const point<T> &q) {
+	return !(p < q);
+}
+}  // namespace geo
+
+struct monotonic_dp_hull {
+	long long prev_x = LLONG_MIN, prev_y = 1;
+	deque<geo::point<long long>> points;
+
+	void add(const geo::point<long long> &p) {
+		assert(points.empty() || p.x >= points.back().x);
+		if (!points.empty() && p.x == points.back().x) {
+			if (p.y <= points.back().y) return;
+			points.pop_back();
+		}
+		while (size() >= 2 &&
+		       ((points.back() - p) ^ (points[size() - 2] - points.back())) <= 0)
+			points.pop_back();
+		points.push_back(p);
+	}
+
+	void add(long long m, long long b) { add(geo::point(m, b)); }
+
+	long long query(long long x, long long y = 1) {
+		assert(size() > 0);
+		assert(prev_x == LLONG_MIN || x * prev_y >= prev_x * y);
+		prev_x = x, prev_y = y;
+		while (size() >= 2 &&
+		       x * (points[1].x - points[0].x) >= (points[0].y - points[1].y) * y)
+			points.pop_front();
+		return points[0].x * x + points[0].y * y;
+	}
+
+	void clear() {
+		points.clear();
+		prev_x = LLONG_MIN, prev_y = 1;
+	}
+
+	int size() const { return points.size(); }
+};
+
+const long long INF = 1e16;
+
+int main() {
+	ios_base::sync_with_stdio(false);
+	cin.tie(NULL);
+
+	int N, M;
+	cin >> N >> M;
+	vector<long long> A(N + 1, 0);
+	for (int i = 1; i <= N; i++) cin >> A[i];
+	vector<long long> sum(N + 1), pre(N + 1), suf(N + 1);
+	for (int i = 1; i <= N; i++) {
+		sum[i] = sum[i - 1] + A[i];
+		pre[i] = pre[i - 1] + A[i] * i;
+		suf[i] = suf[i - 1] + A[i] * (N - i + 1);
+	}
+
+	vector<vector<long long>> dp0(M + 1, vector<long long>(N + 1, INF));
+	vector<vector<long long>> dp1(M + 1, vector<long long>(N + 1, INF));
+
+	dp1[0][0] = 0;
+	for (int m = 1; m <= M; m++) {
+		monotonic_dp_hull md0, md1;
+		md1.add(0, 0);
+		for (int i = 1; i <= N; i++) {
+			dp0[m][i] =
+			    -md1.query((i - 1) - N) + suf[i - 1] - (N - (i - 1)) * sum[i - 1];
+			md0.add(i, -dp0[m][i] + pre[i] - i * sum[i]);
+			dp1[m][i] = -md0.query(sum[i]) + pre[i];
+			md1.add(sum[i], -dp1[m - 1][i] + suf[i]);
+		}
+	}
+
+	cout << dp1[M][N] << '\n';
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+typedef long long ll;
+#define pb push_back
+#define pi pair<int, int>
+#define f first
+#define mp make_pair
+#define s second
+
+ll dp[100001][101];
+const ll MOD = (10e8) + 7;
+int main() {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	int n, m;
+	cin >> n >> m;
+	int arr[n];
+	for (int i = 0; i < n; i++) { cin >> arr[i]; }
+	if (arr[0] == 0) {
+		fill(dp[0], dp[0] + 101, 1);
+	} else {
+		dp[0][arr[0]] = 1;
+	}
+	for (int i = 1; i < n; i++) {
+		if (arr[i] == 0) {
+			for (int j = 1; j <= m; j++) {
+				dp[i][j] += dp[i - 1][j];
+				if (j - 1 > 0) dp[i][j] += dp[i - 1][j - 1];
+				if (j + 1 <= m) dp[i][j] += dp[i - 1][j + 1];
+				dp[i][j] %= MOD;
+			}
+		} else {
+			dp[i][arr[i]] += dp[i - 1][arr[i]];
+			if (arr[i] - 1 > 0) dp[i][arr[i]] += dp[i - 1][arr[i] - 1];
+			if (arr[i] + 1 <= m) dp[i][arr[i]] += dp[i - 1][arr[i] + 1];
+			dp[i][arr[i]] %= MOD;
+		}
+	}
+	ll ans = 0;
+	for (int i = 1; i <= m; i++) {
+		ans += dp[n - 1][i];
+		ans %= MOD;
+	}
+	cout << ans;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+
+using namespace std;
+
+const int MAX_N = 100;
+const int MAX_SUM = 1e5;
+
+bool dp[MAX_N + 1][MAX_SUM + 1];
+
+int main() {
+	int n;
+	cin >> n;
+
+	vector<int> coins_values(n);
+	for (int i = 0; i < n; i++) { cin >> coins_values[i]; }
+
+	dp[0][0] = true;
+
+	for (int i = 1; i <= n; i++) {
+		for (int current_sum = 0; current_sum <= MAX_SUM; current_sum++) {
+			dp[i][current_sum] = dp[i - 1][current_sum];
+			int prev_sum = current_sum - coins_values[i - 1];
+			if (prev_sum >= 0 && dp[i - 1][prev_sum]) { dp[i][current_sum] = true; }
+		}
+	}
+
+	vector<int> possible;
+	for (int sum = 1; sum <= MAX_SUM; sum++) {
+		if (dp[n][sum]) { possible.push_back(sum); }
+	}
+
+	cout << (int)(possible.size()) << endl;
+
+	for (int sum : possible) { cout << sum << " "; }
+	cout << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+
+const ll MOD = 1e9 + 7;
+const int MAXN = 2e6;
+
+vector<ll> fac(MAXN, 1);
+vector<ll> inv(MAXN, 1);
+
+/**
+ * Computes x^n modulo m in O(log p) time.
+ * See also: https://usaco.guide/gold/modular
+ */
+ll binpow(ll x, ll n, ll m) {
+	x %= m;
+	ll res = 1;
+	while (n > 0) {
+		if (n % 2 == 1) { res = res * x % m; }
+		x = x * x % m;
+		n /= 2;
+	}
+	return res;
+}
+
+ll binom(int n, int k) { return fac[n] * inv[k] % MOD * inv[n - k] % MOD; }
+
+int main() {
+	for (int i = 2; i < MAXN; i++) { fac[i] = i * fac[i - 1] % MOD; }
+
+	// Calculate the modular inverse with exponentiation
+	inv[MAXN - 1] = binpow(fac[MAXN - 1], MOD - 2, MOD);
+	// Calculate the modular inverse with factorial definition
+	for (int i = MAXN - 2; i > 0; i--) { inv[i] = (i + 1) * inv[i + 1] % MOD; }
+
+	int n, m;
+	cin >> n >> m;
+
+	cout << binom(n + m - 1, n - 1) << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+using ll = long long;
+const ll MOD = 1e9 + 7;
+const int MAXN = 1e6;
+
+array<ll, MAXN + 1> fact;  // fact[i] = i! % MOD
+array<ll, MAXN + 1> inv;   // inv[i] = modular inverse of fact[i];
+
+// calculate a ^ b (mod m) in log b time
+ll modpow(ll a, ll b, ll m) {
+	ll prod = 1;
+	while (b > 0) {
+		if (b % 2 == 1) { prod = (prod * a) % m; }
+		b /= 2;
+		a = (a * a) % m;
+	}
+	return prod;
+}
+
+int main() {
+	// precompute fact[i] and inv[i]
+	fact[0] = inv[0] = fact[1] = inv[1] = 1;
+	for (int i = 2; i <= MAXN; i++) {
+		fact[i] = fact[i - 1] * i % MOD;
+		inv[i] = modpow(fact[i], MOD - 2, MOD);
+	}
+
+	string s;
+	cin >> s;
+
+	vector<int> character_count(26);
+	for (char i : s) { character_count[i - 'a']++; }
+
+	ll total = fact[s.length()];
+	for (int i : character_count) {
+		// multiplying by inverse is the same as dividing
+		total = total * inv[i] % MOD;
+	}
+
+	cout << total << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+const ll MOD = 1e9 + 7;
+
+// BeginCodeSnip{Binary Exponentiation}
+ll exp(ll x, ll n, ll m) {
+	assert(n >= 0);
+	x %= m;
+	ll res = 1;
+	while (n > 0) {
+		if (n % 2 == 1) {  // if n is odd
+			res = res * x % m;
+		}
+		x = x * x % m;
+		n /= 2;  // divide by two
+	}
+	return res;
+}
+// EndCodeSnip
+
+int main() {
+	int test_num;
+	cin >> test_num;
+	for (int t = 0; t < test_num; t++) {
+		ll a, b, c;
+		cin >> a >> b >> c;
+
+		ll pow_bc = exp(b, c, MOD - 1);
+		ll ans = exp(a, pow_bc, MOD);
+
+		cout << ans << '\n';
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+long long max_flow(vector<vector<int>> adj, vector<vector<long long>> capacity,
+                   int source, int sink) {
+	int n = adj.size();
+	vector<int> parent(n, -1);
+
+	// Find a way from the source to sink on a path with non-negative capacities
+	auto reachable = [&]() -> bool {
+		queue<int> q;
+		q.push(source);
+		while (!q.empty()) {
+			int node = q.front();
+			q.pop();
+			for (auto son : adj[node]) {
+				long long w = capacity[node][son];
+				if (w <= 0 || parent[son] != -1) continue;
+				parent[son] = node;
+				q.push(son);
+			}
+		}
+		return parent[sink] != -1;
+	};
+
+	long long flow = 0;
+
+	// While there is a way from source to sink with non-negative capacities
+	while (reachable()) {
+		int node = sink;
+
+		// The minimum capacity on the path from source to sink
+		long long curr_flow = LLONG_MAX;
+		while (node != source) {
+			curr_flow = min(curr_flow, capacity[parent[node]][node]);
+			node = parent[node];
+		}
+		node = sink;
+		while (node != source) {
+			// Subtract the capacity from capacity edges
+			capacity[parent[node]][node] -= curr_flow;
+			// Add the current flow to flow backedges
+			capacity[node][parent[node]] += curr_flow;
+			node = parent[node];
+		}
+		flow += curr_flow;
+		fill(parent.begin(), parent.end(), -1);
+	}
+
+	return flow;
+}
+
+int main() {
+	int n, m;
+	cin >> n >> m;
+
+	vector<vector<long long>> capacity(n, vector<long long>(n, 0));
+	vector<vector<int>> adj(n);
+	for (int i = 0; i < m; i++) {
+		int a, b, c;
+		cin >> a >> b >> c;
+		--a;
+		--b;
+		adj[a].push_back(b);
+		adj[b].push_back(a);
+		capacity[a][b] += c;
+	}
+
+	cout << max_flow(adj, capacity, 0, n - 1) << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+void setIO(string name = "") {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+
+	if (name.size()) {
+		freopen((name + ".in").c_str(), "r", stdin);
+		freopen((name + ".out").c_str(), "w", stdout);
+	}
+}
+
+int main() {
+	setIO("whereami");
+	int boxes_num;
+	string boxes_sequence;
+	cin >> boxes_num >> boxes_sequence;
+
+	// check all sub lengths (k) from the smallest to biggest
+	for (int sub_len = 1; sub_len <= boxes_num; sub_len++) {
+		bool sol_found = true;
+		unordered_map<string, int> sub_frequency;
+		// store frequencies of all subs with given length (sub_len)
+		for (int idx = 0; idx <= boxes_num - sub_len; idx++) {
+			string sub = boxes_sequence.substr(idx, sub_len);
+			sub_frequency[sub]++;
+			if (sub_frequency[sub] > 1) { sol_found = false; }
+		}
+
+		// if all sub sequences are unique -> solution found
+		if (sol_found) {
+			cout << sub_len << endl;
+			break;
+		}
+	}
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+int main() {
+	freopen("herding.in", "r", stdin);
+	freopen("herding.out", "w", stdout);
+
+	// all cow locations
+	vector<int> a;
+	for (int i = 0; i < 3; i++) {
+		int b;
+		cin >> b;
+		a.push_back(b);
+	}
+	sort(a.begin(), a.end());
+
+	/*
+	 * The minimum number of moves can only be 0, 1, or 2.
+	 * 0 is if they're already consecutive,
+	 * 1 is if there's a difference of 2 between any 2 numbers,
+	 * and 2 is for all other cases.
+	 */
+	if (a[0] == a[2] - 2) {
+		cout << 0 << endl;
+	} else if ((a[1] == a[2] - 2) || (a[0] == a[1] - 2)) {
+		cout << 1 << endl;
+	} else {
+		cout << 2 << endl;
+	}
+	// max is equal to largest difference between end and middle, minus one.
+	cout << max(a[2] - a[1], a[1] - a[0]) - 1;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+void setIO(string name = "") {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	if (name.size()) {
+		freopen((name + ".in").c_str(), "r", stdin);
+		freopen((name + ".out").c_str(), "w", stdout);
+	}
+}
+
+int main() {
+	setIO("cowsignal");
+
+	int height, width;
+	int scale;
+	cin >> height >> width >> scale;
+
+	vector<string> signal(height);
+	for (string &r : signal) { cin >> r; }
+
+	for (int i = 0; i < scale * height; i++) {
+		for (int j = 0; j < scale * width; j++) {
+			cout << signal[i / scale][j / scale];
+		}
+		cout << '\n';
+	}
+}
+
+New Solution
+
+// created by Tanish Tyagi
+#include <bits/stdc++.h>
+
+using namespace std;
+using ll = long long;
+
+const int MAXN = 1005;
+
+char grid[MAXN][MAXN];  // the grid itself
+int n;
+bool visited[MAXN][MAXN];  // keeps track of which nodes have been visited
+ll currA = 0;  // keeps track of the current area of the current blob of ice cream
+ll currP = 0;  // keeps track of the current perimeter of the blob of ice cream
+ll area = 0;
+ll perimeter = 0;
+
+void setIO(string name) {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	if (len(name)) {
+		freopen((name + ".in").c_str(), "r", stdin);
+		freopen((name + ".out").c_str(), "w", stdout);
+	}
+}
+
+void floodfill(int r, int c) {
+	if (r < 0 || r >= n || c < 0 || c >= n) {
+		currP++;
+		return;  // if outside grid
+	}
+	if (visited[r][c]) return;  // already visited this square
+	if (grid[r][c] == '.') {
+		currP++;
+		return;
+	}
+	visited[r][c] = true;  // mark current square as visited
+	if (grid[r][c] == '#') { currA++; }
+	// recursively call floodfill for neighboring squares
+	floodfill(r, c + 1);
+	floodfill(r, c - 1);
+	floodfill(r - 1, c);
+	floodfill(r + 1, c);
+}
+
+int main() {
+	setIO("perimeter");
+	cin >> n;
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) { cin >> grid[i][j]; }
+	}
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) {
+			if (!visited[i][j] && grid[i][j] == '#') {
+				floodfill(i, j);
+				if (area == currA) {
+					perimeter = min(perimeter, currP);
+				} else if (currA > area) {
+					area = currA;
+					perimeter = currP;
+				}
+				currA = currP = 0;
+			}
+		}
+	}
+	cout << area << " " << perimeter << endl;
+	return 0;
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+	freopen("lemonade.in", "r", stdin);
+	freopen("lemonade.out", "w", stdout);
+
+	int n;
+	cin >> n;
+
+	vector<int> cows(n);
+	for (int i = 0; i < n; i++) { cin >> cows[i]; }
+
+	int ans = 0;
+	sort(cows.begin(), cows.end(), greater<int>());
+
+	for (int i = 0; i < n; i++) {
+		if (i <= cows[i]) {
+			ans++;
+		} else {
+			break;
+		}
+	}
+	cout << ans << "\n";
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<vector<pair<int, int>>> neighbors;
+vector<bool> visited;
+int threshold;
+int num_reachable;
+
+/** searches all vertices that can be reached through the current video v */
+void search_videos(int v) {
+	visited[v] = true;
+	for (const pair<int, int> &n : neighbors[v]) {
+		/*
+		 * only visit nonvisited videos whose relevance
+		 * is greater than the current threshold
+		 */
+		if (!visited[n.first] && n.second >= threshold) {
+			num_reachable++;
+			search_videos(n.first);
+		}
+	}
+}
+
+int main() {
+	freopen("mootube.in", "r", stdin);
+	int video_num;
+	int query_num;
+	cin >> video_num >> query_num;
+
+	neighbors = vector<vector<pair<int, int>>>(video_num);
+	for (int e = 0; e < video_num - 1; e++) {
+		int a, b;
+		int relevance;
+		cin >> a >> b >> relevance;
+		a--;
+		b--;
+		neighbors[a].push_back({b, relevance});
+		neighbors[b].push_back({a, relevance});
+	}
+
+	freopen("mootube.out", "w", stdout);
+	for (int q = 0; q < query_num; q++) {
+		int start;
+		cin >> threshold >> start;
+		start--;
+
+		// reset our global variables for the current query
+		num_reachable = 0;
+		visited = vector<bool>(video_num);
+		search_videos(start);
+
+		cout << num_reachable << '\n';
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAX_DAYS = 1000;
+
+int main() {
+	freopen("time.in", "r", stdin);
+	freopen("time.out", "w", stdout);
+
+	int n, m, c;
+	cin >> n >> m >> c;
+
+	vector<int> earn(n);
+	for (int i = 0; i < n; i++) { cin >> earn[i]; }
+
+	vector<vector<int>> adj(n);
+	for (int i = 0; i < m; i++) {
+		int u, v;
+		cin >> u >> v;
+		adj[--u].push_back(--v);
+	}
+
+	// dp[i][j] = the max money that Bessie can make on day i if she ends in
+	// city j
+	vector<vector<int>> dp(MAX_DAYS + 1, vector<int>(n, -1));
+	// base case: if Bessie doesn't travel at all, she makes $0
+	dp[0][0] = 0;
+
+	int ans = 0;
+	for (int d = 0; d < MAX_DAYS; d++) {
+		for (int i = 0; i < n; i++) {
+			// if dp[d][i] == -1 then the city can't be visited
+			if (dp[d][i] != -1) {
+				for (int u : adj[i]) {
+					/*
+					 * dp[d + 1][u] = max(current money earned,
+					 * previous city's earnings + current city's earnings)
+					 */
+					dp[d + 1][u] = max(dp[d + 1][u], dp[d][i] + earn[u]);
+				}
+			}
+		}
+		ans = max(ans, (dp[d][0] - (c * d * d)));
+	}
+	cout << ans << "\n";
+}
+
+New Solution
+
+//BeginCodeSnip{C++ Short Template}
+#include <bits/stdc++.h> // see /general/running-code-locally
+using namespace std;
+
+using ll = long long;
+
+using vi = vector<int>;
+#define pb push_back
+#define all(x) begin(x), end(x)
+#define sz(x) (int) (x).size()
+
+using pi = pair<int,int>;
+#define f first
+#define s second
+#define mp make_pair
+
+void setIO(string name = "") {
+	cin.tie(0)->sync_with_stdio(0); // see /general/fast-io
+	if (sz(name)) {
+		freopen((name + ".in").c_str(), "r", stdin); // see /general/input-output
+		freopen((name + ".out").c_str(), "w", stdout);
+	}
+}
+//EndCodeSnip
+
+const int mx = 1e5 + 1, MOD = 1e9 + 7;
+
+ll dp[mx][3];
+vi adj[mx];
+
+void dfs(int v, int p = 0) {
+	for (const int &e : adj[v]) {
+		if (e != p) {
+			dfs(e, v);
+			dp[v][0] *= dp[e][1] + dp[e][2];
+			dp[v][1] *= dp[e][0] + dp[e][2];
+			dp[v][2] *= dp[e][0] + dp[e][1];
+			dp[v][0] %= MOD;
+			dp[v][1] %= MOD;
+			dp[v][2] %= MOD;
+		}
+	}
+}
+
+int main() {
+	setIO("barnpainting");
+
+	int n, m;
+	cin >> n >> m;
+	for (int i = 0; i < n - 1; i++) {
+		int a, b;
+		cin >> a >> b;
+		adj[a].pb(b);
+		adj[b].pb(a);
+	}
+
+	for (int i = 1; i <= n; i++) dp[i][0] = 1, dp[i][1] = 1, dp[i][2] = 1;
+
+	while (m--) {
+		int b, c;
+		cin >> b >> c;
+		dp[b][0] = 0;
+		dp[b][1] = 0;
+		dp[b][2] = 0;
+		dp[b][c - 1] = 1;
+	}
+
+	dfs(1);
+
+	cout << (dp[1][0] + dp[1][1] + dp[1][2]) % MOD << endl;
+}
+
+New Solution
+
+//BeginCodeSnip{C++ Short Template}
+#include <bits/stdc++.h> // see /general/running-code-locally
+using namespace std;
+
+using ll = long long;
+
+using vi = vector<int>;
+#define pb push_back
+#define all(x) begin(x), end(x)
+#define sz(x) (int) (x).size()
+
+using pi = pair<int,int>;
+#define f first
+#define s second
+#define mp make_pair
+
+void setIO(string name = "") {
+	cin.tie(0)->sync_with_stdio(0); // see /general/fast-io
+	if (sz(name)) {
+		freopen((name + ".in").c_str(), "r", stdin); // see /general/input-output
+		freopen((name + ".out").c_str(), "w", stdout);
+	}
+}
+//EndCodeSnip
+
+const int MX = 1e5 + 5;
+
+int dp[MX][25][3];  // dp[i][j][k] is the largest number of games she wins at
+                    // games i with switches j with current item k
+int A[MX];          // 0 == H 1 == P 2 == S
+
+int main() {
+	setIO("hps");
+
+	int N, K;
+
+	cin >> N >> K;
+
+	for (int i = 0; i < N; i++) {
+		char a;
+		cin >> a;
+		if (a == 'H') A[i] = 0;
+		if (a == 'P') A[i] = 1;
+		if (a == 'S') A[i] = 2;
+	}
+
+	// either she switches to h or p or s or stays
+
+	for (int i = 0; i < N; i++) {
+		for (int j = 0; j <= K; j++) {
+			for (int k = 0; k < 3; k++) {
+				if (k == A[i]) dp[i][j][k]++;
+				dp[i + 1][j + 1][0] = max(dp[i + 1][j + 1][0],
+				                          dp[i][j][k]);  // switch to not item
+				dp[i + 1][j + 1][1] = max(dp[i + 1][j + 1][1],
+				                          dp[i][j][k]);  // switch to not item
+				dp[i + 1][j + 1][2] = max(dp[i + 1][j + 1][2],
+				                          dp[i][j][k]);  // switch to not item
+				dp[i + 1][j][k] = max(dp[i + 1][j][k], dp[i][j][k]);  // stay
+			}
+		}
+	}
+
+	int ret = 0;
+
+	for (int i = 0; i < 3; i++) { ret = max(ret, dp[N - 1][K][i]); }
+
+	cout << ret << endl;
+}

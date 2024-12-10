@@ -1,0 +1,2042 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+vector<int> graph[100001];
+int visited[100001], odd[100001], timer = 1;
+vector<pair<int, int>> ans;
+
+void dfs(int node, int parent = 0) {
+	visited[node] = timer++;
+	for (int i : graph[node])
+		if (i != parent) {
+			if (!visited[i]) {
+				dfs(i, node);
+				if (odd[i]) {
+					ans.push_back({i, node});
+					odd[i] = 0;
+				} else {
+					ans.push_back({node, i});
+					odd[node] ^= 1;
+				}
+			} else if (visited[node] > visited[i]) {
+				ans.push_back({node, i});
+				odd[node] ^= 1;
+			}
+		}
+}
+
+int main() {
+	cin.tie(0)->sync_with_stdio(0);
+	int n, m;
+	scanf("%d %d", &n, &m);
+	while (m--) {
+		int u, v;
+		scanf("%d %d", &u, &v);
+		graph[u].push_back(v);
+		graph[v].push_back(u);
+	}
+	for (int i = 1; i <= n; i++)
+		if (!visited[i]) dfs(i);
+	if (accumulate(odd + 1, odd + n + 1, 0)) printf("IMPOSSIBLE");
+	else
+		for (pair<int, int> i : ans) printf("%d %d\n", i.first, i.second);
+	return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 2e5;
+const int LOGN = 18;  // log of MAXN base 2
+
+// Simple DSU class with Small to Large merging
+template <size_t N> struct UnionFind {
+	int par[N], sze[N], max_size;
+
+	UnionFind(int n = N) { init(n); }
+
+	void init(int n = N) {
+		iota(par, par + n, 0);
+		fill(sze, sze + n, 1);
+		max_size = 1;
+	}
+
+	int find(int a) {
+		if (a == par[a]) return a;
+		return par[a] = find(par[a]);
+	}
+
+	bool merge(int a, int b) {
+		a = find(a), b = find(b);
+		if (a == b) return 0;
+
+		if (sze[a] > sze[b]) {
+			par[b] = a;
+			sze[a] += sze[b];
+			max_size = max(max_size, sze[a]);
+		} else {
+			par[a] = b;
+			sze[b] += sze[a];
+			max_size = max(max_size, sze[b]);
+		}
+		return 1;
+	}
+
+	int size(int a) { return sze[find(a)]; }
+};
+
+int N, M, Q;
+vector<pair<int, int>> G[MAXN];
+UnionFind<MAXN> dsu;
+
+namespace LCA {
+int dep[MAXN], par[MAXN][LOGN], val[MAXN][LOGN];
+
+void dfs_init(int u, int p, int d) {
+	dep[u] = d;
+	par[u][0] = p;
+	for (auto [v, w] : G[u])
+		if (p != v) {
+			val[v][0] = w;
+			dfs_init(v, u, d + 1);
+		}
+}
+
+void init() {
+	memset(dep, -1, sizeof(dep));
+	memset(par, 0, sizeof(par));
+	memset(val, 0, sizeof(val));
+
+	for (int i = 1; i <= N; i++)
+		if (dep[i] == -1) dfs_init(i, i, 0);
+	for (int k = 1; k < LOGN; k++)
+		for (int i = 1; i <= N; i++) {
+			par[i][k] = par[par[i][k - 1]][k - 1];
+			val[i][k] = max(val[i][k - 1], val[par[i][k - 1]][k - 1]);
+		}
+}
+
+int query(int a, int b) {
+	if (dep[a] > dep[b]) swap(a, b);
+
+	// gets a and b to the same depth
+	int ans = 0;
+	for (int d = LOGN - 1; d >= 0; d--)
+		if (dep[b] - (1 << d) >= dep[a]) {
+			ans = max(ans, val[b][d]);
+			b = par[b][d];
+		}
+
+	assert(dep[a] == dep[b]);
+
+	if (a == b) return ans;
+
+	for (int d = LOGN - 1; d >= 0; d--)
+		if (par[a][d] != par[b][d]) {
+			ans = max(ans, val[a][d]);
+			a = par[a][d];
+			ans = max(ans, val[b][d]);
+			b = par[b][d];
+		}
+	if (par[a][0] != par[b][0]) return -1;
+	ans = max(ans, val[a][0]);
+	ans = max(ans, val[b][0]);
+
+	return ans;
+}
+}  // namespace LCA
+
+int main() {
+	dsu.init();
+
+	cin >> N >> M >> Q;
+	for (int i = 1; i <= M; i++) {
+		int u, v;
+		cin >> u >> v;
+		if (dsu.merge(u, v)) {
+			G[u].emplace_back(v, i);
+			G[v].emplace_back(u, i);
+		}
+	}
+
+	LCA::init();
+
+	while (Q--) {
+		int u, v;
+		cin >> u >> v;
+		cout << LCA::query(u, v) << '\n';
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+	int n, m;
+	cin >> n >> m;
+
+	vector<int> out(n + 1);           // Number of outgoing nodes
+	vector<vector<int>> radj(n + 1);  // Reverse graph
+
+	for (int i = 0; i < m; i++) {
+		int a, b;
+		cin >> a >> b;
+		radj[b].push_back(a);
+		out[a]++;
+	}
+
+	/*
+	 * Any node with out[i] == 0 can be used, so we store all possible
+	 * nodes in a max heap to get the node with the maximum id.
+	 */
+	priority_queue<int> pq;
+	for (int i = 1; i <= n; i++) {
+		if (out[i] == 0) { pq.push(i); }
+	}
+
+	vector<int> ans;
+	while (pq.size()) {
+		// Remove the node with the greatest id.
+		int x = pq.top();
+		pq.pop();
+		ans.push_back(x);
+
+		// Remove all edges that begin at `x`.
+		for (int t : radj[x]) {
+			out[t]--;
+			if (!out[t]) { pq.push(t); }
+		}
+	}
+	reverse(ans.begin(), ans.end());
+	for (int t : ans) { cout << t << " "; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+struct node {
+	int P, S, A, L;
+} val0{0, 0, 0, 1}, val1{1, 1, 1, 1};
+
+node operator+(const node &a, const node &b) {
+	return {a.P == a.L ? a.L + b.P : a.P, b.S == b.L ? b.L + a.S : b.S,
+	        max(max(a.A, b.A), a.S + b.P), a.L + b.L};
+}
+
+template <typename T, size_t N> class SegmentTree {
+  private:
+	T tree[4 * N], dval;
+	function<T(const T &, const T &)> merge;
+
+	void build(int t, int tl, int tr) {
+		if (tl == tr) {
+			tree[t] = dval;
+			return;
+		}
+		build(t << 1, tl, (tl + tr) >> 1);
+		build(t << 1 | 1, ((tl + tr) >> 1) + 1, tr);
+		tree[t] = merge(tree[t << 1], tree[t << 1 | 1]);
+	}
+
+	void update(int i, T v, int t, int tl, int tr) {
+		if (tl == tr) {
+			tree[t] = v;
+			return;
+		}
+		if (i <= (tl + tr) >> 1) update(i, v, t << 1, tl, (tl + tr) >> 1);
+		else update(i, v, t << 1 | 1, ((tl + tr) >> 1) + 1, tr);
+		tree[t] = merge(tree[t << 1], tree[t << 1 | 1]);
+	}
+
+	T query(int l, int r, int t, int tl, int tr) {
+		if (r < tl || tr < l) return dval;
+		if (l <= tl && tr <= r) return tree[t];
+		return merge(query(l, r, t << 1, tl, (tl + tr) >> 1),
+		             query(l, r, t << 1 | 1, ((tl + tr) >> 1) + 1, tr));
+	}
+
+  public:
+	SegmentTree(function<T(const T &, const T &)> merge, T dval = 0)
+	    : merge(merge), dval(dval) {
+		build();
+	}
+
+	inline void build() { build(1, 0, N - 1); }
+
+	inline void update(int i, T v) { update(i, v, 1, 0, N - 1); }
+
+	inline T query(int l, int r) { return query(l, r, 1, 0, N - 1); }
+};
+
+string S;
+int Q;
+SegmentTree<node, 200005>
+    ST0([](const node &a, const node &b) { return a + b; }, val0);
+SegmentTree<node, 200005>
+    ST1([](const node &a, const node &b) { return a + b; }, val0);
+
+int main() {
+	cin >> S;
+	for (int i = 0; i < S.size(); i++) {
+		if (S[i] == '0') {
+			ST0.update(i, val1);
+			ST1.update(i, val0);
+		} else if (S[i] == '1') {
+			ST0.update(i, val0);
+			ST1.update(i, val1);
+		}
+	}
+	cin >> Q;
+	while (Q--) {
+		int x;
+		cin >> x;
+		x--;
+		if (S[x] == '0') {
+			ST0.update(x, val0);
+			ST1.update(x, val1);
+			S[x] = '1';
+		} else if (S[x] == '1') {
+			ST1.update(x, val0);
+			ST0.update(x, val1);
+			S[x] = '0';
+		}
+		cout << max(ST0.query(0, S.size() - 1).A, ST1.query(0, S.size() - 1).A)
+		     << ' ';
+	}
+}
+
+New Solution
+
+#include <iostream>
+
+using std::cout;
+using std::endl;
+
+const int MOD = 1e9 + 7;
+const int TWO_MOD_INV = 500000004;
+
+/** @return The sum of all numbers in [start, end] mod MOD. */
+long long total_sum(long long start, long long end) {
+	return ((((end - start + 1) % MOD) * ((start + end) % MOD) % MOD) *
+	        TWO_MOD_INV % MOD);
+}
+
+int main() {
+	long long n;
+	std::cin >> n;
+
+	long long total = 0;
+	long long at = 1;
+	while (at <= n) {
+		long long add_amt = n / at;  // Our divisor to process
+		// The largest number that still has the same value of q
+		long long last_same = n / add_amt;
+
+		total = (total + add_amt * total_sum(at, last_same)) % MOD;
+		at = last_same + 1;
+	}
+
+	cout << total << endl;
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <set>
+using namespace std;
+using ll = long long;
+const ll mn = (ll)2e5 + 5;
+
+ll N, K;
+ll arr[mn];
+multiset<ll> up;
+multiset<ll> low;
+ll sLow, sUp;
+
+void ins(ll val) {
+	ll a = *low.rbegin();
+	if (a < val) {
+		up.insert(val);
+		sUp += val;
+		if (up.size() > K / 2) {
+			ll moving = *up.begin();
+			low.insert(moving);
+			sLow += moving;
+			up.erase(up.find(moving));
+			sUp -= moving;
+		}
+	} else {
+		low.insert(val);
+		sLow += val;
+		if (low.size() > (K + 1) / 2) {
+			ll moving = *low.rbegin();
+			up.insert(*low.rbegin());
+			sUp += moving;
+			low.erase(low.find(*low.rbegin()));
+			sLow -= moving;
+		}
+	}
+}
+
+void er(ll val) {
+	if (up.find(val) != up.end()) up.erase(up.find(val)), sUp -= val;
+	else low.erase(low.find(val)), sLow -= val;
+	if (low.empty()) {
+		ll moving = *up.begin();
+		low.insert(*up.begin());
+		sLow += moving;
+		up.erase(up.find(*up.begin()));
+		sUp -= moving;
+	}
+}
+
+ll med() { return (K % 2 == 0) ? 0 : (*low.rbegin()); }
+
+int main() {
+	cin >> N >> K;
+	for (ll i = 0; i < N; i++) cin >> arr[i];
+	low.insert(arr[0]);
+	sLow += arr[0];
+	for (ll i = 1; i < K; i++) ins(arr[i]);
+	cout << sUp - sLow + med();
+	if (N != 1) cout << " ";
+	for (ll i = K; i < N; i++) {
+		if (K == 1) {
+			ins(arr[i]);
+			er(arr[i - K]);
+		} else {
+			er(arr[i - K]);
+			ins(arr[i]);
+		}
+		cout << sUp - sLow + med();
+		if (i != N - 1) cout << " ";
+	}
+	cout << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int n, m;
+vector<int> adj[200001];
+vector<vector<int>> ans;
+
+bool dfs(int x, int pre) {
+	vector<int> curr;
+	for (int i : adj[x]) {
+		if (i != pre) {
+			if (dfs(i, x)) {  // spanning tree edge
+				curr.push_back(i);
+			}
+		}
+	}
+
+	for (int i = 0; i < curr.size() / 2; i++) {
+		ans.push_back({curr[2 * i], x, curr[2 * i + 1]});
+	}
+	if (curr.size() % 2 == 0) { return true; }
+	if (pre != -1) { ans.push_back({curr[curr.size() - 1], x, pre}); }
+
+	return false;
+}
+
+int main() {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	cin >> n >> m;
+	for (int i = 0; i < m; i++) {
+		int a, b;
+		cin >> a >> b;
+		adj[a].push_back(b);
+		adj[b].push_back(a);
+	}
+
+	dfs(1, -1);
+
+	cout << ans.size() << "\n";
+	for (const vector<int> &a : ans) {
+		cout << a[0] << " " << a[1] << " " << a[2] << "\n";
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+const int N = 3;
+
+int main() {
+	vector<pair<int, int>> logos(N);
+	for (int i = 0; i < N; i++) {
+		scanf("%d%d", &logos[i].first, &logos[i].second);
+	}
+	long long area = 0;
+	for (pair<int, int> p : logos) { area += p.first * p.second; }
+
+	// if area is not a perfect square, then it's already invalid
+	int len = 1;
+	while (len * len < area) { len++; }
+
+	if (len * len != area) {
+		printf("-1");
+		return 0;
+	}
+	// loop through all rotations of each rectangle
+	for (int rotate_mask = 0; rotate_mask < (1 << N); rotate_mask++) {
+		vector<string> grid(len, string(len, 'Z'));  // temporary grid
+		// 'Z' represents an empty space in the grid
+		int num_placed = 0;
+		for (int i = 0; i < len; i++) {
+			for (int j = 0; j < len; j++) {
+				if (grid[i][j] == 'Z') {
+					if (num_placed == N) {
+						// we have already placed all the logos
+						goto outer;
+					}
+
+					int w = logos[num_placed].first;
+					int h = logos[num_placed].second;
+
+					if (rotate_mask & (1 << num_placed)) {
+						// rotate 90 degrees
+						swap(w, h);
+					}
+
+					// place configuration
+					for (int r = i; r < i + h; r++) {
+						for (int c = j; c < j + w; c++) {
+							if (r >= len || c >= len || grid[r][c] != 'Z') {
+								// out of bounds or already a logo here
+								goto outer;
+							}
+							grid[r][c] = num_placed + 'A';
+						}
+					}
+
+					num_placed++;
+				}
+			}
+		}
+
+		// at this point, all logos must be placed
+		assert(num_placed == N);
+
+		printf("%d\n", len);
+		for (int i = 0; i < len; i++) { printf("%s\n", grid[i].c_str()); }
+		return 0;
+		// continue the iteration
+	outer:;
+	}
+	printf("-1");
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using vi = vector<int>;
+
+// BeginCodeSnip{DSU}
+struct DSU {
+	vi e;
+	DSU(int n) { e = vi(n, -1); }
+
+	int get(int x) {
+		if (e[x] < 0) {
+			return x;
+		} else {
+			e[x] = get(e[x]);
+			return e[x];
+		}
+	}
+
+	bool same(int a, int b) { return get(a) == get(b); }
+
+	int size(int x) { return -e[get(x)]; }
+
+	bool unite(int x, int y) {
+		x = get(x);
+		y = get(y);
+		if (x == y) { return false; }
+		if (e[x] > e[y]) { swap(x, y); }
+		e[x] += e[y];
+		e[y] = x;
+		return true;
+	}
+};
+// EndCodeSnip
+
+void solve() {
+	int n;
+	cin >> n;
+	int a[n][n];
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) { cin >> a[i][j]; }
+	}
+
+	DSU dsu(2 * n);
+
+	for (int i = 0; i < n; i++) {
+		// Only check each pair once and diagnals don't matter
+		for (int j = i + 1; j < n; j++) {
+			// If they are the same we should not merge either way
+			// because it could affect later merges
+			if (a[i][j] == a[j][i]) {
+				continue;
+			} else if (a[i][j] > a[j][i]) {
+				// Swap the elements if the states are not already merged the
+				// opposite way
+				if (dsu.get(i) != dsu.get(j)) {
+					dsu.unite(i, j + n);
+					dsu.unite(j, i + n);
+				}
+			} else {
+				// Keep the elements the same if the states
+				// are not already merged the opposite way
+				if (dsu.get(i) != dsu.get(j + n)) {
+					dsu.unite(i, j);
+					dsu.unite(i + n, j + n);
+				}
+			}
+		}
+	}
+
+	// Construct the answer
+	vector<vi> ans(n, vi(n));
+	for (int i = 0; i < n; i++) {
+		for (int j = i; j < n; j++) {
+			/*
+			 * If a[i][j] is part of a diagonal or the pair is equal (a[i][j] ==
+			 * a[j][i]), manually set it to be the same as the original array
+			 */
+			if (i == j) {
+				ans[i][j] = a[i][j];
+			} else if (a[i][j] == a[j][i]) {
+				ans[i][j] = ans[j][i] = a[i][j];
+			} else {  // Otherwise check whether the i and j states are merged
+				if (dsu.get(i) == dsu.get(j)) {
+					ans[i][j] = a[i][j];
+					ans[j][i] = a[j][i];
+				} else {
+					ans[i][j] = a[j][i];
+					ans[j][i] = a[i][j];
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) { cout << ans[i][j] << " "; }
+		cout << '\n';
+	}
+}
+
+int main() {
+	ios::sync_with_stdio(false);
+	cin.tie(nullptr);
+	int T;
+	cin >> T;
+	for (int t = 0; t < T; t++) { solve(); }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int ask(int a, int b) {
+	cout << "? " << a << " " << b << endl;
+	int res;
+	cin >> res;
+	return res;
+}
+
+int main() {
+	bool a_greater_than_b = ask(0, 0) == 1;
+	int a = 0;
+	int b = 0;
+	// 2^29 is the maximum bit due to constraints
+	for (int bit = 29; bit >= 0; bit--) {
+		int query1 = ask(a | (1 << bit), b);
+		int query2 = ask(a, b | (1 << bit));
+		if (query1 != query2) {
+			if (query1 == -1) {
+				// case 1
+				a |= 1 << bit;
+				b |= 1 << bit;
+			}
+			// case 2 (do nothing)
+		} else {
+			if (a_greater_than_b) {
+				// case 3
+				a |= 1 << bit;
+			} else {
+				// case 4
+				b |= 1 << bit;
+			}
+			a_greater_than_b = query1 == 1;
+		}
+	}
+
+	cout << "! " << a << " " << b << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+
+using namespace std;
+
+int main() {
+	freopen("revegetate.in", "r", stdin);
+	freopen("revegetate.out", "w", stdout);
+
+	int n, m;
+	cin >> n >> m;
+	vector<int> colors(n, 1);  // initially, all pastures have grass type one
+	vector<vector<int>> adj(n);
+
+	for (int i = 0; i < m; i++) {
+		int a, b;
+		cin >> a >> b;
+
+		// zero-index
+		adj[--a].push_back(--b);
+		adj[b].push_back(a);
+	}
+
+	// we want to assign the smallest grass types to the pastures at the front
+	for (int i = 0; i < n; i++) {
+		for (int k : adj[i]) {
+			/*
+			 * if they have the same grass type, increment the greater
+			 * pasture to minimize the answer. (earlier digits have more weight)
+			 */
+			if (colors[k] == colors[i]) {
+				colors[k]++;
+
+				/*
+				 * check if we've broken any of the "fixed" colorings.
+				 * once again, since j < i < k, we want to make sure
+				 * that we increment the greatest pasture.
+				 */
+				for (int j = 0; j < i; j++) {
+					for (int g : adj[j]) {
+						if (colors[g] == colors[j]) { colors[k]++; }
+					}
+				}
+			}
+		}
+	}
+
+	for (int i : colors) { cout << i; }
+	cout << "\n";
+}
+
+New Solution
+
+#include <fstream>
+#include <iostream>
+#include <numeric>
+#include <set>
+#include <vector>
+
+using std::cout;
+using std::endl;
+using std::vector;
+
+/** Reverses [start, end] in the given vector in-place. */
+template <typename T> void reverse_segment(vector<T> &vec, int start, int end) {
+	while (start < end) {
+		T temp = vec[start];
+		vec[start] = vec[end];
+		vec[end] = temp;
+
+		start++;
+		end--;
+	}
+}
+
+int main() {
+	std::ifstream read("swap.in");
+	int n, k;
+	read >> n >> k;
+	int a1, a2;
+	int b1, b2;
+	read >> a1 >> a2 >> b1 >> b2;
+
+	vector<int> cows(n);
+	// Assign the values 1, 2, 3... to the vector of cows
+	iota(cows.begin(), cows.end(), 1);
+
+	// Apply swaps until the cows repeat themselves
+	std::set<vector<int>> visited{cows};
+	while (true) {
+		reverse_segment(cows, a1 - 1, a2 - 1);
+		reverse_segment(cows, b1 - 1, b2 - 1);
+		if (visited.count(cows)) { break; }
+		visited.insert(cows);
+	}
+
+	int cycle_len = visited.size();
+	int swaps_left = k % cycle_len;
+	for (int s = 0; s < swaps_left; s++) {
+		reverse_segment(cows, a1 - 1, a2 - 1);
+		reverse_segment(cows, b1 - 1, b2 - 1);
+	}
+
+	std::ofstream written("swap.out");
+	for (int c : cows) { written << c << '\n'; }
+}
+
+New Solution
+
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+#include <map>
+#include <set>
+#include <vector>
+
+using namespace std;
+
+int main() {
+	int cow_num;
+	cin >> cow_num;
+
+	set<int> seen_x, seen_y;
+	vector<pair<int, int>> cows(cow_num);
+	for (pair<int, int> &c : cows) {
+		cin >> c.first >> c.second;
+		assert(!(seen_x.count(c.first) || seen_y.count(c.second)));
+		seen_x.insert(c.first);
+		seen_y.insert(c.second);
+	}
+
+	// we do a little coordinate compression
+	sort(cows.begin(), cows.end());  // sort by x
+	map<int, int> reduced_x;
+	for (int c = 0; c < cow_num; c++) { reduced_x[cows[c].first] = c; }
+
+	auto cmp = [&](const pair<int, int> &c1, const pair<int, int> &c2) {
+		return c1.second < c2.second;
+	};
+	sort(cows.begin(), cows.end(), cmp);  // sort by y
+	map<int, int> reduced_y;
+	for (int c = 0; c < cow_num; c++) { reduced_y[cows[c].second] = c; }
+
+	for (auto &[x, y] : cows) {
+		x = reduced_x[x];
+		y = reduced_y[y];
+	}
+
+	// sort by x again
+	sort(cows.begin(), cows.end());
+	// make our prefix sums for the y-lines
+	vector<vector<int>> lt_y(cow_num, vector<int>(cow_num + 1));
+	vector<vector<int>> gt_y(cow_num, vector<int>(cow_num + 1));
+	for (int c = 0; c < cow_num; c++) {
+		int curr_y = cows[c].second;
+		for (int x = 1; x <= cow_num; x++) {
+			lt_y[curr_y][x] =
+			    (lt_y[curr_y][x - 1] + (cows[x - 1].second < curr_y));
+			gt_y[curr_y][x] =
+			    (gt_y[curr_y][x - 1] + (cows[x - 1].second > curr_y));
+		}
+	}
+
+	long long total = 0;
+	for (int c1 = 0; c1 < cow_num; c1++) {
+		for (int c2 = c1 + 1; c2 < cow_num; c2++) {
+			int bottom = min(cows[c1].second, cows[c2].second);
+			int top = max(cows[c1].second, cows[c2].second);
+
+			int bottom_total = 1 + lt_y[bottom][c2 + 1] - lt_y[bottom][c1];
+			int top_total = 1 + gt_y[top][c2 + 1] - gt_y[top][c1];
+			total += (long long)bottom_total * top_total;
+		}
+	}
+
+	/*
+	 * we didn't count the boxes where fj just contains
+	 * either a single cow or none at all
+	 */
+	total += cow_num + 1;
+
+	cout << total << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAXN = 1e5;
+const int MAXL = 26;
+int freq[MAXN][MAXL];
+
+// count(i, j, k) is the number of appearances of letter k between index i and
+// j.
+int count(int start, int end, int let) {
+	return freq[end + 1][let] - freq[start][let];
+}
+
+int main() {
+	freopen("cowmbat.in", "r", stdin);  // see /general/input-output
+	freopen("cowmbat.out", "w", stdout);
+	int N;
+	int M;
+	int K;
+	cin >> N >> M >> K;
+
+	string S;
+	cin >> S;
+
+	vector<vector<int>> cost(M, vector<int>(M));
+	for (int i = 0; i < M; i++) {
+		for (int j = 0; j < M; j++) { cin >> cost[i][j]; }
+	}
+
+	// Calculate the minimum cost to change letter i to j.
+	for (int k = 0; k < M; k++) {
+		for (int i = 0; i < M; i++) {
+			for (int j = 0; j < M; j++) {
+				cost[i][j] = min(cost[i][j], cost[i][k] + cost[k][j]);
+			}
+		}
+	}
+
+	/*
+	 * freq[i][j] is frequency of letter j
+	 * in the string in the range from 0 to i.
+	 */
+	for (int i = 1; i <= N; i++) {
+		for (int j = 0; j < M; j++) { freq[i][j] = freq[i - 1][j]; }
+		freq[i][S[i - 1] - 'a']++;
+	}
+
+	/*
+	 * dp[i][j] is the minimum cost to make a valid streak
+	 * up to index i, where the last streak has letter j.
+	 */
+	vector<vector<int>> dp(N, vector<int>(M, INT32_MAX));
+	// ans[i] is the minimum cost to make a valid streak to index i.
+	vector<int> ans(N, INT32_MAX);
+	ans[0] = 0;
+
+	// If (N < 2 * K), then there is only 1 letter streak.
+	for (int idx = K - 1; (idx < 2 * K - 1) && (idx < N); idx++) {
+		for (int let = 0; let < M; let++) {
+			dp[idx][let] = 0;
+			for (int i = 0; i < M; i++) {
+				// Calculate cost of converting each letter to 'let'.
+				dp[idx][let] += (cost[i][let] * count(0, idx, i));
+			}
+		}
+
+		// Find a letter 'j' with minimum cost to change all the letters to.
+		ans[idx] = dp[idx][0];
+		for (int j = 1; j < M; j++) { ans[idx] = min(ans[idx], dp[idx][j]); }
+	}
+
+	// If (N >= 2K) there is >= 1 unique letter streaks.
+	for (int idx = (2 * K - 1); idx < N; idx++) {
+		// Continue the previous streak.
+		for (int j = 0; j < M; j++) {
+			dp[idx][j] = dp[idx - 1][j];
+			// Change the letter.
+			if (S[idx] - 'a' != j) { dp[idx][j] += cost[S[idx] - 'a'][j]; }
+		}
+
+		// Make a new streak with letter 'let1'.
+		for (int let1 = 0; let1 < M; let1++) {
+			int add = 0;
+			for (int let2 = 0; let2 < M; let2++) {
+				add += cost[let2][let1] * count(idx - K + 1, idx, let2);
+			}
+			// Continue with same letter, or make a new streak
+			dp[idx][let1] = min(dp[idx][let1], ans[idx - K] + add);
+		}
+		// Update the answer.
+		ans[idx] = dp[idx][0];
+		for (int j = 1; j < M; j++) { ans[idx] = min(ans[idx], dp[idx][j]); }
+	}
+	cout << ans[N - 1] << endl;
+}
+
+New Solution
+
+int max_subarray(const vector<int> &arr) {
+	int best_sum = 0;
+	int curr_sum = 0;
+	for (int i : arr) {
+		curr_sum = max(curr_sum + i, 0);
+		best_sum = max(best_sum, curr_sum);
+	}
+	return best_sum;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+struct Boot {
+	int max_depth, max_steps, index;
+};
+
+int main() {
+	freopen("snowboots.in", "r", stdin);
+
+	int tile_num;
+	int boot_num;
+	cin >> tile_num >> boot_num;
+
+	vector<int> tiles(tile_num);
+	for (int &t : tiles) { cin >> t; }
+
+	vector<Boot> boots(boot_num);
+	for (int i = 0; i < boot_num; ++i) {
+		cin >> boots[i].max_depth >> boots[i].max_steps;
+		boots[i].index = i;
+	}
+	// sort the boots from greatest depth to least depth
+	sort(boots.begin(), boots.end(), [&](const Boot &a, const Boot &b) {
+		return a.max_depth > b.max_depth;
+	});
+
+	vector<int> tiles_by_depth;  // list of tile indices, sorted by snow depth
+	for (int i = 1; i < tile_num - 1; i++) { tiles_by_depth.push_back(i); }
+	sort(tiles_by_depth.begin(), tiles_by_depth.end(),
+	     [&](int a, int b) { return tiles[a] > tiles[b]; });
+
+	set<int> valid_tiles;
+	for (int i = 0; i < tile_num; i++) { valid_tiles.insert(i); }
+
+	// the deepest tile that can still be traversed with the boot we're at
+	int tile_at = 0;
+	// the min step a boot needs to be able to take to reach the barn
+	int needed_step = 1;
+	vector<bool> can_reach(boot_num);
+	for (const Boot &b : boots) {
+		/*
+		 * remove all the tiles that this boot can't traverse
+		 * & update tile_at & needed_step accordingly
+		 */
+		while (tile_at < tiles_by_depth.size() &&
+		       tiles[tiles_by_depth[tile_at]] > b.max_depth) {
+			auto removed = valid_tiles.find(tiles_by_depth[tile_at]);
+			needed_step = max(needed_step, *next(removed) - *prev(removed));
+			valid_tiles.erase(removed);
+			tile_at++;
+		}
+		can_reach[b.index] = b.max_steps >= needed_step;
+	}
+
+	freopen("snowboots.out", "w", stdout);
+	for (bool b : can_reach) { cout << b << '\n'; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+ 
+using namespace std;
+ 
+int main() {
+  ios::sync_with_stdio(false);
+  cin.tie(nullptr);
+  int t, n;
+  cin >> t >> n;
+  auto cyc_right = [&n](int x) -> int {
+    x <<= 1;
+    if (x & (1 << n)) {
+      x ^= (1 << n) ^ 1;
+    }
+    return x;
+  };
+  auto str_to_bin = [&n](string s) -> int {
+    int res = 0;
+    for (int i = 0; i < n; ++i) {
+      if (s[i] == '1') {
+        res ^= (1 << i);
+      }
+    }
+    return res;
+  };
+  vector<int> rep(1 << n, -1);
+  for (int i = 0; i < 1 << n; ++i) {
+    if (rep[i] == -1) {
+      int j = i;
+      while (rep[j] == -1) {
+        rep[j] = i;
+        j = cyc_right(j);
+      }
+    }
+  }
+  vector<vector<bool>> can(3*n + 1, vector<bool>(1 << n));
+  can[0][rep[0]] = true;
+  int cur_pad = 0;
+  for (int i = 1; i <= 3*n; ++i) {
+    cur_pad ^= 1<<((i-1)%n);
+    for (int mask = 0; mask < 1 << n; ++mask) {
+      if (can[i - 1][rep[mask]]) {
+        can[i][rep[cur_pad ^ mask]] = true;
+      }
+    }
+  }
+  while (t--) {
+    string x, y;
+    cin >> x >> y;
+    int pad = str_to_bin(y);
+    int fin = str_to_bin(x);
+    int cur = 0;
+    for (int i = 0; i <= 3*n; ++i) {
+      if (can[i][rep[cur ^ fin]]) {
+        cout << i << '\n';
+        break;
+      }
+      cur ^= pad;
+      pad = cyc_right(pad);
+    }
+  }
+  return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+ 
+using namespace std;
+ 
+struct DSU {
+  vector<int> e;
+ 
+  DSU(int n) { e = vector<int>(n, -1); }
+ 
+  int get(int x) { return e[x] < 0 ? x : e[x] = get(e[x]); }
+ 
+  bool same_set(int a, int b) { return get(a) == get(b); }
+ 
+  int size(int x) { return -e[get(x)]; }
+ 
+  bool unite(int x, int y) {
+    x = get(x), y = get(y);
+    if (x == y) return false;
+    if (e[x] > e[y]) swap(x, y);
+    e[x] += e[y];
+    e[y] = x;
+    return true;
+  }
+};
+ 
+int main() {
+  ios::sync_with_stdio(false);
+  cin.tie(nullptr);
+  int n, m;
+  cin >> n >> m;
+  vector<vector<int>> g(n);
+  vector<int> deg(n);
+  for (int i = 0; i < m; ++i) {
+    int u, v;
+    cin >> u >> v;
+    --u, --v;
+    g[u].push_back(v);
+    g[v].push_back(u);
+    ++deg[u];
+    ++deg[v];
+  }
+  set<array<int, 2>> vertices;
+  for (int i = 0; i < n; ++i) {
+    vertices.insert({deg[i], i});
+  }
+  vector<int> order;
+  vector<int> degrees;
+  vector<bool> active(n, true);
+  auto remove = [&]() {
+    auto top = *vertices.begin();
+    int u = top[1];
+    int degree = top[0];
+    order.push_back(u);
+    degrees.push_back(degree);
+    active[u] = false;
+    for (int v : g[u]) {
+      if (active[v]) {
+        vertices.erase({deg[v], v});
+        --deg[v];
+        vertices.insert({deg[v], v});
+      }
+    }
+    vertices.erase({deg[u], u});
+  };
+  for (int i = 0; i < n; ++i) {
+    remove();
+  }
+  reverse(order.begin(), order.end());
+  reverse(degrees.begin(), degrees.end());
+  active.assign(n, false);
+  DSU dsu(n);
+  int mx = 1;
+  long long ans = 0;
+  for (int i = 0; i < n; ++i) {
+    int u = order[i];
+    active[u] = true;
+    for (int v : g[u]) {
+      if (active[v]) {
+        dsu.unite(u, v);
+        mx = max(mx, dsu.size(u));
+      }
+    }
+    ans = max(ans, 1ll * mx * degrees[i]);
+  }
+  cout << ans << '\n';
+  return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+using db = double;
+
+const int MAXT = 1000;
+
+db prob[MAXT + 1][MAXT + 1];
+db pref_prob[MAXT + 1];
+db pref_exp[MAXT + 1];
+
+// Function to skip ahead x submissions with constants a and b with the current
+// expected value set to E.
+db skip_submissions(db a, db b, db E, ll x) {
+	return pow(a, x) * E + b * (pow(a, x) - 1) / (a - 1);
+}
+
+int main() {
+	int T;
+	ll K;
+	cin >> T >> K;
+
+	// Subtract sample test case
+	T--;
+
+	// Precompute probablity of choosing exactly i test cases using Pascal's
+	// Identity.
+	prob[0][0] = 1;
+	for (int i = 1; i <= T; i++) {
+		prob[i][0] = prob[i - 1][0] / 2;
+		for (int j = 1; j <= T; j++)
+			prob[i][j] = (prob[i - 1][j] + prob[i - 1][j - 1]) / 2;
+	}
+
+	// Create prefix sum of probablity
+	pref_prob[0] = prob[T][0];
+	for (int i = 1; i <= T; i++) pref_prob[i] = pref_prob[i - 1] + prob[T][i];
+
+	// Create prefix sum of expected value
+	pref_exp[0] = 0;
+	for (int i = 1; i <= T; i++) pref_exp[i] = pref_exp[i - 1] + prob[T][i] * i;
+
+	db E = 0;
+	while (K != 0) {
+		/*
+		 * Find the floor of the current expected value
+		 * which acts as the limit of how many submissions we can skip forward.
+		 */
+		ll cross = (ll)floor(E);
+
+		// Find constants a and b
+		db a = pref_prob[cross], b = pref_exp[T] - pref_exp[cross];
+
+		// Binary search to find how submissions we can skip forward
+		ll lo = 1;
+		ll hi = 1e9;
+		while (lo < hi) {
+			ll mid = (lo + hi + 1) / 2;
+			// Check if 'mid' submissions crosses the 'cross' limit.
+			if (floor(skip_submissions(a, b, E, mid)) == cross) {
+				lo = mid;
+			} else {
+				hi = mid - 1;
+			}
+		}
+		/*
+		 * Skip forward 'lo' submissions or the remaining amount of submissions
+		 * if there are less than 'lo' submissions left.
+		 */
+		lo = min(lo, K);
+		E = skip_submissions(a, b, E, lo);
+		K -= lo;
+	}
+	cout << fixed << setprecision(20);
+	cout << E + 1 << endl;
+}
+
+New Solution
+
+#include <iostream>
+#include <map>
+#include <set>
+#include <vector>
+
+using std::cout;
+using std::endl;
+using std::vector;
+
+int main() {
+	int size;
+	std::cin >> size;
+	vector<int> perm(size);
+	vector<int> ind(size + 1);
+	for (int i = 0; i < size; i++) {
+		std::cin >> perm[i];
+		ind[perm[i]] = i;
+	}
+
+	vector<vector<int>> started_his(size + 1);
+	std::set<int> added;
+	for (int i : perm) {
+		auto it = added.lower_bound(i);
+		int start = it == added.begin() ? 0 : *(--it);
+		started_his[start].push_back(ind[i]);
+		added.insert(i);
+	}
+
+	vector<int> hilo_num;
+	vector<int> lo;
+	std::set<int> hi;
+	// hi = true, lo = false
+	std::map<int, bool> hilos{{-1, false}, {size + 1, true}};
+	int curr_hilo = 0;
+	for (int x = 0; x <= size; x++) {
+		for (int h : started_his[x]) {
+			hi.insert(h);
+			auto it = hilos.lower_bound(h);
+			if (!it->second && !(--it)->second) { curr_hilo++; }
+			hilos[h] = true;
+		}
+
+		hilo_num.push_back(curr_hilo);
+
+		if (x < size) {
+			int changed = ind[x + 1];
+			while (!lo.empty() && changed < lo.back()) {
+				auto it = hilos.lower_bound(lo.back());
+				if ((--it)->second) { curr_hilo--; }
+				hilos.erase(lo.back());
+				lo.pop_back();
+			}
+
+			bool prev = (--hilos.lower_bound(changed))->second;
+			bool next = (++hilos.lower_bound(changed))->second;
+			curr_hilo += prev + !next;
+			hi.erase(changed);
+			lo.push_back(changed);
+			hilos[changed] = false;
+		}
+	}
+
+	for (int i : hilo_num) { cout << i << '\n'; }
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef long long ll;
+typedef vector<int> vi; 
+ 
+#define FOR(i,a,b) for (int i = (a); i < (b); ++i)
+#define F0R(i,a) FOR(i,0,a)
+#define ROF(i,a,b) for (int i = (b)-1; i >= (a); --i)
+#define R0F(i,a) ROF(i,0,a)
+#define trav(a,x) for (auto& a: x)
+ 
+#define pb push_back
+#define rsz resize
+#define sz(x) int(x.size())
+ 
+void setIO(string name) {
+	ios_base::sync_with_stdio(0); cin.tie(0);
+	freopen((name+".in").c_str(),"r",stdin);
+	freopen((name+".out").c_str(),"w",stdout);
+}
+
+int MOD;
+int n,k;
+
+typedef int T;
+struct mi {
+	T val; 
+	mi() { val = 0; }
+	mi(const ll& v) { 
+		val = (-MOD <= v && v <= MOD) ? v : v % MOD;
+		if (val < 0) val += MOD;
+	}
+	mi& operator+=(const mi& m) { 
+		if ((val += m.val) >= MOD) val -= MOD; 
+		return *this; }
+	mi& operator-=(const mi& m) { 
+		if ((val -= m.val) < 0) val += MOD; 
+		return *this; }
+};
+typedef vector<mi> vmi;
+ 
+void ad(vmi& a, int b) { // multiply by (x^0+x^1+...+x^{b-1})
+	a.rsz(sz(a)+b-1);
+	R0F(i,sz(a)-b) a[i+b] -= a[i];
+	FOR(i,1,sz(a)) a[i] += a[i-1];
+}
+void sub(vmi& a, int b) {
+	ROF(i,1,sz(a)) a[i] -= a[i-1];
+	F0R(i,sz(a)-b) a[i+b] += a[i];
+	a.rsz(sz(a)-b+1); 
+}
+mi get(vmi& a, int b) {
+	if (b < 0 || b >= sz(a)) return 0;
+	return a[b];
+}
+ 
+int main() {
+	setIO("treedepth"); 
+	cin >> n >> k >> MOD;
+	vmi v = {1}; FOR(i,1,n+1) ad(v,i);
+	vmi ans(n,v[k]);
+	FOR(dif,1,n) {
+		sub(v,dif+1);
+		mi x = get(v,k-dif), y = get(v,k);
+		ad(v,dif+1);
+		F0R(a,n-dif) {
+			ans[a] += x;
+			ans[a+dif] += y;
+		}
+	}
+	F0R(i,n) cout << ans[i].val << ' ';
+}
+
+New Solution
+
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <vector>
+
+using std::cout;
+using std::endl;
+using std::vector;
+
+// BeginCodeSnip{Binary Indexed Tree}
+class BITree {
+  private:
+	vector<long long> bit;
+	int size;
+
+  public:
+	BITree(int size) : size(size), bit(size) {}
+
+	void increment(int ind, long long val) {
+		ind++;  // have the driver code not worry about 1-indexing
+		for (; ind <= size; ind += ind & -ind) { bit[ind] += val; }
+	}
+
+	long long query(int ind) {
+		ind++;
+		long long sum = 0;
+		for (; ind > 0; ind -= ind & -ind) { sum += bit[ind]; }
+		return sum;
+	}
+};
+// EndCodeSnip
+
+int main() {
+	std::ifstream read("snowcow.in");
+	int snowball_num;
+	int query_num;
+	read >> snowball_num >> query_num;
+
+	vector<vector<int>> neighbors(snowball_num);
+	for (int b = 0; b < snowball_num - 1; b++) {
+		int sb1, sb2;
+		read >> sb1 >> sb2;
+		sb1--;
+		sb2--;
+		neighbors[sb1].push_back(sb2);
+		neighbors[sb2].push_back(sb1);
+	}
+
+	// perform our euler tour- start & end are as described previously
+	vector<bool> processed(snowball_num);
+	vector<int> start(snowball_num);
+	vector<int> end(snowball_num);
+	int timer = 0;
+	vector<int> frontier{0};
+	while (!frontier.empty()) {
+		int curr = frontier.back();
+		frontier.pop_back();
+		if (processed[curr]) {
+			end[curr] = timer;
+			timer++;
+			continue;
+		}
+		start[curr] = timer;
+		frontier.push_back(curr);  // set a marker to record the outtime
+		processed[curr] = true;
+		for (int n : neighbors[curr]) {
+			if (!processed[n]) { frontier.push_back(n); }
+		}
+		timer++;
+	}
+
+	// calculate subtree sizes of all snowballs
+	vector<int> sub_size(snowball_num);
+	for (int s = 0; s < snowball_num; s++) {
+		sub_size[s] = (end[s] - start[s] + 1) / 2;
+	}
+
+	// the map for each color for tracking of parents & children
+	std::map<int, std::map<int, int>> colors;
+	// BIT for calculating the colorfulness due to parents & current snowball
+	BITree above_unique(snowball_num * 2);
+	// and for calculating the colorfulness due to colors of children
+	BITree below_unique(snowball_num * 2);
+	std::ofstream written("snowcow.out");
+	for (int q = 0; q < query_num; q++) {
+		int type;
+		int sb;
+		read >> type >> sb;
+		sb--;
+		if (type == 1) {
+			int color;
+			read >> color;
+
+			std::map<int, int> &painted = colors[color];
+			auto l_closest = painted.upper_bound(start[sb]);
+			/*
+			 * check if there's a parent of the snowball that's
+			 * already been painted with the color
+			 */
+			if (l_closest != painted.begin() &&
+			    end[sb] <= end[(--l_closest)->second]) {
+				continue;
+			}
+			// remove all children of the current snowball that are in the map
+			while (true) {
+				auto r_next = painted.upper_bound(start[sb]);
+				if (r_next == painted.end() || end[sb] <= end[r_next->second]) {
+					break;
+				}
+				int r_next_sb = r_next->second;
+				// undo the increments from when the child was added
+				above_unique.increment(start[r_next_sb], -1);
+				above_unique.increment(end[r_next_sb], 1);
+				below_unique.increment(start[r_next_sb], -sub_size[r_next_sb]);
+				painted.erase(r_next->first);
+			}
+
+			painted[start[sb]] = sb;
+			above_unique.increment(start[sb], 1);
+			above_unique.increment(end[sb], -1);
+			below_unique.increment(start[sb], sub_size[sb]);
+		} else if (type == 2) {
+			/*
+			 * the colors from parents influence every node in the subtree,
+			 * so multiply by the current subtree size
+			 */
+			long long above_colors =
+			    sub_size[sb] * above_unique.query(start[sb]);
+			long long below_colors =
+			    (below_unique.query(end[sb]) - below_unique.query(start[sb]));
+			written << above_colors + below_colors << '\n';
+		}
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+class Tree {
+  private:
+	const int q, log2dist;
+	vector<vector<int>> up;
+	vector<pair<int, int>> diameter;
+	vector<int> root;
+	vector<int> dep;
+	int curr = -1;
+
+  public:
+	Tree(int q)
+	    : q(q), log2dist(ceil(log2(q))), up(log2dist, vector<int>(q)),
+	      diameter(q), root(q), dep(q) {}
+
+	/** @return the LCA of nodes u and v */
+	int lca(int u, int v) {
+		if (dep[u] < dep[v]) { swap(u, v); }
+		for (int i = log2dist - 1; i >= 0; i--) {
+			if (((dep[u] - dep[v]) >> i) & 1) { u = up[i][u]; }
+		}
+		if (u == v) { return u; }
+		for (int i = log2dist - 1; i >= 0; i--) {
+			if (up[i][u] != up[i][v]) {
+				u = up[i][u];
+				v = up[i][v];
+			}
+		}
+		return up[0][u];
+	}
+
+	/** @return the distance betweens nodes u and v */
+	int dist(int u, int v) { return dep[u] + dep[v] - 2 * dep[lca(u, v)]; }
+
+	/** adds the given node into the tree it belongs to */
+	void add_node(int par) {
+		curr++;
+		if (par == -2) {
+			diameter[curr] = {curr, curr};
+			for (int i = 0; i < log2dist; i++) { up[i][curr] = curr; }
+			root[curr] = curr;
+		} else {
+			up[0][curr] = par;
+			for (int i = 1; i < log2dist; i++) {
+				up[i][curr] = up[i - 1][up[i - 1][curr]];
+			}
+
+			root[curr] = root[par];
+			dep[curr] = dep[par] + 1;
+
+			const auto [a, b] = diameter[root[curr]];
+			int dist_a = dist(curr, a);
+			int dist_b = dist(curr, b);
+			int cur_dist = dist(a, b);
+			if (dist_a > cur_dist) {
+				diameter[root[curr]] = {a, curr};
+			} else if (dist_b > cur_dist) {
+				diameter[root[curr]] = {b, curr};
+			}
+		}
+	}
+
+	/** @return the furthest distance from node u */
+	int query_dist(int u) {
+		const auto [a, b] = diameter[root[u]];
+		return max(dist(u, a), dist(u, b));
+	}
+};
+
+int main() {
+	freopen("newbarn.in", "r", stdin);
+	freopen("newbarn.out", "w", stdout);
+	int q;
+	cin >> q;
+	Tree tree(q);
+	for (int i = 0; i < q; i++) {
+		char type;
+		int node;
+		cin >> type >> node;
+		node--;
+		if (type == 'B') {
+			tree.add_node(node);
+		} else {
+			cout << tree.query_dist(node) << "\n";
+		}
+	}
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <map>
+#include <string>
+#include <cassert>
+#include <deque>
+#include <memory>
+
+using namespace std;
+
+typedef long long ll;
+typedef map<string, ll> Env;
+typedef vector<ll> row;
+typedef vector<row> mat;
+
+constexpr ll p10(ll n) { return n==0 ? 1LL : p10(n-1)*10LL; }
+constexpr ll MOD = p10(9) + 7;
+ll ADD(ll x, ll y) {
+  return (x+y)%MOD;
+}
+ll MUL(ll x, ll y) {
+  return (x*y)%MOD;
+}
+
+mat I(ll n) {
+  mat M(n, row(n, 0));
+  for(ll i=0; i<n; i++) {
+    M[i][i] = 1;
+  }
+  return M;
+}
+row row_add(const row& A, const row& B) {
+  assert(A.size() == B.size());
+  row C(A.size(), 0);
+  for(size_t i=0; i<A.size(); i++) {
+    C[i] = A[i]+B[i];
+  }
+  return C;
+}
+mat mat_mul(const mat& A, const mat& B) {
+  mat C(A.size(), row(B[0].size(), 0));
+  for(ll i=0; i<A.size(); i++) {
+    for(size_t k=0; k<B.size(); k++) {
+      for(size_t j=0; j<B[k].size(); j++) {
+        C[i][j] = ADD(C[i][j], MUL(A[i][k], B[k][j]));
+      }
+    }
+  }
+  return C;
+}
+mat mat_pow(const mat& A, ll e) {
+  if(e==1) {
+    return A;
+  } else if(e%2==0) {
+    return mat_pow(mat_mul(A,A), e/2);
+  } else {
+    return mat_mul(A, mat_pow(A, e-1));
+  }
+}
+ostream& operator<<(ostream& o, const row& R) {
+  o << "[";
+  for(size_t i=0; i<R.size(); i++) {
+    o << R[i];
+    if(i+1<R.size()) {
+       o << " ";
+    }
+  }
+  o << "]";
+  return o;
+}
+ostream& operator<<(ostream& o, const mat& M) {
+  for(auto& R : M) {
+    o << R << endl;
+  }
+  return o;
+}
+
+void read(istream& in, string lit) {
+  string s;
+  in >> s;
+  assert(s == lit);
+}
+
+ll lit_of_string(string s) {
+  ll n = stoll(s);
+  assert(1 <= n && n<=p10(5));
+  return n;
+}
+string var_of_string(string s) {
+  assert(1 <= s.size() && s.size() <= 10);
+  for(ll i=0; i<s.size(); i++) {
+    assert('a'<=s[i] && s[i]<='z');
+  }
+  return s;
+}
+
+struct Expr {
+  virtual ll eval(const Env&) = 0;
+  virtual row to_row(const Env&) = 0;
+  virtual string str() = 0;
+};
+struct ExprVar : public Expr {
+  string s;
+  ExprVar(string s_) {
+    s = s_;
+  }
+  virtual ll eval(const Env& E) override {
+    return E.at(s);
+  }
+  virtual row to_row(const Env& E) override {
+    assert(E.count(s) == 1);
+    vector<ll> R(E.size()+1, 0);
+    R[1+E.at(s)]++;
+    return R;
+  }
+  virtual string str() override {
+    return s;
+  }
+};
+struct ExprLit : public Expr {
+  ll n;
+  ExprLit(ll n_) {
+    n = n_;
+  }
+  virtual ll eval(const Env&) override {
+    return n;
+  }
+  virtual row to_row(const Env& E) override {
+    row R(E.size()+1, 0);
+    R[0] = n;
+    return R;
+  }
+  virtual string str() override {
+    return to_string(n);
+  }
+};
+struct ExprPlus : public Expr {
+  Expr* left;
+  Expr* right;
+  ExprPlus(Expr* left_, Expr* right_) : left(std::move(left_)), right(std::move(right_)) {}
+  virtual ll eval(const Env& E) override {
+    return ADD(left->eval(E), right->eval(E));
+  }
+  virtual row to_row(const Env& E) override {
+    return row_add(left->to_row(E), right->to_row(E));
+  }
+  virtual string str() override {
+    return "("+left->str()+") + (" + right->str() + ")";
+  }
+};
+Expr* parse_expr(istream& in) {
+  string s;
+  cin >> s;
+  if(s == "(") {
+    auto left = parse_expr(in);
+    read(in, ")");
+    read(in, "+");
+    read(in, "(");
+    auto right = parse_expr(in);
+    read(in, ")");
+    return new ExprPlus(std::move(left), std::move(right));
+  } else if(isdigit(s[0])) {
+    return new ExprLit(lit_of_string(s));
+  } else {
+    return new ExprVar(var_of_string(s));
+  }
+}
+
+// Either Block(n, [code]) or Assign(var, e)
+struct Code {
+  ll typ;
+  ll n;
+  vector<Code> block;
+
+  string var;
+  Expr* e;
+
+  static Code loop(ll n_, vector<Code> block_) {
+    Code c;
+    c.typ = 0;
+    c.n = n_;
+    c.block = std::move(block_);
+    return c;
+  }
+  static Code assign(string v, Expr* e_) {
+    Code c;
+    c.typ = 1;
+    c.var = v;
+    c.e = std::move(e_);
+    return c;
+  }
+  void run_(Env& V) {
+    if(typ==1) {
+      V[var] = e->eval(V);
+    } else {
+      assert(typ == 0);
+      for(ll t=0; t<n; t++) {
+        for(auto& c1 : block) {
+          c1.run_(V);
+        }
+      }
+    }
+  }
+  ll run(string v) {
+    Env V;
+    run_(V);
+    return V[v];
+  }
+  mat to_mat(const Env& V) {
+    if(typ == 0) {
+      mat M = I(V.size()+1);
+      for(auto& c1 : block) {
+        M = mat_mul(c1.to_mat(V), M);
+      }
+      return mat_pow(M, n);
+    } else {
+      assert(typ==1);
+      assert(V.count(var) == 1);
+      mat M = I(V.size()+1);
+      M[1+V.at(var)] = e->to_row(V);
+      return M;
+    }
+  }
+
+  ll run_fast(string v, const Env& V) {
+    assert(V.count(v) == 1);
+    mat M = to_mat(V);
+    mat X(V.size()+1, row(1, 0));
+    X[0][0] = 1;
+    mat X2 = mat_mul(M, X);
+    return X2[1+V.at(v)][0];
+  }
+};
+
+bool bool_of_str(string s) {
+  if(s=="True") {
+    return true;
+  } else if(s == "False") {
+    return false;
+  } else {
+    assert(false);
+  }
+}
+
+int main(int argc, char** argv) {
+  bool no_nest = false; //bool_of_str(argv[1]);
+  bool one_var = false; //bool_of_str(argv[2]);
+  deque<ll> MOO;
+  deque<vector<Code>> CODE;
+  MOO.push_back(1);
+  CODE.push_back({});
+  map<string, ll> VARS;
+
+  while(true) {
+    string s;
+    cin >> s;
+    if(s == "RETURN") {
+      assert(MOO.size() == 1 && MOO.front()==1);
+      assert(CODE.size()==1);
+      map<string, ll> V;
+      Code p = Code::loop(1, std::move(CODE.front()));
+      CODE.pop_front();
+      string v;
+      cin >> v;
+      v = var_of_string(v);
+      assert(VARS.count(v) == 1);
+      if(one_var) {
+        assert(VARS.size() == 1);
+      } else {
+      }
+      if(no_nest) {
+        assert(p.run(v) == p.run_fast(v, VARS));
+      }
+      cout << p.run_fast(v, VARS) << endl;
+      break;
+    } else if(isdigit(s[0])) {
+      ll times = lit_of_string(s);
+      string moo;
+      cin >> moo;
+      assert(moo == "MOO");
+      string brace;
+      cin >> brace;
+      assert(brace == "{");
+      MOO.push_back(times);
+      if(no_nest) {
+        assert(MOO.size() <= 2);
+      }
+      CODE.push_back({});
+    } else if(s=="}") {
+      assert(MOO.size() > 0);
+      assert(CODE.size() > 0);
+      ll n = MOO.back(); MOO.pop_back();
+      vector<Code> block = std::move(CODE.back()); CODE.pop_back();
+      assert(CODE.size() > 0);
+      CODE[CODE.size()-1].push_back(Code::loop(n, std::move(block)));
+    } else {
+      s = var_of_string(s);
+      if(VARS.count(s) == 0) {
+        VARS[s] = VARS.size();
+      }
+      string eq;
+      cin >> eq;
+      CODE[CODE.size()-1].push_back(Code::assign(s, parse_expr(cin)));
+    }
+  }
+}
+
+New Solution
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+typedef long long LL;
+
+#define MAX_N 100000
+#define MAX_VAL 10
+#define MAX_TOT (MAX_N*MAX_VAL)
+
+int N, X, Y, Z, rtype[MAX_TOT*2+1]; 
+LL res1[MAX_TOT*2+1], res2[MAX_TOT*2+1];
+vector<int> rows[MAX_TOT*2+1];
+
+void dp(vector<int> &v, LL *results)
+{
+  LL M=v.size(), i=-2, prefcost_i=0, prefcost_j=0, prev_longrange=999999999999999LL;
+  for (int j=1; j<M; j+=2) {
+    if (j>1) prefcost_j += Z*abs(v[j-2]-v[j-1]);
+    if (j>1) prev_longrange += Z*abs(v[j-2]-v[j-1]);
+    while (i+2 < j && X+Y <= Z*abs(v[j]-v[i+2])) {
+      i += 2;
+      if (i>0) prefcost_i += Z*abs(v[i]-v[i-1]);
+      prev_longrange = min(prev_longrange, X+Y+prefcost_j-prefcost_i+(i>0?results[i-1]:0));
+    }
+    results[j] = min(prev_longrange, Z*abs(v[j]-v[j-1]) + (j>1?results[j-2]:0));
+  }
+}
+
+LL solve(vector<int> &v, int ecost)
+{
+  LL M = v.size(), best;
+  if (M == 0) return 0; 
+  if (M == 1) return ecost; // cost of insert/delete for just single item
+  dp(v, res1);
+  reverse(v.begin(), v.end()); 
+  dp(v, res2); 
+  reverse(res2, res2+M);
+  if (M%2 == 0) best = res1[M-1]; // even: all matched; only 1 DP pass needed
+  else { // odd: one left out -- piece together prefix + missing item + suffix
+    best = ecost + min(res1[M-2], res2[1]);
+    for (int i=2; i<=M-3; i+=2) best = min(best, res1[i-1] + ecost + res2[i+1]);
+  }
+  return best;
+}
+
+int main(void)
+{
+  ifstream fin ("landscape.in");
+  fin >> N >> X >> Y >> Z;
+  for (int last_d=0, level=MAX_TOT, i=0; i<N; i++) {
+    int a, b, m, d;
+    fin >> a >> b;
+    d = (max(a,b)==a) ? +1 : -1;
+    m = max(a,b) - min(a,b); 
+    while (m-- > 0) {
+      if (last_d == d) level += d;
+      if (rtype[level]==0) rtype[level] = d;
+      rows[level].push_back(i);
+      last_d = d;
+    }
+  }
+  fin.close();
+  
+  ofstream fout ("landscape.out");
+  LL total = 0;
+  for (int level=0; level<MAX_TOT*2+1; level++) 
+    total += solve(rows[level], rtype[level]>0 ? Y : X);
+  fout << total << "\n";
+  fout.close();
+
+  return 0;
+}

@@ -1,0 +1,1414 @@
+#include <iostream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+using namespace std;
+
+int main() {
+    string s;
+    cin >> s;
+    int n;
+    cin >> n;
+    vector<pair<int, string>> queries(n);
+    
+    for (int i = 0; i < n; ++i) {
+        cin >> queries[i].first >> queries[i].second;
+    }
+    
+    for (auto& query : queries) {
+        int k = query.first;
+        string m = query.second;
+        int m_len = m.length();
+        unordered_map<int, int> count;
+        int occurrences = 0, min_len = s.length() + 1;
+        
+        // Sliding window to count occurrences of 'm' as a substring
+        for (int i = 0; i + m_len <= s.length(); ++i) {
+            if (s.substr(i, m_len) == m) {
+                count[i] = 1;
+                occurrences++;
+                if (occurrences >= k) {
+                    int start = i - (k - 1) * m_len;
+                    if (start >= 0 && s.substr(start, i - start + m_len).find(m) != string::npos) {
+                        min_len = min(min_len, i - start + m_len);
+                    }
+                }
+            }
+        }
+        
+        if (occurrences < k) {
+            cout << -1 << endl;
+        } else {
+            cout << min_len << endl;
+        }
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    vector<int> a(n);
+    
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+
+    // Divide the array into two halves
+    int half = n / 2;
+    vector<int> left, right;
+    
+    // Generate all possible subsets sums modulo m for the left half
+    for (int i = 0; i < (1 << half); ++i) {
+        int sum = 0;
+        for (int j = 0; j < half; ++j) {
+            if (i & (1 << j)) {
+                sum = (sum + a[j]) % m;
+            }
+        }
+        left.push_back(sum);
+    }
+
+    // Generate all possible subsets sums modulo m for the right half
+    for (int i = 0; i < (1 << (n - half)); ++i) {
+        int sum = 0;
+        for (int j = 0; j < n - half; ++j) {
+            if (i & (1 << j)) {
+                sum = (sum + a[half + j]) % m;
+            }
+        }
+        right.push_back(sum);
+    }
+
+    // Sort the right half for binary search
+    sort(right.begin(), right.end());
+
+    int max_value = 0;
+
+    // For each element in left, find the best complement in right
+    for (int x : left) {
+        // We want to maximize (x + y) % m
+        // So we find the largest y such that x + y < m
+        int complement = m - x - 1;
+        auto it = upper_bound(right.begin(), right.end(), complement);
+        if (it != right.begin()) {
+            --it;
+            max_value = max(max_value, (x + *it) % m);
+        }
+        // Try also combining with the smallest element
+        max_value = max(max_value, (x + right[0]) % m);
+    }
+
+    cout << max_value << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+
+// Function to calculate factorial
+long long factorial(int n) {
+    long long result = 1;
+    for (int i = 1; i <= n; ++i) {
+        result *= i;
+    }
+    return result;
+}
+
+// Function to calculate binomial coefficient C(n, k)
+long long binomial(int n, int k) {
+    return factorial(n) / (factorial(k) * factorial(n - k));
+}
+
+// Function to calculate derangement (permutations with no fixed points)
+long long derangement(int n) {
+    if (n == 0) return 1;
+    if (n == 1) return 0;
+    return (n - 1) * (derangement(n - 1) + derangement(n - 2));
+}
+
+int main() {
+    int n, k;
+    cin >> n >> k;
+
+    long long result = 0;
+
+    // We count the number of permutations with exactly n-i fixed points, where i ranges from 0 to k.
+    for (int i = 0; i <= k; ++i) {
+        result += binomial(n, i) * derangement(i);
+    }
+
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <iomanip>
+
+using namespace std;
+
+vector<vector<int>> adj;
+vector<bool> visited;
+vector<double> expected_distance;
+
+// DFS function to compute expected distance
+void dfs(int node, int parent) {
+    visited[node] = true;
+    int child_count = 0;
+
+    // Traverse all adjacent cities
+    for (int neighbor : adj[node]) {
+        if (!visited[neighbor]) {
+            dfs(neighbor, node);
+            expected_distance[node] += expected_distance[neighbor] + 1;
+            child_count++;
+        }
+    }
+
+    // If there are children, compute the average distance
+    if (child_count > 0) {
+        expected_distance[node] /= child_count;
+    }
+}
+
+int main() {
+    int n;
+    cin >> n;
+
+    adj.resize(n + 1);
+    visited.resize(n + 1, false);
+    expected_distance.resize(n + 1, 0);
+
+    for (int i = 0; i < n - 1; ++i) {
+        int u, v;
+        cin >> u >> v;
+        adj[u].push_back(v);
+        adj[v].push_back(u);
+    }
+
+    // Start DFS from city 1
+    dfs(1, -1);
+
+    // The expected length of the journey from city 1
+    cout << fixed << setprecision(6) << expected_distance[1] << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+bool can_fit(int width, const vector<string>& words, int k) {
+    int lines = 1, current_width = 0;
+
+    for (const string& word : words) {
+        int word_length = 0;
+        
+        for (char c : word) {
+            word_length++;
+            if (c == '-') {
+                if (current_width + word_length > width) {
+                    lines++;
+                    current_width = word_length;
+                } else {
+                    current_width += word_length;
+                }
+                word_length = 0;
+            }
+        }
+
+        if (current_width + word_length > width) {
+            lines++;
+            current_width = word_length;
+        } else {
+            current_width += word_length;
+        }
+
+        if (lines > k) return false;
+        current_width++; // For the space between words
+    }
+
+    return lines <= k;
+}
+
+int main() {
+    int k;
+    string ad;
+    
+    cin >> k;
+    cin.ignore();
+    getline(cin, ad);
+
+    vector<string> words;
+    string current_word;
+
+    for (char c : ad) {
+        if (c == ' ') {
+            words.push_back(current_word);
+            current_word.clear();
+        } else {
+            current_word.push_back(c);
+        }
+    }
+    if (!current_word.empty()) {
+        words.push_back(current_word);
+    }
+
+    // Binary search for the minimum width
+    int left = 1, right = ad.length(), answer = right;
+
+    while (left <= right) {
+        int mid = (left + right) / 2;
+        if (can_fit(mid, words, k)) {
+            answer = mid;
+            right = mid - 1;
+        } else {
+            left = mid + 1;
+        }
+    }
+
+    cout << answer << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Mouse {
+    int cost;
+    string type;
+};
+
+int main() {
+    int a, b, c, m;
+    cin >> a >> b >> c;
+    cin >> m;
+    
+    vector<Mouse> usb, ps2;
+    
+    for (int i = 0; i < m; ++i) {
+        int cost;
+        string type;
+        cin >> cost >> type;
+        if (type == "USB") {
+            usb.push_back({cost, type});
+        } else {
+            ps2.push_back({cost, type});
+        }
+    }
+    
+    // Sort both lists by cost (ascending)
+    sort(usb.begin(), usb.end(), [](const Mouse& m1, const Mouse& m2) {
+        return m1.cost < m2.cost;
+    });
+    sort(ps2.begin(), ps2.end(), [](const Mouse& m1, const Mouse& m2) {
+        return m1.cost < m2.cost;
+    });
+    
+    long long total_cost = 0;
+    int equipped_computers = 0;
+    
+    // Equip USB-only computers
+    for (int i = 0; i < a && i < usb.size(); ++i) {
+        total_cost += usb[i].cost;
+        equipped_computers++;
+    }
+    usb.erase(usb.begin(), usb.begin() + min(a, (int)usb.size()));
+    
+    // Equip PS/2-only computers
+    for (int i = 0; i < b && i < ps2.size(); ++i) {
+        total_cost += ps2[i].cost;
+        equipped_computers++;
+    }
+    ps2.erase(ps2.begin(), ps2.begin() + min(b, (int)ps2.size()));
+    
+    // Combine remaining USB and PS/2 mouses for computers with both ports
+    vector<Mouse> remaining = usb;
+    remaining.insert(remaining.end(), ps2.begin(), ps2.end());
+    
+    // Sort the combined list by cost
+    sort(remaining.begin(), remaining.end(), [](const Mouse& m1, const Mouse& m2) {
+        return m1.cost < m2.cost;
+    });
+    
+    // Equip computers with both ports
+    for (int i = 0; i < c && i < remaining.size(); ++i) {
+        total_cost += remaining[i].cost;
+        equipped_computers++;
+    }
+    
+    cout << equipped_computers << " " << total_cost << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <cmath>
+using namespace std;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+
+    vector<int> cities(n), towers(m);
+    for (int i = 0; i < n; ++i) {
+        cin >> cities[i];
+    }
+    for (int i = 0; i < m; ++i) {
+        cin >> towers[i];
+    }
+
+    int r = 0;
+
+    // For each city, find the nearest tower
+    for (int i = 0; i < n; ++i) {
+        int city = cities[i];
+        
+        // Binary search to find the closest tower
+        auto it = lower_bound(towers.begin(), towers.end(), city);
+
+        int dist = INT_MAX;
+        if (it != towers.end()) {
+            dist = abs(city - *it);
+        }
+        if (it != towers.begin()) {
+            dist = min(dist, abs(city - *(it - 1)));
+        }
+
+        r = max(r, dist);
+    }
+
+    cout << r << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+
+    string s;
+    cin >> s;
+
+    // Create a set of unique Pokemon types in the house
+    unordered_set<char> unique_pokemons(s.begin(), s.end());
+    int total_unique = unique_pokemons.size();
+
+    // Sliding window to find the smallest segment containing all unique Pokemons
+    unordered_map<char, int> window;
+    int left = 0, min_length = n + 1;
+    int types_in_window = 0;
+
+    for (int right = 0; right < n; ++right) {
+        char current_pokemon = s[right];
+        window[current_pokemon]++;
+        
+        // If this is the first time seeing this Pokemon type in the window
+        if (window[current_pokemon] == 1) {
+            types_in_window++;
+        }
+
+        // Once we have all unique Pokemon types in the current window
+        while (types_in_window == total_unique) {
+            min_length = min(min_length, right - left + 1);
+            char left_pokemon = s[left];
+            window[left_pokemon]--;
+
+            // If we remove a type from the window completely
+            if (window[left_pokemon] == 0) {
+                types_in_window--;
+            }
+            left++;
+        }
+    }
+
+    cout << min_length << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <unordered_map>
+using namespace std;
+
+int main() {
+    int n, k;
+    cin >> n >> k;
+
+    int arr[n];
+    for (int i = 0; i < n; ++i) {
+        cin >> arr[i];
+    }
+
+    unordered_map<int, int> count;
+    int left = 0;
+    long long total_subarrays = 0;
+    int distinct_count = 0;
+
+    for (int right = 0; right < n; ++right) {
+        // Add current element to the window
+        if (count[arr[right]] == 0) {
+            distinct_count++;
+        }
+        count[arr[right]]++;
+
+        // Shrink the window from the left if there are more than k distinct elements
+        while (distinct_count > k) {
+            count[arr[left]]--;
+            if (count[arr[left]] == 0) {
+                distinct_count--;
+            }
+            left++;
+        }
+
+        // Add the number of subarrays ending at 'right' and starting from any position in [left, right]
+        total_subarrays += (right - left + 1);
+    }
+
+    cout << total_subarrays << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <climits>
+using namespace std;
+
+const int INF = INT_MAX;
+int n, k;
+vector<int> c;
+vector<vector<int>> dp, cost;
+
+int main() {
+    cin >> n >> k;
+    c.resize(n);
+    
+    for (int i = 0; i < n; ++i) {
+        cin >> c[i];
+    }
+
+    // Precompute the cost to put a school at some house and compute the walking distance for all
+    cost.assign(n, vector<int>(n, 0));
+
+    for (int i = 0; i < n; ++i) {
+        for (int j = i; j < n; ++j) {
+            int median = (i + j) / 2;
+            for (int l = i; l <= j; ++l) {
+                cost[i][j] += c[l] * abs(l - median);
+            }
+        }
+    }
+
+    // Initialize dp table
+    dp.assign(n + 1, vector<int>(k + 1, INF));
+    dp[0][0] = 0;
+
+    // DP to find the minimum cost with k schools
+    for (int i = 1; i <= n; ++i) {
+        for (int j = 1; j <= k; ++j) {
+            for (int l = 0; l < i; ++l) {
+                dp[i][j] = min(dp[i][j], dp[l][j - 1] + cost[l][i - 1]);
+            }
+        }
+    }
+
+    cout << dp[n][k] << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+
+    vector<int> arr(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> arr[i];
+    }
+
+    vector<vector<int>> dp(n, vector<int>(m + 1, 0));
+
+    // Initialize the dp table based on the first element
+    if (arr[0] == 0) {
+        for (int i = 1; i <= m; ++i) {
+            dp[0][i] = 1;
+        }
+    } else {
+        dp[0][arr[0]] = 1;
+    }
+
+    // Fill the dp table
+    for (int i = 1; i < n; ++i) {
+        if (arr[i] == 0) {
+            for (int j = 1; j <= m; ++j) {
+                dp[i][j] = dp[i - 1][j];
+                if (j > 1) dp[i][j] = (dp[i][j] + dp[i - 1][j - 1]) % MOD;
+                if (j < m) dp[i][j] = (dp[i][j] + dp[i - 1][j + 1]) % MOD;
+            }
+        } else {
+            dp[i][arr[i]] = dp[i - 1][arr[i]];
+            if (arr[i] > 1) dp[i][arr[i]] = (dp[i][arr[i]] + dp[i - 1][arr[i] - 1]) % MOD;
+            if (arr[i] < m) dp[i][arr[i]] = (dp[i][arr[i]] + dp[i - 1][arr[i] + 1]) % MOD;
+        }
+    }
+
+    // Sum all possible ways for the last element
+    int result = 0;
+    for (int i = 1; i <= m; ++i) {
+        result = (result + dp[n - 1][i]) % MOD;
+    }
+
+    cout << result << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+
+    vector<int> coins(n);
+    for (int i = 0; i < n; ++i) {
+        cin >> coins[i];
+    }
+
+    set<int> possible_sums;
+    possible_sums.insert(0); // Initialize with 0 sum
+
+    for (int i = 0; i < n; ++i) {
+        vector<int> to_add;
+        for (auto sum : possible_sums) {
+            to_add.push_back(sum + coins[i]);
+        }
+        for (auto sum : to_add) {
+            possible_sums.insert(sum);
+        }
+    }
+
+    possible_sums.erase(0); // Remove the initial 0 sum
+
+    cout << possible_sums.size() << endl;
+    for (auto sum : possible_sums) {
+        cout << sum << " ";
+    }
+    cout << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int MAX = 2e6 + 1;
+long long fact[MAX], inv_fact[MAX];
+
+// Function to calculate modular exponentiation
+long long mod_exp(long long base, long long exp, long long mod) {
+    long long result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * base) % mod;
+        }
+        base = (base * base) % mod;
+        exp /= 2;
+    }
+    return result;
+}
+
+// Precompute factorials and inverse factorials modulo MOD
+void precompute_factorials(int max_n, int mod) {
+    fact[0] = inv_fact[0] = 1;
+    for (int i = 1; i <= max_n; ++i) {
+        fact[i] = fact[i - 1] * i % mod;
+    }
+    inv_fact[max_n] = mod_exp(fact[max_n], mod - 2, mod);
+    for (int i = max_n - 1; i >= 1; --i) {
+        inv_fact[i] = inv_fact[i + 1] * (i + 1) % mod;
+    }
+}
+
+long long binomial_coefficient(int n, int k, int mod) {
+    if (k > n || k < 0) return 0;
+    return fact[n] * inv_fact[k] % mod * inv_fact[n - k] % mod;
+}
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+
+    precompute_factorials(n + m, MOD);
+
+    // Calculate C(m + n - 1, n - 1)
+    cout << binomial_coefficient(m + n - 1, n - 1, MOD) << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int MAX = 1e6 + 1;
+long long fact[MAX], inv_fact[MAX];
+
+long long mod_exp(long long base, long long exp, long long mod) {
+    long long result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * base) % mod;
+        }
+        base = (base * base) % mod;
+        exp /= 2;
+    }
+    return result;
+}
+
+void precompute_factorials(int max_n, int mod) {
+    fact[0] = inv_fact[0] = 1;
+    for (int i = 1; i <= max_n; ++i) {
+        fact[i] = fact[i - 1] * i % mod;
+    }
+    inv_fact[max_n] = mod_exp(fact[max_n], mod - 2, mod);
+    for (int i = max_n - 1; i >= 1; --i) {
+        inv_fact[i] = inv_fact[i + 1] * (i + 1) % mod;
+    }
+}
+
+long long binomial_coefficient(int n, int k, int mod) {
+    if (k > n || k < 0) return 0;
+    return fact[n] * inv_fact[k] % mod * inv_fact[n - k] % mod;
+}
+
+int main() {
+    string s;
+    cin >> s;
+
+    int n = s.length();
+    vector<int> freq(26, 0);
+    
+    for (char c : s) {
+        freq[c - 'a']++;
+    }
+
+    precompute_factorials(n, MOD);
+
+    long long result = fact[n];
+    for (int f : freq) {
+        result = (result * inv_fact[f]) % MOD;
+    }
+
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int PHI_MOD = MOD - 1;  // Euler's Totient function value for MOD
+
+// Function to calculate a^b % mod using modular exponentiation
+long long mod_exp(long long base, long long exp, long long mod) {
+    long long result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * base) % mod;
+        }
+        base = (base * base) % mod;
+        exp /= 2;
+    }
+    return result;
+}
+
+// Function to calculate b^c % (MOD-1) using modular exponentiation for large exponents
+long long mod_exp_large(long long base, long long exp) {
+    long long result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) {
+            result = (result * base) % PHI_MOD;
+        }
+        base = (base * base) % PHI_MOD;
+        exp /= 2;
+    }
+    return result;
+}
+
+int main() {
+    int n;
+    cin >> n;
+    
+    while (n--) {
+        long long a, b, c;
+        cin >> a >> b >> c;
+
+        // Handle the case where a = 0
+        if (a == 0) {
+            if (b == 0 && c == 0) {
+                cout << 1 << endl;  // 0^0 is defined as 1
+            } else {
+                cout << 0 << endl;  // Any power with base 0 is 0
+            }
+            continue;
+        }
+
+        // Calculate b^c % (MOD-1)
+        long long exponent = mod_exp_large(b, c);
+
+        // Calculate a^exponent % MOD
+        cout << mod_exp(a, exponent, MOD) << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <cstring>
+using namespace std;
+
+const int MAXN = 505;
+const int INF = 1e9;
+
+vector<vector<int>> capacity, adj;
+
+int bfs(int s, int t, vector<int>& parent) {
+    fill(parent.begin(), parent.end(), -1);
+    parent[s] = s;
+    queue<pair<int, int>> q;
+    q.push({s, INF});
+
+    while (!q.empty()) {
+        int cur = q.front().first;
+        int flow = q.front().second;
+        q.pop();
+
+        for (int next : adj[cur]) {
+            if (parent[next] == -1 && capacity[cur][next] > 0) {
+                parent[next] = cur;
+                int new_flow = min(flow, capacity[cur][next]);
+                if (next == t)
+                    return new_flow;
+                q.push({next, new_flow});
+            }
+        }
+    }
+
+    return 0;
+}
+
+int edmonds_karp(int s, int t, int n) {
+    int flow = 0;
+    vector<int> parent(n);
+    int new_flow;
+
+    while ((new_flow = bfs(s, t, parent))) {
+        flow += new_flow;
+        int cur = t;
+        while (cur != s) {
+            int prev = parent[cur];
+            capacity[prev][cur] -= new_flow;
+            capacity[cur][prev] += new_flow;
+            cur = prev;
+        }
+    }
+
+    return flow;
+}
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+
+    capacity.assign(n + 1, vector<int>(n + 1, 0));
+    adj.assign(n + 1, vector<int>());
+
+    for (int i = 0; i < m; ++i) {
+        int a, b, c;
+        cin >> a >> b >> c;
+        capacity[a][b] += c;  // Multiple connections between the same pair are additive
+        adj[a].push_back(b);
+        adj[b].push_back(a);  // Reverse edge for residual graph
+    }
+
+    cout << edmonds_karp(1, n, n + 1) << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <string>
+#include <unordered_set>
+using namespace std;
+
+int main() {
+    int N;
+    string mailboxes;
+
+    cin >> N >> mailboxes;
+
+    for (int K = 1; K <= N; ++K) {
+        unordered_set<string> seen_sequences;
+        bool unique = true;
+
+        for (int i = 0; i <= N - K; ++i) {
+            string sequence = mailboxes.substr(i, K);
+            if (seen_sequences.find(sequence) != seen_sequences.end()) {
+                unique = false;
+                break;
+            }
+            seen_sequences.insert(sequence);
+        }
+
+        if (unique) {
+            cout << K << endl;
+            break;
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    int a, b, c;
+    cin >> a >> b >> c;
+
+    // Sort the cow positions
+    int positions[3] = {a, b, c};
+    sort(positions, positions + 3);
+
+    int x = positions[0], y = positions[1], z = positions[2];
+
+    // Minimum moves
+    if (z - x == 2) {
+        cout << 0 << endl;  // Already consecutive
+    } else if (y - x == 2 || z - y == 2) {
+        cout << 1 << endl;  // One cow can move to make them consecutive
+    } else {
+        cout << 2 << endl;  // Two moves required
+    }
+
+    // Maximum moves
+    int max_moves = max(z - y - 1, y - x - 1);
+    cout << max_moves << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int M, N, K;
+    cin >> M >> N >> K;
+
+    vector<string> signal(M);
+
+    for (int i = 0; i < M; ++i) {
+        cin >> signal[i];
+    }
+
+    for (int i = 0; i < M; ++i) {
+        for (int ki = 0; ki < K; ++ki) {  // Repeat each row K times
+            for (int j = 0; j < N; ++j) {
+                for (int kj = 0; kj < K; ++kj) {  // Repeat each character K times
+                    cout << signal[i][j];
+                }
+            }
+            cout << endl;
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+const int MAXN = 1000;
+const int dx[] = {-1, 1, 0, 0};  // Directions for north, south, east, west
+const int dy[] = {0, 0, -1, 1};  // Directions for west, east, north, south
+
+int N;
+vector<string> grid;
+vector<vector<bool>> visited;
+
+bool is_valid(int x, int y) {
+    return x >= 0 && x < N && y >= 0 && y < N;
+}
+
+pair<int, int> bfs(int start_x, int start_y) {
+    queue<pair<int, int>> q;
+    q.push({start_x, start_y});
+    visited[start_x][start_y] = true;
+    
+    int area = 0;
+    int perimeter = 0;
+    
+    while (!q.empty()) {
+        int x = q.front().first;
+        int y = q.front().second;
+        q.pop();
+        area++;
+        
+        int local_perimeter = 0;
+        for (int i = 0; i < 4; i++) {
+            int nx = x + dx[i];
+            int ny = y + dy[i];
+            
+            if (!is_valid(nx, ny) || grid[nx][ny] == '.') {
+                local_perimeter++;
+            } else if (!visited[nx][ny]) {
+                visited[nx][ny] = true;
+                q.push({nx, ny});
+            }
+        }
+        perimeter += local_perimeter;
+    }
+    
+    return {area, perimeter};
+}
+
+int main() {
+    cin >> N;
+    grid.resize(N);
+    visited.assign(N, vector<bool>(N, false));
+
+    for (int i = 0; i < N; i++) {
+        cin >> grid[i];
+    }
+
+    int max_area = 0;
+    int min_perimeter = 0;
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if (grid[i][j] == '#' && !visited[i][j]) {
+                pair<int, int> result = bfs(i, j);
+                int area = result.first;
+                int perimeter = result.second;
+
+                if (area > max_area) {
+                    max_area = area;
+                    min_perimeter = perimeter;
+                } else if (area == max_area) {
+                    min_perimeter = min(min_perimeter, perimeter);
+                }
+            }
+        }
+    }
+
+    cout << max_area << " " << min_perimeter << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<int> w(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> w[i];
+    }
+
+    // Sort cows by their willingness in descending order
+    sort(w.rbegin(), w.rend());
+
+    int cows_in_line = 0;
+
+    // Iterate over the sorted cows
+    for (int i = 0; i < N; ++i) {
+        if (cows_in_line <= w[i]) {
+            cows_in_line++;
+        } else {
+            break;
+        }
+    }
+
+    cout << cows_in_line << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+struct Edge {
+    int u, v, relevance;
+};
+
+struct Query {
+    int k, v, index;
+};
+
+int find(int x, vector<int>& parent) {
+    if (parent[x] != x) {
+        parent[x] = find(parent[x], parent);
+    }
+    return parent[x];
+}
+
+void unite(int x, int y, vector<int>& parent, vector<int>& size) {
+    int rootX = find(x, parent);
+    int rootY = find(y, parent);
+    if (rootX != rootY) {
+        parent[rootX] = rootY;
+        size[rootY] += size[rootX];
+    }
+}
+
+int main() {
+    int N, Q;
+    cin >> N >> Q;
+
+    vector<Edge> edges(N - 1);
+    vector<Query> queries(Q);
+    vector<int> result(Q);
+
+    for (int i = 0; i < N - 1; ++i) {
+        cin >> edges[i].u >> edges[i].v >> edges[i].relevance;
+    }
+
+    for (int i = 0; i < Q; ++i) {
+        cin >> queries[i].k >> queries[i].v;
+        queries[i].index = i;
+    }
+
+    // Sort edges by relevance in descending order
+    sort(edges.begin(), edges.end(), [](const Edge& a, const Edge& b) {
+        return a.relevance > b.relevance;
+    });
+
+    // Sort queries by k in descending order
+    sort(queries.begin(), queries.end(), [](const Query& a, const Query& b) {
+        return a.k > b.k;
+    });
+
+    // Union-find setup
+    vector<int> parent(N + 1), size(N + 1, 1);
+    for (int i = 1; i <= N; ++i) {
+        parent[i] = i;
+    }
+
+    int edgeIndex = 0;
+
+    // Process each query
+    for (const auto& query : queries) {
+        // Add all edges with relevance >= query.k
+        while (edgeIndex < N - 1 && edges[edgeIndex].relevance >= query.k) {
+            unite(edges[edgeIndex].u, edges[edgeIndex].v, parent, size);
+            edgeIndex++;
+        }
+        // The size of the component containing query.v minus 1 (excluding itself)
+        result[query.index] = size[find(query.v, parent)] - 1;
+    }
+
+    // Output results
+    for (int i = 0; i < Q; ++i) {
+        cout << result[i] << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <climits>
+
+using namespace std;
+
+const int MAXN = 1001;
+const int MAXT = 1001;
+const int INF = INT_MIN;
+
+int N, M, C;
+int moonies[MAXN];
+vector<int> adj[MAXN];
+long long dp[MAXT][MAXN];
+
+int main() {
+    // Input: number of cities (N), number of roads (M), and travel cost constant (C)
+    cin >> N >> M >> C;
+    
+    // Input: moonies per city
+    for (int i = 1; i <= N; ++i) {
+        cin >> moonies[i];
+    }
+    
+    // Input: roads between cities
+    for (int i = 0; i < M; ++i) {
+        int u, v;
+        cin >> u >> v;
+        adj[u].push_back(v);
+    }
+    
+    // Initialize dp table
+    for (int t = 0; t <= MAXT; ++t) {
+        for (int i = 1; i <= N; ++i) {
+            dp[t][i] = INF;  // Set all dp values to negative infinity
+        }
+    }
+    dp[0][1] = 0;  // Starting at city 1 on day 0
+    
+    long long max_profit = 0;
+    
+    // Dynamic programming over time
+    for (int t = 1; t < MAXT; ++t) {
+        for (int u = 1; u <= N; ++u) {
+            if (dp[t-1][u] == INF) continue;  // Skip if the previous day value is invalid
+            
+            for (int v : adj[u]) {
+                dp[t][v] = max(dp[t][v], dp[t-1][u] + moonies[v]);
+            }
+        }
+        
+        // After processing all transitions for day t, check the profit when Bessie is back at city 1
+        if (dp[t][1] != INF) {
+            long long profit = dp[t][1] - C * t * t;
+            max_profit = max(max_profit, profit);
+        }
+    }
+    
+    // Output the maximum profit
+    cout << max_profit << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int MAXN = 100005;
+
+vector<int> adj[MAXN];       // Adjacency list for the tree
+int dp[MAXN][4];             // DP table: dp[u][color] -> ways to color subtree rooted at u with color
+int color[MAXN];             // color[u] -> if u is pre-painted, it holds the color; otherwise 0
+bool visited[MAXN];          // Visited array for DFS
+
+void dfs(int u) {
+    visited[u] = true;
+
+    // If this barn is already painted, only consider its color
+    if (color[u] != 0) {
+        int c = color[u];
+        dp[u][c] = 1;
+    } else {
+        // If not painted, consider all 3 colors
+        dp[u][1] = dp[u][2] = dp[u][3] = 1;
+    }
+
+    // Process children
+    for (int v : adj[u]) {
+        if (!visited[v]) {
+            dfs(v);
+
+            // Update DP for current node `u` based on the child `v`
+            for (int c = 1; c <= 3; c++) {
+                long long total = 0;
+                for (int nc = 1; nc <= 3; nc++) {
+                    if (nc != c) { // Colors must be different
+                        total = (total + dp[v][nc]) % MOD;
+                    }
+                }
+                dp[u][c] = (dp[u][c] * total) % MOD;
+            }
+        }
+    }
+}
+
+int main() {
+    int N, K;
+    cin >> N >> K;
+
+    // Read the edges (N-1 lines)
+    for (int i = 0; i < N - 1; ++i) {
+        int x, y;
+        cin >> x >> y;
+        adj[x].push_back(y);
+        adj[y].push_back(x);
+    }
+
+    // Read the pre-colored barns (K lines)
+    for (int i = 0; i < K; ++i) {
+        int b, c;
+        cin >> b >> c;
+        color[b] = c;
+    }
+
+    // Start DFS from node 1 (or any arbitrary node, since it's a tree)
+    dfs(1);
+
+    // The answer is the sum of dp[1][1] + dp[1][2] + dp[1][3]
+    long long result = (dp[1][1] + dp[1][2] + dp[1][3]) % MOD;
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+const int MAXN = 100005;
+const int MAXK = 21;
+
+int dp[MAXN][MAXK][3];  // dp[i][j][g] -> max wins after i games, j changes, gesture g
+char gestures[MAXN];
+
+// Function to check if Bessie's gesture wins against Farmer John's gesture
+int win(char fj, int bessie) {
+    if (fj == 'H' && bessie == 1) return 1;  // P beats H
+    if (fj == 'P' && bessie == 2) return 1;  // S beats P
+    if (fj == 'S' && bessie == 0) return 1;  // H beats S
+    return 0;
+}
+
+int main() {
+    int N, K;
+    cin >> N >> K;
+
+    // Read Farmer John's gestures
+    for (int i = 1; i <= N; ++i) {
+        cin >> gestures[i];
+    }
+
+    // Initialize DP table
+    for (int i = 0; i <= N; ++i) {
+        for (int j = 0; j <= K; ++j) {
+            dp[i][j][0] = dp[i][j][1] = dp[i][j][2] = 0;
+        }
+    }
+
+    // Dynamic programming to calculate the maximum number of wins
+    for (int i = 1; i <= N; ++i) {
+        for (int j = 0; j <= K; ++j) {
+            // No change in gesture
+            dp[i][j][0] = max(dp[i][j][0], dp[i-1][j][0] + win(gestures[i], 0));  // H
+            dp[i][j][1] = max(dp[i][j][1], dp[i-1][j][1] + win(gestures[i], 1));  // P
+            dp[i][j][2] = max(dp[i][j][2], dp[i-1][j][2] + win(gestures[i], 2));  // S
+
+            // Change gesture
+            if (j > 0) {
+                dp[i][j][0] = max(dp[i][j][0], max(dp[i-1][j-1][1], dp[i-1][j-1][2]) + win(gestures[i], 0));  // H
+                dp[i][j][1] = max(dp[i][j][1], max(dp[i-1][j-1][0], dp[i-1][j-1][2]) + win(gestures[i], 1));  // P
+                dp[i][j][2] = max(dp[i][j][2], max(dp[i-1][j-1][0], dp[i-1][j-1][1]) + win(gestures[i], 2));  // S
+            }
+        }
+    }
+
+    // Get the maximum wins after N games with at most K changes
+    int result = max({dp[N][K][0], dp[N][K][1], dp[N][K][2]});
+    cout << result << endl;
+
+    return 0;
+}

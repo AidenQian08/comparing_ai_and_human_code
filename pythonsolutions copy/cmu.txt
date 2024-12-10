@@ -1,0 +1,815 @@
+from itertools import combinations
+from math import gcd
+
+def lcm(x, y):
+    return x * y // gcd(x, y)
+
+def count_divisible_by_primes(n, primes):
+    k = len(primes)
+    total = 0
+    
+    # Inclusion-Exclusion Principle
+    for i in range(1, k + 1):
+        for comb in combinations(primes, i):
+            lcm_value = comb[0]
+            for num in comb[1:]:
+                lcm_value = lcm(lcm_value, num)
+            if i % 2 == 1:
+                total += n // lcm_value
+            else:
+                total -= n // lcm_value
+                
+    return total
+
+# Example Usage
+n = 20
+k = 2
+primes = [2, 5]
+result = count_divisible_by_primes(n, primes)
+print(result)  # Output: 12
+
+New Solution
+
+import math
+
+def max_gcd_pair(n, arr):
+    arr.sort(reverse=True)
+    max_gcd = 0
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            gcd_val = math.gcd(arr[i], arr[j])
+            max_gcd = max(max_gcd, gcd_val)
+            if max_gcd == arr[i]:  # Early stopping condition
+                return max_gcd
+    
+    return max_gcd
+
+# Example Usage
+n = 5
+arr = [3, 14, 15, 7, 9]
+print(max_gcd_pair(n, arr))  # Output should be 7
+
+New Solution
+
+def apply_operations(n, m, k, a, operations, queries):
+    op_count = [0] * (m + 2)
+    for xi, yi in queries:
+        op_count[xi] += 1
+        op_count[yi + 1] -= 1
+    
+    # Cumulative sum to get the total number of times each operation should be applied
+    for i in range(1, m + 1):
+        op_count[i] += op_count[i - 1]
+    
+    change = [0] * (n + 2)
+    for i in range(m):
+        li, ri, di = operations[i]
+        change[li] += di * op_count[i + 1]
+        change[ri + 1] -= di * op_count[i + 1]
+    
+    # Apply changes to the original array a
+    for i in range(1, n + 1):
+        change[i] += change[i - 1]
+        a[i - 1] += change[i]
+    
+    return a
+
+# Example usage:
+n, m, k = 3, 3, 3
+a = [1, 2, 3]
+operations = [(1, 2, 1), (1, 3, 2), (2, 3, 4)]
+queries = [(1, 2), (1, 3), (2, 3)]
+result = apply_operations(n, m, k, a, operations, queries)
+print(result)  # Output: [9, 18, 17]
+
+New Solution
+
+def min_move_distance(W, H, x1, y1, x2, y2, w, h):
+    inf = float('inf')
+    min_move = inf
+    
+    # Check if the second table can fit directly
+    if (x2 - x1 + w <= W) or (y2 - y1 + h <= H):
+        if x2 - x1 + w <= W:
+            min_move = min(min_move, max(0, w - x1))
+            min_move = min(min_move, max(0, x2 - (W - w)))
+        
+        if y2 - y1 + h <= H:
+            min_move = min(min_move, max(0, h - y1))
+            min_move = min(min_move, max(0, y2 - (H - h)))
+    
+    return min_move if min_move != inf else -1
+
+t = int(input())
+for _ in range(t):
+    W, H = map(int, input().split())
+    x1, y1, x2, y2 = map(int, input().split())
+    w, h = map(int, input().split())
+    print(f"{min_move_distance(W, H, x1, y1, x2, y2, w, h):.6f}")
+
+New Solution
+
+def is_visible(x1, y1, x2, y2, x3, y3, x4, y4, x5, y5, x6, y6):
+    # Find the overlap between the white sheet and the first black sheet
+    x_overlap1 = max(0, min(x2, x4) - max(x1, x3))
+    y_overlap1 = max(0, min(y2, y4) - max(y1, y3))
+    
+    # Find the overlap between the white sheet and the second black sheet
+    x_overlap2 = max(0, min(x2, x6) - max(x1, x5))
+    y_overlap2 = max(0, min(y2, y6) - max(y1, y5))
+    
+    # Calculate the overlapping area for each black sheet
+    area1 = x_overlap1 * y_overlap1
+    area2 = x_overlap2 * y_overlap2
+    
+    # Calculate the total overlapping area of both black sheets
+    x_overlap_both = max(0, min(x2, min(x4, x6)) - max(x1, max(x3, x5)))
+    y_overlap_both = max(0, min(y2, min(y4, y6)) - max(y1, max(y3, y5)))
+    area_both = x_overlap_both * y_overlap_both
+    
+    total_overlap_area = area1 + area2 - area_both
+    
+    # Calculate the area of the white sheet
+    white_sheet_area = (x2 - x1) * (y2 - y1)
+    
+    # If the overlap covers the entire white sheet, it's not visible
+    if total_overlap_area < white_sheet_area:
+        return "YES"
+    else:
+        return "NO"
+
+# Example usage
+print(is_visible(2, 2, 4, 4, 1, 1, 3, 5, 3, 1, 5, 5))  # Output should be "NO"
+print(is_visible(3, 3, 7, 5, 0, 0, 4, 6, 0, 0, 7, 4))  # Output should be "YES"
+
+New Solution
+
+from collections import defaultdict
+
+def min_grass_types(n, edges):
+    if n == 1:
+        return 1
+    
+    adj = defaultdict(list)
+    for u, v in edges:
+        adj[u].append(v)
+        adj[v].append(u)
+    
+    max_degree = max(len(adj[node]) for node in adj)
+    return max_degree + 1
+
+# Example usage
+n = 4
+edges = [(1, 2), (4, 3), (2, 3)]
+print(min_grass_types(n, edges))  # Output: 3
+
+New Solution
+
+def find_connected_regions(grid, n, m, K):
+    visited = [[False] * m for _ in range(n)]
+    regions = []
+    
+    def dfs(x, y, color):
+        stack = [(x, y)]
+        cells = []
+        while stack:
+            cx, cy = stack.pop()
+            if visited[cx][cy]:
+                continue
+            visited[cx][cy] = True
+            cells.append((cx, cy))
+            for nx, ny in [(cx+1, cy), (cx-1, cy), (cx, cy+1), (cx, cy-1)]:
+                if 0 <= nx < n and 0 <= ny < m and not visited[nx][ny] and grid[nx][ny] == color:
+                    stack.append((nx, ny))
+        return cells
+    
+    for i in range(n):
+        for j in range(m):
+            if grid[i][j] != 0 and not visited[i][j]:
+                region = dfs(i, j, grid[i][j])
+                if len(region) >= K:
+                    regions.append(region)
+    
+    return regions
+
+def apply_gravity(grid, n, m):
+    for j in range(m):
+        empty_row = n - 1
+        for i in range(n-1, -1, -1):
+            if grid[i][j] != 0:
+                grid[empty_row][j] = grid[i][j]
+                if empty_row != i:
+                    grid[i][j] = 0
+                empty_row -= 1
+
+def mooyo_mooyo(grid, n, K):
+    while True:
+        regions = find_connected_regions(grid, n, 10, K)
+        if not regions:
+            break
+        for region in regions:
+            for x, y in region:
+                grid[x][y] = 0
+        apply_gravity(grid, n, 10)
+    
+    return grid
+
+# Input
+n, K = map(int, input().split())
+grid = [list(map(int, input().strip())) for _ in range(n)]
+
+# Processing
+result = mooyo_mooyo(grid, n, K)
+
+# Output
+for row in result:
+    print(''.join(map(str, row)))
+
+New Solution
+
+import heapq
+
+def convention2(cows):
+    cows.sort()  # Sort by arrival time
+    current_time = 0
+    max_wait = 0
+    wait_queue = []
+    index = 0
+    n = len(cows)
+    
+    while index < n or wait_queue:
+        # If no cow is currently eating and there are waiting cows, jump to the next cow's arrival time
+        if not wait_queue:
+            current_time = cows[index][0]
+        
+        # Add all cows that have arrived by the current time to the priority queue
+        while index < n and cows[index][0] <= current_time:
+            heapq.heappush(wait_queue, (cows[index][2], cows[index][0], cows[index][1]))  # (seniority, arrival time, eating time)
+            index += 1
+        
+        # Take the cow with the highest seniority (smallest seniority number) from the heap
+        seniority, arrival_time, eating_time = heapq.heappop(wait_queue)
+        
+        # Update waiting time
+        max_wait = max(max_wait, current_time - arrival_time)
+        
+        # Update current time to reflect this cow eating
+        current_time += eating_time
+    
+    return max_wait
+
+# Read input
+n = int(input())
+cows = []
+for i in range(n):
+    a, t = map(int, input().split())
+    cows.append((a, i, t))  # (arrival_time, seniority, eating_time)
+
+# Output the result
+print(convention2(cows))
+
+New Solution
+
+from collections import deque, defaultdict
+
+def bfs(r, c, component_id):
+    queue = deque([(r, c)])
+    component[(r, c)] = component_id
+    while queue:
+        x, y = queue.popleft()
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 1 <= nx <= N and 1 <= ny <= N and (nx, ny) not in component:
+                if (x, y, nx, ny) not in roads and (nx, ny, x, y) not in roads:
+                    component[(nx, ny)] = component_id
+                    queue.append((nx, ny))
+
+# Input
+N, K, R = map(int, input().split())
+
+# Roads set to keep track of blocked paths
+roads = set()
+for _ in range(R):
+    r1, c1, r2, c2 = map(int, input().split())
+    roads.add((r1, c1, r2, c2))
+
+# Cows positions
+cows = []
+for _ in range(K):
+    r, c = map(int, input().split())
+    cows.append((r, c))
+
+# Directions for adjacent moves (right, down, left, up)
+directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+# Component map to record connected components
+component = {}
+component_id = 0
+
+# Identify all components using BFS/DFS
+for r in range(1, N + 1):
+    for c in range(1, N + 1):
+        if (r, c) not in component:
+            bfs(r, c, component_id)
+            component_id += 1
+
+# Count the number of cows in each component
+component_count = defaultdict(int)
+for cow in cows:
+    comp_id = component[cow]
+    component_count[comp_id] += 1
+
+# Calculate the number of distant pairs
+distant_pairs = 0
+cows_in_components = list(component_count.values())
+
+for i in range(len(cows_in_components)):
+    for j in range(i + 1, len(cows_in_components)):
+        distant_pairs += cows_in_components[i] * cows_in_components[j]
+
+# Output result
+print(distant_pairs)
+
+New Solution
+
+import heapq
+
+def max_pairs(chickens, cows):
+    chickens.sort()
+    cows.sort(key=lambda cow: cow[1])  # Sort cows by their ending time
+    pq = []
+    pair_count = 0
+    cow_idx = 0
+    
+    for t in chickens:
+        # Add all cows that can start before or when the chicken arrives
+        while cow_idx < len(cows) and cows[cow_idx][0] <= t:
+            heapq.heappush(pq, cows[cow_idx][1])
+            cow_idx += 1
+        
+        # Remove cows that cannot help anymore
+        while pq and pq[0] < t:
+            heapq.heappop(pq)
+        
+        # If there's a cow that can help the current chicken, form a pair
+        if pq:
+            heapq.heappop(pq)
+            pair_count += 1
+    
+    return pair_count
+
+# Input handling
+C, N = map(int, input().split())
+chickens = [int(input()) for _ in range(C)]
+cows = [tuple(map(int, input().split())) for _ in range(N)]
+
+# Output the result
+print(max_pairs(chickens, cows))
+
+New Solution
+
+# Define the names of the cows
+cow_names = ["Bessie", "Elsie", "Daisy", "Gertie", "Annabelle", "Maggie", "Henrietta"]
+
+# Initialize a dictionary to track milk production for each cow
+milk_production = {name: 0 for name in cow_names}
+
+# Read the input
+N = int(input())
+for _ in range(N):
+    name, amount = input().split()
+    amount = int(amount)
+    milk_production[name] += amount
+
+# Get all unique production values and sort them
+unique_productions = sorted(set(milk_production.values()))
+
+# We are interested in the second smallest production
+if len(unique_productions) < 2:
+    print("Tie")
+else:
+    second_smallest = unique_productions[1]
+    cows_with_second_smallest = [cow for cow, milk in milk_production.items() if milk == second_smallest]
+    
+    if len(cows_with_second_smallest) == 1:
+        print(cows_with_second_smallest[0])
+    else:
+        print("Tie")
+
+New Solution
+
+from collections import defaultdict
+
+def count_special_pairs(n, city_state_pairs):
+    pair_count = defaultdict(int)
+    special_pairs = 0
+
+    for city, state in city_state_pairs:
+        prefix = city[:2]
+        if (state, prefix) in pair_count:
+            special_pairs += pair_count[(state, prefix)]
+        pair_count[(prefix, state)] += 1
+
+    return special_pairs
+
+# Example Usage
+city_state_pairs = [
+    ("MIAMI", "FL"),
+    ("DALLAS", "TX"),
+    ("FLINT", "MI"),
+    ("CLEMSON", "SC"),
+    ("BOSTON", "MA"),
+    ("ORLANDO", "FL")
+]
+
+n = len(city_state_pairs)
+print(count_special_pairs(n, city_state_pairs))  # Output should be 1
+
+New Solution
+
+from collections import deque
+
+def min_error(X, Y, K, M):
+    queue = deque([(0, 0, 0)])  # (amount in pail X, amount in pail Y, operations count)
+    visited = set((0, 0))
+    min_diff = abs(M)
+
+    while queue:
+        a, b, ops = queue.popleft()
+        min_diff = min(min_diff, abs(M - (a + b)))
+        if ops == K:
+            continue
+        
+        # Generate possible next states
+        next_states = [
+            (X, b),  # Fill X
+            (a, Y),  # Fill Y
+            (0, b),  # Empty X
+            (a, 0),  # Empty Y
+            (a - min(a, Y - b), b + min(a, Y - b)),  # Pour X into Y
+            (a + min(b, X - a), b - min(b, X - a))   # Pour Y into X
+        ]
+        
+        for new_a, new_b in next_states:
+            if (new_a, new_b) not in visited:
+                visited.add((new_a, new_b))
+                queue.append((new_a, new_b, ops + 1))
+    
+    return min_diff
+
+# Example Usage
+X, Y, K, M = 14, 50, 2, 32
+print(min_error(X, Y, K, M))  # Output: 18
+
+New Solution
+
+from collections import deque, defaultdict
+
+def max_lit_rooms(N, M, switches):
+    grid = defaultdict(list)
+    for x, y, a, b in switches:
+        grid[(x, y)].append((a, b))
+    
+    lit_rooms = set()
+    visited = set()
+    bfs_queue = deque([(1, 1)])
+    
+    lit_rooms.add((1, 1))
+    visited.add((1, 1))
+    
+    while bfs_queue:
+        x, y = bfs_queue.popleft()
+        
+        # Toggle lights in rooms based on switches in current room
+        for a, b in grid[(x, y)]:
+            if (a, b) not in lit_rooms:
+                lit_rooms.add((a, b))
+                # If newly lit room is adjacent to a visited room, enqueue it
+                if (a+1, b) in visited or (a-1, b) in visited or (a, b+1) in visited or (a, b-1) in visited:
+                    bfs_queue.append((a, b))
+        
+        # Try moving to adjacent rooms if they are lit
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            nx, ny = x + dx, y + dy
+            if 1 <= nx <= N and 1 <= ny <= N and (nx, ny) not in visited and (nx, ny) in lit_rooms:
+                visited.add((nx, ny))
+                bfs_queue.append((nx, ny))
+    
+    return len(lit_rooms)
+
+# Example usage
+N, M = 3, 6
+switches = [
+    (1, 1, 1, 2),
+    (2, 1, 2, 2),
+    (1, 1, 1, 3),
+    (2, 3, 3, 1),
+    (1, 3, 1, 2),
+    (1, 3, 2, 1)
+]
+print(max_lit_rooms(N, M, switches))  # Output: 5
+
+New Solution
+
+def max_team_differences(C, N, teams):
+    max_diffs = []
+    
+    for i in range(N):
+        max_diff = 0
+        for j in range(N):
+            if i != j:
+                # Calculate the number of differing positions
+                diff = sum(teams[i][k] != teams[j][k] for k in range(C))
+                max_diff = max(max_diff, diff)
+        max_diffs.append(max_diff)
+    
+    return max_diffs
+
+# Example usage
+C, N = 5, 3
+teams = [
+    "GHGGH",
+    "GHHHH",
+    "HGHHG"
+]
+result = max_team_differences(C, N, teams)
+for res in result:
+    print(res)
+
+New Solution
+
+def get_zodiac_index(animal):
+    cycle = ['Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake', 'Horse', 'Goat', 'Monkey', 'Rooster', 'Dog', 'Pig', 'Rat']
+    return cycle.index(animal)
+
+def calculate_year_diff(n, statements):
+    # Initialize dictionary to store the year difference relative to Bessie
+    year_diff = {'Bessie': 0}
+    
+    for statement in statements:
+        words = statement.split()
+        cow_name = words[0]
+        direction = words[3]
+        zodiac_animal = words[4]
+        reference_cow = words[-1]
+        
+        ref_year = year_diff[reference_cow]
+        target_zodiac_index = get_zodiac_index(zodiac_animal)
+        ref_zodiac_index = ref_year % 12
+        
+        if direction == "next":
+            if target_zodiac_index > ref_zodiac_index:
+                year_diff[cow_name] = ref_year + (target_zodiac_index - ref_zodiac_index)
+            else:
+                year_diff[cow_name] = ref_year + (12 - (ref_zodiac_index - target_zodiac_index))
+        elif direction == "previous":
+            if target_zodiac_index < ref_zodiac_index:
+                year_diff[cow_name] = ref_year - (ref_zodiac_index - target_zodiac_index)
+            else:
+                year_diff[cow_name] = ref_year - (12 - (target_zodiac_index - ref_zodiac_index))
+    
+    return abs(year_diff['Elsie'])
+
+# Example usage
+n = 4
+statements = [
+    "Mildred born in previous Dragon year from Bessie",
+    "Gretta born in previous Monkey year from Mildred",
+    "Elsie born in next Ox year from Gretta",
+    "Paulina born in next Dog year from Bessie"
+]
+
+print(calculate_year_diff(n, statements))  # Output: 12
+
+New Solution
+
+def minimal_shifts(n, k, skills):
+    # Step 1: Enumerate the original positions
+    indexed_skills = [(skill, idx) for idx, skill in enumerate(skills)]
+    
+    # Step 2: Sort based on the skill in descending order
+    indexed_skills.sort(reverse=True, key=lambda x: x[0])
+    
+    # Step 3: Extract the sorted indices from the sorted skills
+    sorted_indices = [idx for skill, idx in indexed_skills]
+    
+    # Step 4: Rebuild teams in their sorted positions
+    teams = [[] for _ in range(n // k)]
+    for i, idx in enumerate(sorted_indices):
+        team_id = i // k
+        teams[team_id].append(idx)
+    
+    # Step 5: Calculate minimal number of moves required
+    # This is simply how disordered the original indices are within their teams.
+    total_moves = 0
+    current_pos = 0
+    for team in teams:
+        team.sort()  # Sort each team by their original indices
+        for idx in team:
+            if idx != current_pos:
+                total_moves += 1
+            current_pos += 1
+    
+    return total_moves
+
+# Input handling
+n, k = map(int, input().split())
+skills = list(map(int, input().split()))
+
+# Get the result
+result = minimal_shifts(n, k, skills)
+print(result)
+
+New Solution
+
+def calculate_xor_sum(N, A):
+    # Initialize result
+    total_xor_sum = 0
+    # Iterate over each element
+    for i in range(N):
+        # Calculate contribution of A[i] to the total XOR sum
+        total_xor_sum ^= A[i]
+    
+    return total_xor_sum
+
+# Input handling
+N = int(input())  # Read the length of the array
+A = list(map(int, input().split()))  # Read the array
+
+# Output the result
+print(calculate_xor_sum(N, A))
+
+New Solution
+
+def solve():
+    n = int(input())  # Read the size of the pyramid
+    a = list(map(int, input().split()))  # Read the bottom row of the pyramid
+
+    if n % 2 == 1:
+        result = 0
+        for i in range(0, n, 2):
+            result ^= a[i]
+        print(result)
+    else:
+        print(0)
+
+# Call the solve function
+solve()
+
+New Solution
+
+import math
+import sys
+input = sys.stdin.read
+
+def gcd(a, b):
+    while b:
+        a, b = b, a % b
+    return a
+
+def solve():
+    data = input().split()
+    idx = 0
+    T = int(data[idx])
+    idx += 1
+    result = []
+    
+    for _ in range(T):
+        N = int(data[idx])
+        idx += 1
+        A = list(map(int, data[idx:idx+N]))
+        idx += N
+        
+        # Find GCD of the whole array
+        overall_gcd = A[0]
+        for i in range(1, N):
+            overall_gcd = gcd(overall_gcd, A[i])
+        
+        # For every size from 1 to N, the maximum GCD will be overall_gcd
+        result.append(" ".join([str(overall_gcd)] * N))
+    
+    sys.stdout.write("\n".join(result) + "\n")
+
+# Execute the function
+solve()
+
+New Solution
+
+def bst_cost(N, K, horses):
+    # Sort the horses that are currently in the stable
+    horses.sort()
+
+    def build_bst_cost(start, end, depth):
+        if start > end:
+            return 0
+        mid = (start + end) // 2
+        total_cost = depth
+        total_cost += build_bst_cost(start, mid - 1, depth + 1)
+        total_cost += build_bst_cost(mid + 1, end, depth + 1)
+        return total_cost
+
+    # Build the BST and calculate the total cost
+    return build_bst_cost(0, K - 1, 1)
+
+# Input processing
+N = int(input())
+K = int(input())
+horses = [int(input()) for _ in range(K)]
+
+# Output the result
+print(bst_cost(N, K, horses))
+
+New Solution
+
+MAX_N = 20
+image = []
+visited = [[False] * MAX_N for _ in range(MAX_N)]
+
+class PCL:
+    def __init__(self, i1, j1, i2, j2):
+        self.i1 = i1
+        self.j1 = j1
+        self.i2 = i2
+        self.j2 = j2
+
+    def is_inside(self, other):
+        return (self.i1 >= other.i1 and self.i2 <= other.i2 and
+                self.j1 >= other.j1 and self.j2 <= other.j2)
+
+# Floodfill to find connected regions
+i_min, i_max, j_min, j_max = 0, 0, 0, 0
+
+def floodfill(i, j, color):
+    if i < i_min or j < j_min or i > i_max or j > j_max or visited[i][j] or image[i][j] != color:
+        return
+    visited[i][j] = True
+    floodfill(i + 1, j, color)
+    floodfill(i - 1, j, color)
+    floodfill(i, j + 1, color)
+    floodfill(i, j - 1, color)
+
+# Check if a given region is a PCL
+def is_pcl(i1, j1, i2, j2):
+    region_count = [0] * 26  # There are 26 letters, so we track region counts for each letter
+    global i_min, i_max, j_min, j_max
+    i_min, i_max, j_min, j_max = i1, i2, j1, j2
+    
+    for i in range(i1, i2 + 1):
+        for j in range(j1, j2 + 1):
+            if not visited[i][j]:
+                curr_color = image[i][j]
+                region_count[ord(curr_color) - ord('A')] += 1
+                floodfill(i, j, curr_color)
+
+    # Reset the visited array for the next use
+    for row in visited:
+        for idx in range(len(row)):
+            row[idx] = False
+
+    color_count = 0
+    one_region = False
+    more_regions = False
+    for count in region_count:
+        if count > 0:
+            color_count += 1
+        if count == 1:
+            one_region = True
+        if count > 1:
+            more_regions = True
+
+    return color_count == 2 and one_region and more_regions
+
+def main():
+    with open("where.in", "r") as f:
+        n = int(f.readline().strip())
+        for _ in range(n):
+            image.append(list(f.readline().strip()))
+
+    pcl_list = []
+
+    # Brute force every rectangle in the grid
+    for i1 in range(n):
+        for j1 in range(n):
+            for i2 in range(i1, n):
+                for j2 in range(j1, n):
+                    if is_pcl(i1, j1, i2, j2):
+                        pcl_list.append(PCL(i1, j1, i2, j2))
+
+    pcl_count = 0
+
+    # Check if a PCL is inside another PCL
+    for i in range(len(pcl_list)):
+        valid_pcl = True
+        for j in range(len(pcl_list)):
+            if i != j and pcl_list[i].is_inside(pcl_list[j]):
+                valid_pcl = False
+                break
+        if valid_pcl:
+            pcl_count += 1
+
+    with open("where.out", "w") as f:
+        f.write(f"{pcl_count}\n")
+
+if __name__ == "__main__":
+    main()

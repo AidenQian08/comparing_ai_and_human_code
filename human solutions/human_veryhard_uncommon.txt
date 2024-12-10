@@ -1,0 +1,3337 @@
+#include <algorithm>
+#include <iostream>
+#include <vector>
+using std::vector;
+
+int main() {
+	int n;
+	int m;
+	int q;
+	std::cin >> n >> m >> q;
+
+	vector<int> a(n);
+	vector<int> b(m);
+
+	for (int i = 0; i < n; i++) { std::cin >> a[i]; }
+	for (int i = 0; i < m; i++) { std::cin >> b[i]; }
+
+	/*
+	 * calculate the odd and even sums,
+	 * if we start on a index with a different parity,
+	 * we have to invert the operation
+	 */
+	vector<long long> odd_b(m), even_b(m);
+
+	for (int i = 0; i < m; i++) {
+		if (i & 1) {
+			odd_b[i] = b[i];
+		} else {
+			even_b[i] = b[i];
+		}
+
+		if (i > 0) {
+			odd_b[i] += odd_b[i - 1];
+			even_b[i] += even_b[i - 1];
+		}
+	}
+
+	// let seg_b[i] represent the sum of the segment starting at i
+	vector<long long> seg_b(m - n + 1);
+
+	for (int i = 0; i <= (m - n); i++) {
+		long long sum_even = even_b[i + n - 1] - (i ? even_b[i - 1] : 0);
+		long long sum_odd = odd_b[i + n - 1] - (i ? odd_b[i - 1] : 0);
+
+		// if we started on an odd index, we have to invert the operations
+		if (i & 1) {
+			seg_b[i] = sum_odd - sum_even;
+		} else {
+			seg_b[i] = sum_even - sum_odd;
+		}
+	}
+
+	std::sort(seg_b.begin(), seg_b.end());
+
+	long long sum_a = 0;
+	for (int i = 0; i < n; i++) { sum_a += (i & 1 ? -a[i] : a[i]); }
+
+	auto qry = [&](auto it) {
+		auto loc = it;
+
+		if (loc == seg_b.end()) {
+			std::cout << llabs(*(prev(loc)) - sum_a) << std::endl;
+		} else {
+			long long ans = *loc - sum_a;
+
+			if (loc != std::prev(seg_b.end())) {
+				ans = std::min(ans, llabs(*(std::next(loc)) - sum_a));
+			}
+
+			if (loc != seg_b.begin()) {
+				ans = std::min(ans, llabs(*(std::prev(loc)) - sum_a));
+			}
+
+			std::cout << ans << std::endl;
+		}
+	};
+
+	qry(std::lower_bound(seg_b.begin(), seg_b.end(), sum_a));
+
+	for (int i = 0; i < q; i++) {
+		long long l, r, v;
+		std::cin >> l >> r >> v;
+
+		/*
+		 * note that these additions cancel unless the
+		 * length of the sequence incremented is odd
+		 */
+		if ((r - l + 1) & 1) {
+			// adjust based on whether we start by subtracting or adding
+			if (l & 1) {
+				sum_a += v;
+			} else {
+				sum_a -= v;
+			}
+		}
+
+		qry(std::lower_bound(seg_b.begin(), seg_b.end(), sum_a));
+	}
+}
+
+New Solution
+
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+
+using std::cout;
+using std::endl;
+
+/**
+ * @return whether Farmer John gives Bessie at least N (numGallons)
+ * gallons of milk within withinDays with the given X value
+ */
+bool can_repay(long long num_gallons, long long within_days, long long at_least,
+               long long x_val) {
+	long long g = 0;
+	while (within_days > 0 && g < num_gallons) {
+		long long y = (num_gallons - g) / x_val;
+		if (y < at_least) {
+			long long leftover =
+			    ((num_gallons - g) + (at_least - 1)) / at_least;
+			return leftover <= within_days;
+		}
+
+		long long max_match = num_gallons - (x_val * y);
+		long long num_days = std::min((max_match - g) / y + 1, within_days);
+
+		g += y * num_days;  // update values
+		within_days -= num_days;
+	}
+
+	return g >= num_gallons;
+}
+
+int main() {
+	std::ifstream read("loan.in");
+
+	long long num_gallons;
+	long long within_days;
+	long long at_least;
+	read >> num_gallons >> within_days >> at_least;
+
+	// binary search on the largest X
+	long long low = 1;
+	long long high = INT64_MAX / 2;
+	while (low < high) {
+		long mid = (low + high + 1) / 2;
+		if (can_repay(num_gallons, within_days, at_least, mid)) {
+			low = mid;
+		} else {
+			high = mid - 1;
+		}
+	}
+
+	std::ofstream("loan.out")
+	    << low << endl;  // low == high, we can output either
+}
+
+New Solution
+
+#include <iostream>
+using namespace std;
+
+typedef long long ll;
+
+ll N, K, M;
+
+// Function to check if we can repay the loan with a given X within K days
+bool can_repay_with_X(ll X) {
+    ll milk_given = 0;  // Total milk given so far
+    ll days_used = 0;   // Number of days used so far
+
+    while (days_used < K && milk_given < N) {
+        ll remaining_milk = N - milk_given;
+        ll Y = remaining_milk / X;  // Compute Y based on current remaining milk and X
+        if (Y < M) {
+            // If Y drops below M, we must give M gallons for the remaining days
+            ll remaining_days = (N - milk_given + M - 1) / M;  // Ceiling of (N - milk_given) / M
+            days_used += remaining_days;
+            milk_given = N;  // We can give the remaining milk in these days
+        } else {
+            // Give Y gallons and proceed to the next day
+            milk_given += Y;
+            days_used++;
+        }
+    }
+
+    // Check if we managed to give at least N gallons within K days
+    return milk_given >= N && days_used <= K;
+}
+
+int main() {
+    cin >> N >> K >> M;
+
+    ll low = 1, high = N;
+    ll best_X = 1;
+
+    // Binary search for the largest possible X
+    while (low <= high) {
+        ll mid = (low + high) / 2;
+        if (can_repay_with_X(mid)) {
+            best_X = mid;  // Valid X, try for larger X
+            low = mid + 1;
+        } else {
+            high = mid - 1;  // Invalid X, try for smaller X
+        }
+    }
+
+    cout << best_X << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <fstream>
+#include <map>
+#include <algorithm>
+using namespace std;
+     
+int N;
+map<int,int> slopechg;   // slopechg[t] is how much the slope of f(y) changes when y=t
+     
+int main(void)
+{
+   ifstream fin ("teleport.in");
+   ofstream fout ("teleport.out");
+
+   long long current_f = 0, slope_f = 0, current_y = -2000000000;
+
+   fin >> N;
+   for (int i=0; i<N; i++) {
+      int a, b;
+      fin >> a >> b;
+      current_f += abs(a-b);
+      
+      // Now add any slope change breakpoints...      
+      if (abs(a) > abs(a-b)) continue;
+      slopechg[b]+=2;
+      if (a<b && a<0)   { slopechg[0]--; slopechg[2*b]--; }
+      if (a<b && a>=0)  { slopechg[2*b-2*a]--; slopechg[2*a]--; }
+      if (a>=b && a<0)  { slopechg[2*b-2*a]--; slopechg[2*a]--; }
+      if (a>=b && a>=0) { slopechg[0]--; slopechg[2*b]--; }
+   }      
+
+   // Now scan y forward and apply slope changes to trace out f(y), keeping track of min
+   long long min_f = current_f;
+   for (auto p : slopechg) {
+      int new_y = p.first, delta_slope = p.second;
+      current_f += slope_f * (new_y - current_y);
+      current_y = new_y;
+      slope_f += delta_slope;
+      min_f = min(min_f, current_f);
+   }
+
+   fout << min_f << "\n";
+   return 0;
+}
+
+New Solution
+
+#include <cstdio>
+#include <cassert>
+#include <vector>
+using namespace std;
+ 
+#define NMAX 1500
+ 
+struct P {
+  int x, y;
+  P(int x, int y): x(x), y(y) { }
+  P() {}
+  bool operator ==(P b) {
+    return x == b.x && y == b.y;
+  }
+  bool operator !=(P b) {
+    return !(x == b.x && y == b.y);
+  }
+};
+ 
+int dx[] = {0, 1, 0, -1};
+int dy[] = {1, 0, -1, 0};
+ 
+int getDIndex(P v1, P v2) {
+  for (int d = 0; d < 4; d++) {
+    if (v1.x + dx[d] == v2.x && v1.y + dy[d] == v2.y) {
+      return d;
+    }
+  }
+  assert(false);
+}
+ 
+int width, height;
+int blockStartX, blockStartY;
+int blockEndX, blockEndY;
+int humanStartX, humanStartY;
+ 
+bool isOpen[NMAX][NMAX];
+ 
+bool visited[NMAX][NMAX];
+int depth[NMAX][NMAX];
+int low[NMAX][NMAX];
+ 
+unsigned short adjacency[NMAX][NMAX];
+int initialD = -1;
+ 
+void biconnected_component_dfs(P v, P parent, int myDepth) {
+  visited[v.x][v.y] = true;
+  depth[v.x][v.y] = myDepth;
+  low[v.x][v.y] = myDepth;
+  int childCount = 0;
+ 
+  vector<vector<P>> components;
+ 
+  for (int d = 0; d < 4; d++) {
+    int x1 = v.x + dx[d];
+    int y1 = v.y + dy[d];
+    if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < height && isOpen[x1][y1]) {
+      if (!visited[x1][y1]) {
+        if (x1 == blockStartX && y1 == blockStartY) {
+          initialD = (d + 2) % 4;
+        }
+ 
+        bool alreadyVisited[4];
+        for (int d2 = 0; d2 < 4; d2++) {
+          int x2 = v.x + dx[d2];
+          int y2 = v.y + dy[d2];
+          alreadyVisited[d2] = (x2 >= 0 && x2 < width && y2 >= 0 && y2 < height && isOpen[x2][y2] && visited[x2][y2]);
+        }
+ 
+        biconnected_component_dfs(P(x1, y1), v, myDepth+1);
+        childCount++;
+        if (low[x1][y1] >= depth[v.x][v.y]) {
+          vector<P> cmp;
+ 
+          for (int d2 = 0; d2 < 4; d2++) {
+            int x2 = v.x + dx[d2];
+            int y2 = v.y + dy[d2];
+            if (x2 >= 0 && x2 < width && y2 >= 0 && y2 < height && isOpen[x2][y2] && visited[x2][y2] && !alreadyVisited[d2]) {
+              cmp.push_back(P(x2,y2));
+            }
+          }
+ 
+          components.push_back(cmp);
+        }
+        low[v.x][v.y] = min(low[v.x][v.y], low[x1][y1]);
+      } else {
+        if (parent != P(x1,y1)) {
+          low[v.x][v.y] = min(low[v.x][v.y], depth[x1][y1]);
+        }
+      }
+    }
+  }
+ 
+  vector<P> lastComponent;
+  for (int d = 0; d < 4; d++) {
+    int x1 = v.x + dx[d];
+    int y1 = v.y + dy[d];
+    if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < height && isOpen[x1][y1]) {
+      bool exist = false;
+      for (int i = 0; i < components.size(); i++) {
+        for (int j = 0; j < components[i].size(); j++) {
+          if (components[i][j] == P(x1,y1)) {
+            exist = true;
+          }
+        }
+      }
+      if (!exist) {
+        lastComponent.push_back(P(x1,y1));
+      }
+    }
+  }
+  if (lastComponent.size() > 0) {
+    components.push_back(lastComponent);
+  }
+ 
+  unsigned short bits = 0;
+ 
+  for (auto& component : components) {
+    for (int i = 1; i < component.size(); i++) {
+      int dIndex = getDIndex(v, component[i-1]);
+      int dIndex2 = getDIndex(v, component[i]);
+      bits |= ((unsigned short)1) << (dIndex*4 + dIndex2);
+      bits |= ((unsigned short)1) << (dIndex2*4 + dIndex);
+    }
+  }
+ 
+  adjacency[v.x][v.y] = bits;
+}
+ 
+pair<P, char> bfs[NMAX * NMAX * 4];
+bool bfsVisited[NMAX][NMAX][4];
+void do_bfs(pair<P, char> startV) {
+  bfs[0] = startV;
+  int index = 0;
+  int len = 1;
+  for (int i = 0; i < width; i++) {
+    for (int j = 0; j < height; j++) {
+      for (int d = 0; d < 4; d++) {
+        bfsVisited[i][j][d] = false;
+      }
+    }
+  }
+  bfsVisited[startV.first.x][startV.first.y][(int)startV.second] = true;
+  while (index < len) {
+    pair<P, char> v = bfs[index];
+    index++;
+ 
+    P p = v.first;
+    int d = v.second;
+ 
+    int x1 = p.x;
+    int y1 = p.y;
+    int x2 = x1 - dx[d];
+    int y2 = y1 - dy[d];
+    if (x2 >= 0 && x2 < width && y2 >= 0 && y2 < height && isOpen[x2][y2]) {
+      pair<P, char> w = make_pair(P(x2, y2), d);
+      if (!bfsVisited[w.first.x][w.first.y][(int)w.second]) {
+        bfsVisited[w.first.x][w.first.y][(int)w.second] = true;
+        bfs[len++] = w;
+      }
+    }
+ 
+    for (int d1 = 0; d1 < 4; d1++) {
+      if (adjacency[p.x][p.y] & (((unsigned short)1) << (d*4 + d1))) {
+        pair<P, char> w = make_pair(P(p.x, p.y), d1);
+        if (!bfsVisited[w.first.x][w.first.y][(int)w.second]) {
+          bfsVisited[w.first.x][w.first.y][(int)w.second] = true;
+          bfs[len++] = w;
+        }
+      }
+    }
+  }
+}
+ 
+char rowInput[NMAX + 5];
+ 
+int main() {
+  int q;
+  scanf("%d", &height);
+  scanf("%d", &width);
+  scanf("%d", &q);
+  blockStartX = -1;
+  blockStartY = -1;
+  humanStartX = -1;
+  humanStartY = -1;
+  for (int i = 0; i < height; i++) {
+    scanf("%s", rowInput);
+    for (int j = 0; j < width; j++) {
+      isOpen[j][i] = (rowInput[j] != '#');
+      if (rowInput[j] == 'A') {
+        assert(humanStartX == -1);
+        humanStartX = j;
+        humanStartY = i;
+      } else if (rowInput[j] == 'B') {
+        assert(blockStartX == -1);
+        blockStartX = j;
+        blockStartY = i;
+      } else {
+        assert(rowInput[j] == '.' || rowInput[j] == '#');
+      }
+    }
+  }
+ 
+  for (int x = 0; x < width; x++) {
+    for (int y = 0; y < height; y++) {
+      visited[x][y] = false;
+    }
+  }
+ 
+  biconnected_component_dfs(P(humanStartX, humanStartY), P(-1, -1), 0);
+ 
+  if (initialD == -1) {
+    for (int i = 0; i < q; i++) {
+      int blockEndX, blockEndY;
+      scanf("%d", &blockEndY);
+      scanf("%d", &blockEndX);
+      blockEndX--;
+      blockEndY--;
+      printf("%s\n", blockStartX == blockEndX && blockStartY == blockEndY ? "YES" : "NO");
+    }
+    return 0;
+  }
+ 
+  do_bfs(make_pair(P(blockStartX, blockStartY), (char)initialD));
+ 
+  for (int i = 0; i < q; i++) {
+    int blockEndX, blockEndY;
+    scanf("%d", &blockEndY);
+    scanf("%d", &blockEndX);
+    blockEndX--;
+    blockEndY--;
+    assert(isOpen[blockEndX][blockEndY]);
+    bool isPossible =
+      bfsVisited[blockEndX][blockEndY][0] ||
+      bfsVisited[blockEndX][blockEndY][1] ||
+      bfsVisited[blockEndX][blockEndY][2] ||
+      bfsVisited[blockEndX][blockEndY][3];
+    printf("%s\n", isPossible ? "YES" : "NO");
+  }
+}
+
+New Solution
+
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <set>
+#include <vector>
+
+using std::cout;
+using std::endl;
+using std::vector;
+
+struct Bound {
+	int min_r, max_r, min_c, max_c;
+};
+
+int main() {
+	std::ifstream read("art.in");
+
+	int width;
+	read >> width;
+	vector<vector<int>> canvas(width, vector<int>(width));
+	std::map<int, Bound> visible;
+	for (int r = 0; r < width; r++) {
+		for (int c = 0; c < width; c++) {
+			read >> canvas[r][c];
+			if (!visible.count(canvas[r][c])) {
+				visible[canvas[r][c]] = Bound{r, r, c, c};
+			}
+			Bound &bounds = visible[canvas[r][c]];
+			bounds.min_r = std::min(r, bounds.min_r);
+			bounds.max_r = std::max(r, bounds.max_r);
+			bounds.min_c = std::min(c, bounds.min_c);
+			bounds.max_c = std::max(c, bounds.max_c);
+		}
+	}
+	visible.erase(0);  // 0 isn't a color
+
+	// all the non-visible colors could've been painted first
+	int poss_first = width * width - visible.size();
+	// handle the edge case where there's only 1 color
+	if (visible.size() > 1) {
+		/*
+		 * rect_num[r][c] is *going* to contain the # of rectangles
+		 * that must contain the point (r, c)
+		 */
+		vector<vector<int>> rect_num(width + 1, vector<int>(width + 1));
+		std::set<int> valid_colors;
+		for (const auto &[c, b] : visible) {
+			// initialize it as a difference array
+			valid_colors.insert(c);
+			rect_num[b.min_r][b.min_c]++;
+			rect_num[b.min_r][b.max_c + 1]--;
+			rect_num[b.max_r + 1][b.min_c]--;
+			rect_num[b.max_r + 1][b.max_c + 1]++;
+		}
+
+		for (int r = 0; r < width; r++) {
+			for (int c = 0; c < width; c++) {
+				if (r > 0) { rect_num[r][c] += rect_num[r - 1][c]; }
+				if (c > 0) { rect_num[r][c] += rect_num[r][c - 1]; }
+				if (r > 0 && c > 0) {
+					rect_num[r][c] -= rect_num[r - 1][c - 1];
+				}
+
+				/*
+				 * if 2 rectangles overlap, the one at the top
+				 * (aka the shown one) can't have been painted first
+				 */
+				if (rect_num[r][c] > 1) { valid_colors.erase(canvas[r][c]); }
+			}
+		}
+		poss_first += valid_colors.size();
+	}
+
+	std::ofstream("art.out") << poss_first << endl;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+#define MAXN 210
+#define INF 0x3FFFFFFF
+
+int opt[MAXN];
+int psum[MAXN];
+int canon[MAXN*2][MAXN*2];
+vector<int> lparents[MAXN][MAXN];
+vector<int> rparents[MAXN][MAXN];
+
+int dp[MAXN][MAXN][MAXN][2];
+
+int main() {
+  int N; cin >> N;
+  vector<pair<long long, long long> > A(N);
+  for (int i = 0; i < N; i++) {
+    cin >> A[i].first >> A[i].second;
+  }
+
+  /* Create the underlying string from the polygon.  Represent the exit as
+   * 0.  Represent clockwise turns as -1, counter clockwise as -2.  Represent
+   * lengths by their length.
+   */
+  vector<int> S(1, 0);
+  for (int i = 0; i < N; i++) {
+    int j = (i + 1) % N;
+    int k = (i + 2) % N;
+    S.push_back(abs(A[i].first - A[j].first) +
+                abs(A[i].second - A[j].second));
+
+    /* Use a cross product to determine which way the polygon turned. */
+    if ((A[i].first - A[j].first) * (A[k].second - A[j].second) -
+        (A[k].first - A[j].first) * (A[i].second - A[j].second) > 0) {
+      S.push_back(-1);
+    } else {
+      S.push_back(-2);
+    }
+  }
+  S.back() = 0;
+
+  /* Compute the lights-on cost for each corner. */
+  for (int i = 0; i < N; i++) {
+    psum[i + 1] = opt[i + 1] = opt[i] + S[2 * i + 1];
+  }
+  opt[N] = 0;
+  for (int i = N - 1; i >= 0; i--) {
+    opt[i] = min(opt[i], opt[i + 1] + S[2 * i + 1]);
+  }
+
+  /* Compute j = canon[i][ln] to be the first j s.t. S[j:j+ln-1] = S[i:i+ln-1].
+     The canonical starting position of the string S[i:i+ln-1].
+   */
+  for (int ln = 1; ln <= S.size(); ln++) {
+    for (int i = 0; i + ln <= S.size(); i++) {
+      for (int& j = canon[i][ln]; j < i; j++) {
+        /* If ln - 1 matches and the last character matches... */
+        if (canon[j][ln - 1] == canon[i][ln - 1] &&
+            S[j + ln - 1] == S[i + ln - 1]) {
+          break;
+        }
+      }
+    }
+  }
+  
+  /* Pre-compute the state transitions; how to extend left and right for each
+   * possible string. */
+  for (int i = 0; i < S.size(); i += 2) {
+    for (int ln = 3; i + ln <= S.size(); ln += 2) {
+      if (i != canon[i][ln]) {
+        continue;
+      }
+      lparents[canon[i + 2][ln - 2] / 2][ln / 2].push_back(i / 2);
+      rparents[canon[i][ln - 2] / 2][ln / 2].push_back(i / 2);
+    }
+  }
+
+  int result = 0;
+  for (int ln = N; ln >= 1; ln--) {
+    for (int i = 0; i + ln <= N + 1; i++) {
+      if (canon[2 * i][2 * ln - 1] != 2 * i) {
+        /* Non-canonical string, skip. */
+        continue;
+      }
+
+      int dist_across = psum[i + ln - 1] - psum[i];
+      for (int strt = 0; strt < ln; strt++) {
+        for (int side = 0; side < 2; side++) {
+          if (i == 0 || i + ln == N + 1) {
+            /* We're at the exit. */
+            dp[i][ln][strt][side] = -opt[i + strt];
+            continue;
+          }
+
+          /* Compute the worst case cost for left and right. */
+          int lft_cst = -INF;
+          for (int j : lparents[i][ln]) {
+            lft_cst = max(lft_cst, S[2 * j + 1] + dp[j][ln + 1][strt + 1][0]);
+          }
+
+          int rht_cst = -INF;
+          for (int j : rparents[i][ln]) {
+            rht_cst = max(rht_cst,
+                          S[2 * (j + ln) - 1] + dp[j][ln + 1][strt][1]);
+          }
+
+          /* Add in the cost for crossing the string if we choose to extend the
+           * far side of the string. */
+          (side ? lft_cst : rht_cst) += dist_across;
+
+          /* Result is just the min of these two choices. */
+          dp[i][ln][strt][side] = min(lft_cst, rht_cst);
+
+          /* Update the result if this is a 1 length string. */
+          if (ln == 1) {
+            result = max(result, dp[i][ln][strt][side]);
+          }
+        }
+      }
+    }
+  }
+  cout << result << endl;
+  
+  return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+const int MAX_N = 2e5;
+
+struct Item {
+	int q;  // type (cow or apple)
+	int t;  // time of entry
+	int x;  // position
+	int n;  // amount
+
+	bool operator<(const Item &y) {
+		if (x - t == y.x - y.t) { return q > y.q; }
+		return x - t < y.x - y.t;
+	}
+} p[MAX_N];
+
+int main() {
+	int N;
+	map<int, int>
+	    pts;  // stores how many apples are at each point defined above
+	cin >> N;
+	for (int i = 0; i < N; i++) { cin >> p[i].q >> p[i].t >> p[i].x >> p[i].n; }
+
+	sort(p, p + N);
+
+	int ans = 0;
+	for (int i = 0; i < N; i++) {
+		if (p[i].q == 2) {
+			pts[p[i].x + p[i].t] += p[i].n;
+		} else {
+			int n = p[i].n;
+			// greedily assign cows to the closest points
+			while (n) {
+				map<int, int>::iterator it = pts.lower_bound(p[i].x + p[i].t);
+
+				if (it == pts.end()) break;
+				int u = min(n, it->second);
+
+				if (u == it->second) {
+					pts.erase(it);
+				} else {
+					it->second -= u;
+				}
+
+				n -= u;
+				ans += u;
+			}
+		}
+	}
+
+	cout << ans << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+int N, time;
+vector<int> add;
+vector<int> edge[100005];
+long long ans[100005];
+
+void dfs(int ss, int a) {
+	ans[ss] += a;
+	add[ss] = time--;
+
+	for (int i = (int)edge[ss].size() - 1; i >= 0; i--) {
+		dfs(edge[ss][i], a - 1);
+	}
+}
+
+int main() {
+	cin >> N;
+	int K = N + 1;
+	time = K;
+	add.resize(K);
+
+	for (int i = 0; i < N; i++) {
+		int a;
+		cin >> a;
+
+		edge[a + 1].push_back(i + 1);
+	}
+
+	dfs(N + 1, K);
+
+	cout << K << endl;
+	for (int i = 1; i <= N; i++) {
+		ans[i] = ans[i] * K + add[i];
+		cout << ans[i] << endl;
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+ 
+using namespace std;
+ 
+struct edge {
+    int cow; // which cow's choice 
+    int to;
+    bool is_first;
+ 
+    edge() {};
+    edge(int cow, int to, bool is_first) : cow(cow), to(to), is_first(is_first) {};
+};
+ 
+int N, M;
+ 
+vector<edge> adj[100001];
+bool visited_cycle[100001]; // array for cycle finding
+bool visited[100001]; // visited array for finding which order of cows we should use
+bool gets_cereal[100001]; 
+ 
+int hungry_cows = 0;
+queue<int> order;
+int ignore_edge = -1;
+int first_cereal = -1; // the cereal we start the search from, if the CC is not a tree then this must be on a cycle
+ 
+void find_cycle(int cur, int prev = -1) {
+    visited_cycle[cur] = true; 
+ 
+    for (edge next : adj[cur]) {
+        if (visited_cycle[next.to]) {
+            if (first_cereal == -1 && next.to != prev) {
+                if (next.is_first) {
+                    first_cereal = next.to; 
+                } else {
+                    first_cereal = cur;
+                }
+                
+                ignore_edge = next.cow; 
+                order.push(next.cow);
+                gets_cereal[next.cow] = true;
+            }
+        } else {
+            find_cycle(next.to, cur);
+        }
+    }
+}
+ 
+ 
+void dfs(int cur) {
+    visited[cur] = true;
+    for (edge next : adj[cur]) {
+        if (!visited[next.to] && next.cow != ignore_edge) { 
+            gets_cereal[next.cow] = true;
+            order.push(next.cow);
+            dfs(next.to);
+        }
+    }
+}
+ 
+ 
+int main() {
+    cin >> N >> M;
+    for (int i = 0; i < N; ++i) {
+        int a, b;
+        cin >> a >> b;
+        adj[a].push_back(edge(i+1, b, false));
+        adj[b].push_back(edge(i+1, a, true));
+    }
+ 
+    for (int i = 1; i <= M; ++i) {
+        first_cereal = -1;
+        ignore_edge = -1;
+        if (!visited[i]) {
+            find_cycle(i);
+           
+            if (first_cereal > 0) {
+                dfs(first_cereal);
+            } else {
+                dfs(i);
+            }
+        }
+    }
+ 
+    for (int i = 1; i <= N; ++i) {
+        if (!gets_cereal[i]) {
+            ++hungry_cows;
+            order.push(i);
+        } 
+    }
+ 
+    cout << hungry_cows << endl;
+    while (!order.empty()) {
+        cout << order.front() << endl; 
+        order.pop();
+    }
+ 
+    return 0;
+}
+
+New Solution
+
+/*
+Paint by Letters
+Andi Qu
+- F = E - V + C + 1
+- Every corner of a cell is a node
+- Every side of a cell is an edge if it is between 2 different colours
+- DFS to find connected components
+- To check if a component is completely inside a query rectangle, traverse
+  the perimeter of the rectangle
+- Complexity: O(MN + Q(M + N))
+*/
+ 
+#include <bits/stdc++.h>
+#define FOR(i, x, y) for (int i = x; i < y; i++)
+using namespace std;
+ 
+int n, m, q;
+ 
+char grid[2001][2001];
+pair<int, int> special[2002][2002], d[4]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+int s_pref[2002][2002], v_pref[2002][2002], h_pref[2002][2002];
+bool deleted[2002][2002];
+ 
+bool inside(int x, int y, int nx, int ny) {
+    if (!(~nx && ~ny && nx <= n + 1 && ny <= m + 1)) return false;
+    if (nx == x + 1) return grid[x][y] != grid[x][y - 1];
+    if (nx == x - 1) return grid[nx][y] != grid[nx][y - 1];
+    if (ny == y + 1) return grid[x][y] != grid[x - 1][y];
+    return grid[x][ny] != grid[x - 1][ny];
+}
+ 
+bool outside(int x, int y, int x1, int y1, int x2, int y2) {
+    int a = special[x][y].first, b = special[x][y].second;
+    if (a > x1 && a <= x2 && b > y1 && b <= y2 && !deleted[a][b]) {
+        deleted[a][b] = true;
+        return true;
+    }
+    return false;
+}
+ 
+void deactivate(int x, int y) {
+    int a = special[x][y].first, b = special[x][y].second;
+    deleted[a][b] = false;
+}
+ 
+void dfs(int x, int y) {
+    FOR(i, 0, 4) {
+        int nx = x + d[i].first, ny = y + d[i].second;
+        if (inside(x, y, nx, ny)) {
+            if (nx == x + 1) v_pref[x][y] = 1;
+            else if (nx == x - 1) v_pref[nx][y] = 1;
+            else if (ny == y + 1) h_pref[x][y] = 1;
+            else h_pref[x][ny] = 1;
+ 
+            if (!special[nx][ny].first) {
+                special[nx][ny] = special[x][y];
+                dfs(nx, ny);
+            }
+        }
+    }
+}
+ 
+int main() {
+    ios_base::sync_with_stdio(0);
+    cin.tie(0);
+    // freopen("paint.in", "r", stdin);
+    // freopen("paint.out", "w", stdout);
+ 
+    cin >> n >> m >> q;
+    FOR(i, 1, n + 1) FOR(j, 1, m + 1) cin >> grid[i][j];
+    FOR(i, 1, n + 2) FOR(j, 1, m + 2) if (!special[i][j].first) {
+        s_pref[i][j] = 1;
+        special[i][j] = {i, j};
+        dfs(i, j);
+    }
+    FOR(i, 1, n + 2) FOR(j, 1, m + 2) {
+        s_pref[i][j] += s_pref[i - 1][j] + s_pref[i][j - 1] - s_pref[i - 1][j - 1];
+        v_pref[i][j] += v_pref[i - 1][j] + v_pref[i][j - 1] - v_pref[i - 1][j - 1];
+        h_pref[i][j] += h_pref[i - 1][j] + h_pref[i][j - 1] - h_pref[i - 1][j - 1];
+    }
+ 
+    while (q--) {
+        int x1, x2, y1, y2;
+        cin >> x1 >> y1 >> x2 >> y2;
+        if (x1 > x2) swap(x1, x2);
+        if (y1 > y2) swap(y1, y2);
+ 
+        int E = v_pref[x2][y2] - v_pref[x2][y1] - v_pref[x1 - 1][y2] + v_pref[x1 - 1][y1] +
+                h_pref[x2][y2] - h_pref[x2][y1 - 1] - h_pref[x1][y2] + h_pref[x1][y1 - 1];
+        int V = (x2 - x1) * (y2 - y1);
+        int C = s_pref[x2][y2] - s_pref[x2][y1] - s_pref[x1][y2] + s_pref[x1][y1];
+ 
+        // Delete connected components not entirely inside the query rectangle
+        FOR(i, x1, x2 + 2) {
+            if (outside(i, y2 + 1, x1, y1, x2, y2)) C--;
+            if (outside(i, y1, x1, y1, x2, y2)) C--;
+        }
+        FOR(i, y1, y2 + 2) {
+            if (outside(x2 + 1, i, x1, y1, x2, y2)) C--;
+            if (outside(x1, i, x1, y1, x2, y2)) C--;
+        }
+        FOR(i, x1, x2 + 2) {
+            deactivate(i, y2 + 1);
+            deactivate(i, y1);
+        }
+        FOR(i, y1, y2 + 2) {
+            deactivate(x2 + 1, i);
+            deactivate(x1, i);
+        }
+ 
+        cout << E - V + C + 1 << '\n';
+    }
+    return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef long long ll;
+#define f first
+#define s second
+
+const int MOD = 1e9+7; 
+
+void setIO(string s) {
+  ios_base::sync_with_stdio(0); cin.tie(0); 
+  freopen((s+".in").c_str(),"r",stdin);
+  freopen((s+".out").c_str(),"w",stdout);
+}
+ 
+struct mi {
+  int v; explicit operator int() const { return v; }
+  mi(ll _v) : v(_v%MOD) { v += (v<0)*MOD; }
+  mi() : mi(0) {}
+};
+mi operator+(mi a, mi b) { return mi(a.v+b.v); }
+mi operator-(mi a, mi b) { return mi(a.v-b.v); }
+mi operator*(mi a, mi b) { return mi((ll)a.v*b.v); }
+ 
+vector<pair<int,int>> v;
+mi res;
+int N,K;
+
+typedef array<mi,11> T;
+mi cum[11][11];
+ 
+T adv(T p) {
+  for (int i = K; i >= 0; --i) for (int j = i; j <= K; ++j)
+    cum[i][j] = (i == j ? p[i] : cum[i][j-1]+cum[i+1][j]);
+  T res; for (int i = 0; i <= K; ++i) res[i] = cum[0][i];
+  return res;
+}
+ 
+T seg[1<<18];
+mi lazy[1<<18];
+ 
+vector<int> y = {0};
+ 
+void push(int ind, int L, int R) {
+  if (lazy[ind].v == 1) return;
+  for (int i = 0; i <= K; ++i) seg[ind][i] = seg[ind][i]*lazy[ind];
+  if (L != R) {
+    lazy[2*ind] = lazy[2*ind]*lazy[ind];
+    lazy[2*ind+1] = lazy[2*ind+1]*lazy[ind];
+  }
+  lazy[ind] = 1;
+}
+ 
+void mul(int pos, int ind, int L, int R) {
+  push(ind,L,R);
+  if (pos > R) return;
+  if (pos <= L) {
+    lazy[ind] = 2;
+    push(ind,L,R);
+    return;
+  }
+  int M = (L+R)/2;
+  mul(pos,2*ind,L,M); mul(pos,2*ind+1,M+1,R);
+  for (int i = 0; i <= K; ++i) seg[ind][i] = seg[2*ind][i]+seg[2*ind+1][i];
+}
+ 
+void upd(int pos, const T& val, int ind, int L, int R) {
+  push(ind,L,R);
+  if (pos < L || pos > R) return;
+  for (int i = 0; i <= K; ++i) seg[ind][i] = seg[ind][i]+val[i];
+  if (L == R) return;
+  int M = (L+R)/2;
+  if (pos <= M) upd(pos,val,2*ind,L,M);
+  else upd(pos,val,2*ind+1,M+1,R);
+}
+ 
+void query(int lo, int hi, T& t, int ind, int L, int R) {
+  push(ind,L,R);
+  if (hi < L || lo > R) return;
+  if (lo <= L && R <= hi) { 
+    for (int i = 0; i <= K; ++i) t[i] = t[i]+seg[ind][i]; 
+    return; 
+  }
+  int M = (L+R)/2;
+  query(lo,hi,t,2*ind,L,M); query(lo,hi,t,2*ind+1,M+1,R);
+}
+ 
+void ad(int a, int b) {
+  auto i1 = lower_bound(begin(y),end(y),a)-begin(y)-1;
+  auto i2 = lower_bound(begin(y),end(y),b)-begin(y);
+  T A = T(); query(0,i1,A,1,0,N); A = adv(A);
+  T B = T(); query(i1+1,i2,B,1,0,N); 
+  for (int i = 0; i <= K; ++i) A[i] = A[i]+B[i];
+  upd(i2,A,1,0,N);
+  mul(i2+1,1,0,N);
+}
+ 
+int main() {
+  setIO("help");
+  for (int i = 1; i < (1<<18); ++i) lazy[i] = 1;
+  cin >> N >> K; v.resize(N); 
+  for (auto& t: v) {
+    cin >> t.f >> t.s;
+    y.push_back(t.s);
+  }
+  sort(begin(v),end(v)); sort(begin(y),end(y));
+  T ori = T(); ori[0] = 1;
+  upd(0,ori,1,0,N);
+  for (auto t: v) ad(t.f,t.s);
+  T res = T(); query(0,N,res,1,0,N);
+  cout << res[K].v << "\n";
+}
+
+New Solution
+
+#include <iostream>
+#include <algorithm>
+#include <ctime>
+#include <vector>
+#include <cstdio>
+using namespace std;
+#define MAXN 300001
+#define INF 1000000000000000000LL
+
+int N, L;
+int x[MAXN], y[MAXN];
+int xid[MAXN];
+int lis[MAXN];
+long long dp[MAXN];
+long long dpPlus[MAXN];
+
+vector<int> levels[MAXN];	//lists of points in each LIS level set
+
+bool cmpx(int a,int b)	//assume all points have distinct x-coordinate (and y-coordinate)
+{
+	return x[a] < x[b];
+}
+
+void computeLIS()
+{
+	levels[0].push_back(xid[0]);
+	lis[xid[0]] = 0;
+	int mx = 0;
+	for(int i=1;i<N;i++)
+	{
+		int cur = xid[i];
+		int low = -1;
+		int high = mx;
+		while(low != high)
+		{
+			int mid = (low+high+1)/2;
+			if(y[levels[mid].back()] < y[cur]) low = mid;
+			else high = mid-1;
+		}
+		levels[low+1].push_back(cur);
+		mx = max(mx, low+1);
+		lis[cur] = low+1;
+	}
+}
+
+long long cost(int i,int j)
+{
+	return dp[i] + x[i]*((long long)y[i]) - x[i]*((long long)y[j]) - y[i]*((long long)x[j]) + x[j]*((long long)y[j]);
+}
+
+int findLocOvertake(int l,int i,int j) // x[i] < x[j]; when will i overtake j on level l
+{
+	int low = 0;
+	int high = levels[l].size();
+	while(low != high)
+	{
+		int mid = (low+high)/2;
+		if(cost(i, levels[l][mid]) < cost(j, levels[l][mid])) high = mid;
+		else low = mid+1;
+	}
+	return low;
+}
+
+int firstDom[MAXN];
+int lastDom[MAXN];
+
+int findFirst(int l,int i)	//for i in level l-1, first point in level l dominating i; -1 if none
+{
+	int low = 0;
+	int high = levels[l].size()-1;
+	while(low != high)
+	{
+		int mid = (low + high)/2;
+		if(x[levels[l][mid]] > x[i]) high = mid;
+		else low = mid+1;
+	}
+	if(x[levels[l][low]] > x[i] && y[levels[l][low]] > y[i])
+		return low;
+	return -1;
+}
+
+int findLast(int l,int i) //for i in level l-1, last point in level l dominating i; -1 if none
+{
+	int low = 0;
+	int high = levels[l].size()-1;
+	while(low != high)
+	{
+		int mid = (low + high + 1)/2;
+		if(y[levels[l][mid]] > y[i]) low = mid;
+		else high = mid-1;
+	}
+	if(x[levels[l][low]] > x[i] && y[levels[l][low]] > y[i])
+		return low;
+	return -1;
+}
+
+int que[MAXN];
+int overtake[MAXN];
+vector<int> level;
+
+void solveStartingRegion(int l, int iStart, int iEnd, int qStart, int qEnd) //intervals all start in [qStart, qEnd] and end at qEnd or later
+{
+	int len = 0;
+	int i = iStart;
+	for(int j=qStart;j<=qEnd;j++)
+	{
+		int q = levels[l+1][j];
+		while(i <= iEnd && firstDom[i] <= j)
+		{
+			while(len >= 2 && overtake[len-2] <= findLocOvertake(l+1, que[len-1], level[i]))
+				len--;
+			que[len] = level[i];
+			if(len >= 1)
+				overtake[len-1] = findLocOvertake(l+1, que[len-1], level[i]);
+			len++;
+			i++;
+		}
+		while(len >= 2 && overtake[len-2] <= j)
+			len--;
+		dp[q] = min(dp[q], cost(que[len-1], q));
+	}
+}
+
+void solveEndingRegion(int l, int iStart, int iEnd, int qStart, int qEnd)	//intervals all start at qStart or before, and end in [qStart, qEnd]
+{
+	int len = 0;
+	int i = iEnd;
+	for(int j=qEnd;j>=qStart;j--)
+	{
+		int q = levels[l+1][j];
+		while(i >= iStart && lastDom[i] >= j)
+		{
+			while(len >= 2 && overtake[len-2] >= findLocOvertake(l+1, level[i], que[len-1]))
+				len--;
+			que[len] = level[i];
+			if(len >= 1)
+				overtake[len-1] = findLocOvertake(l+1, level[i], que[len-1]);
+			len++;
+			i--;
+		}
+		while(len >= 2 && overtake[len-2] > j)
+			len--;
+		dp[q] = min(dp[q], cost(que[len-1], q));
+	}
+}
+
+int main()
+{
+	cin >> N >> L;
+	for(int i=0;i<N;i++)
+		cin >> x[i] >> y[i];
+	x[N] = y[N] = L;
+	N++;
+	for(int i=0;i<N;i++)
+		dp[i] = INF, xid[i] = i;
+	
+	sort(xid,xid+N,cmpx);
+	
+	computeLIS();
+	for(int i=0;i<levels[0].size();i++)
+	{
+		int cur = levels[0][i];
+		dp[cur] = x[cur]*((long long)y[cur]);
+	}
+	for(int l=0;levels[l+1].size()>0;l++)
+	{
+		level.clear();
+		for(int i=0;i<levels[l].size();i++)
+		{
+			int cur = levels[l][i];
+			int fd = findFirst(l+1, cur);
+			int ld = findLast(l+1, cur);
+			if(fd != -1)	//must eliminate points in levels[l] not dominated by any points in levels[l+1]
+			{
+				firstDom[level.size()] = fd;
+				lastDom[level.size()] = ld;
+				level.push_back(levels[l][i]);
+			}
+		}
+		for(int i=0;i<level.size();)
+		{
+			int iEnd = i;
+			while(iEnd + 1 < level.size() && firstDom[iEnd + 1] <= lastDom[i])
+				iEnd++;
+			solveStartingRegion(l, i, iEnd, firstDom[i], lastDom[i]);
+			if(lastDom[iEnd] >= lastDom[i] + 1)
+				solveEndingRegion(l, i+1, iEnd, lastDom[i] + 1, lastDom[iEnd]);
+			i = iEnd + 1;
+		}
+	}
+	cout << dp[N-1] << '\n';
+}
+
+New Solution
+
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <algorithm>
+#include <cstdio>
+#include <fstream>
+#include <vector>
+using namespace std;
+#define MAXN 70500
+#define BSIZE 141
+#define MAX_BLOCKS 500
+
+vector<int> edges[MAXN];
+int distLeaf[MAXN];
+int distStart[MAXN];
+int startLoc[MAXN], endLoc[MAXN];
+int C;
+
+void dfsDistances(int i,int par)
+{
+	distLeaf[i] = MAXN + 1;
+	if(par != -1)
+		distStart[i] = 1 + distStart[par];
+	else
+		distStart[i] = 0;
+	for(int j=0;j<edges[i].size();j++)
+		if(par != edges[i][j])
+		{
+			dfsDistances(edges[i][j],i);
+			distLeaf[i] = min(distLeaf[i], 1 + distLeaf[edges[i][j]]);
+		}
+	if(edges[i].size()==1)
+		distLeaf[i] = 0;
+}
+
+void dfsDistances2(int i,int par)
+{
+	if(par!=-1)
+		distLeaf[i] = min(distLeaf[i],distLeaf[par]+1);
+	for(int j=0;j<edges[i].size();j++)
+		if(par!=edges[i][j])
+			dfsDistances2(edges[i][j],i);
+}
+
+void dfsOrder(int i,int par)
+{
+	startLoc[i] = C++;
+	for(int j=0;j<edges[i].size();j++)
+		if(edges[i][j]!=par)
+			dfsOrder(edges[i][j],i);
+	endLoc[i] = C-1;
+}
+
+int val[MAXN],key[MAXN];
+int lazy[MAX_BLOCKS];
+int overallLazy;
+int T[MAX_BLOCKS][2*MAXN];
+
+void update(int block,int i,int d)
+{
+	for(i++;i<2*MAXN;i+=(i&-i))
+		T[block][i] += d;
+}
+long long getSum(int block,int i)
+{
+	long long c = 0;
+	for(i++;i>0;i-=(i&-i))
+		c += T[block][i];
+	return c;
+}
+
+void unbuildBlock(int b,int x,int y)
+{
+	for(int i=x;i<=y;i++)
+		update(b,key[i],-val[i]);
+}
+
+void rebuildBlock(int b,int x,int y)
+{
+	for(int i=x;i<=y;i++)
+		update(b,key[i],val[i]);
+}
+
+void updateKey(int low,int high,int dif)
+{
+	int ilow = low;
+	int ihigh = high;
+	int blockLow = low/BSIZE;
+	int blockHigh = high/BSIZE;
+	if(blockLow == blockHigh)
+	{
+		unbuildBlock(blockLow,low,high);
+		while(low<=high)
+			key[low++] += dif;
+		rebuildBlock(blockLow,ilow,ihigh);
+		return;
+	}
+	unbuildBlock(blockLow,ilow,BSIZE*(ilow/BSIZE) + BSIZE-1);
+	unbuildBlock(blockHigh,BSIZE*(ihigh/BSIZE),ihigh);
+	while(low != (blockLow+1)*BSIZE)
+		key[low++] += dif;
+	while(high != blockHigh*BSIZE-1)
+		key[high--] += dif;
+	rebuildBlock(blockLow,ilow,BSIZE*(ilow/BSIZE) + BSIZE-1);
+	rebuildBlock(blockHigh,BSIZE*(ihigh/BSIZE),ihigh);
+	for(int b=blockLow+1;b<blockHigh;b++)
+		lazy[b] += dif;
+}
+
+long long getTotalSum()
+{
+	long long sm = 0;
+	for(int b=0;b<MAX_BLOCKS;b++)
+		sm += getSum(b,MAXN-lazy[b]-overallLazy);
+	return sm;
+}
+
+int ans[MAXN];
+int N;
+
+void dfs(int i,int par)
+{
+	ans[i] = getTotalSum();
+	for(int j=0;j<edges[i].size();j++)
+		if(edges[i][j]!=par)
+		{
+			updateKey(startLoc[edges[i][j]], endLoc[edges[i][j]], 2);
+			overallLazy--;
+			dfs(edges[i][j],i);
+			overallLazy++;
+			updateKey(startLoc[edges[i][j]], endLoc[edges[i][j]], -2);
+		}
+}
+
+
+
+int main()
+{
+	int a,b;
+	cin >> N;
+	for(int i=1;i<N;i++)
+	{
+		cin >> a >> b;
+		a--,b--;
+		edges[a].push_back(b);
+		edges[b].push_back(a);
+	}
+	dfsDistances(0,-1);
+	dfsDistances2(0,-1);
+	dfsOrder(0,-1);
+	for(int i=0;i<N;i++)
+	{
+		val[startLoc[i]] = 2 - (int)edges[i].size();
+		key[startLoc[i]] = distLeaf[i] - distStart[i] + MAXN;
+	}
+	for(int b=0;b<MAX_BLOCKS;b++)
+		rebuildBlock(b,BSIZE*b,BSIZE*(b+1)-1);
+	dfs(0,-1);
+	int mdif = 0;
+	for(int i=0;i<N;i++)
+	{
+		if(edges[i].size()==1)
+			ans[i] = 1;
+		cout << ans[i] << '\n';
+	}
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+using ld = long double;
+using db = double;
+using str = string;  // yay python!
+
+using pi = pair<int, int>;
+using pl = pair<ll, ll>;
+using pd = pair<db, db>;
+
+using vi = vector<int>;
+using vb = vector<bool>;
+using vl = vector<ll>;
+using vd = vector<db>;
+using vs = vector<str>;
+using vpi = vector<pi>;
+using vpl = vector<pl>;
+using vpd = vector<pd>;
+
+#define tcT template <class T
+#define tcTU tcT, class U
+// ^ lol this makes everything look weird but I'll try it
+tcT > using V = vector<T>;
+tcT, size_t SZ > using AR = array<T, SZ>;
+tcT > using PR = pair<T, T>;
+
+// pairs
+#define mp make_pair
+#define f first
+#define s second
+
+// vectors
+// oops size(x), rbegin(x), rend(x) need C++17
+#define sz(x) int((x).size())
+#define bg(x) begin(x)
+#define all(x) bg(x), end(x)
+#define rall(x) x.rbegin(), x.rend()
+#define sor(x) sort(all(x))
+#define rsz resize
+#define ins insert
+#define ft front()
+#define bk back()
+#define pb push_back
+#define eb emplace_back
+#define pf push_front
+
+#define lb lower_bound
+#define ub upper_bound
+tcT > int lwb(V<T> &a, const T &b) { return int(lb(all(a), b) - bg(a)); }
+
+// loops
+#define FOR(i, a, b) for (int i = (a); i < (b); ++i)
+#define F0R(i, a) FOR(i, 0, a)
+#define ROF(i, a, b) for (int i = (b) - 1; i >= (a); --i)
+#define R0F(i, a) ROF(i, 0, a)
+#define trav(a, x) for (auto &a : x)
+
+const int MOD = 1e9 + 7;  // 998244353;
+const int MX = 2e5 + 5;
+const ll INF = 1e18;  // not too close to LLONG_MAX
+const ld PI = acos((ld)-1);
+const int dx[4] = {1, 0, -1, 0},
+          dy[4] = {0, 1, 0, -1};  // for every grid problem!!
+mt19937 rng((uint32_t)chrono::steady_clock::now().time_since_epoch().count());
+template <class T> using pqg = priority_queue<T, vector<T>, greater<T>>;
+
+// bitwise ops
+// also see https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+constexpr int pct(int x) { return __builtin_popcount(x); }  // # of bits set
+constexpr int bits(int x) {  // assert(x >= 0); // make C++11 compatible until
+	                         // USACO updates ...
+	return x == 0 ? 0 : 31 - __builtin_clz(x);
+}  // floor(log2(x))
+constexpr int p2(int x) { return 1 << x; }
+constexpr int msk2(int x) { return p2(x) - 1; }
+
+ll cdiv(ll a, ll b) {
+	return a / b + ((a ^ b) > 0 && a % b);
+}  // divide a by b rounded up
+ll fdiv(ll a, ll b) {
+	return a / b - ((a ^ b) < 0 && a % b);
+}  // divide a by b rounded down
+
+tcT > bool ckmin(T &a, const T &b) {
+	return b < a ? a = b, 1 : 0;
+}  // set a = min(a,b)
+tcT > bool ckmax(T &a, const T &b) { return a < b ? a = b, 1 : 0; }
+
+tcTU > T fstTrue(T lo, T hi, U f) {
+	hi++;
+	assert(lo <= hi);  // assuming f is increasing
+	while (lo < hi) {  // find first index such that f is true
+		T mid = lo + (hi - lo) / 2;
+		f(mid) ? hi = mid : lo = mid + 1;
+	}
+	return lo;
+}
+tcTU > T lstTrue(T lo, T hi, U f) {
+	lo--;
+	assert(lo <= hi);  // assuming f is decreasing
+	while (lo < hi) {  // find first index such that f is true
+		T mid = lo + (hi - lo + 1) / 2;
+		f(mid) ? lo = mid : hi = mid - 1;
+	}
+	return lo;
+}
+tcT > void remDup(vector<T> &v) {  // sort and remove duplicates
+	sort(all(v));
+	v.erase(unique(all(v)), end(v));
+}
+tcTU > void erase(T &t, const U &u) {  // don't erase
+	auto it = t.find(u);
+	assert(it != end(t));
+	t.erase(it);
+}  // element that doesn't exist from (multi)set
+
+// INPUT
+#define tcTUU tcT, class... U
+tcT > void re(complex<T> &c);
+tcTU > void re(pair<T, U> &p);
+tcT > void re(V<T> &v);
+tcT, size_t SZ > void re(AR<T, SZ> &a);
+
+tcT > void re(T &x) { cin >> x; }
+void re(db &d) {
+	str t;
+	re(t);
+	d = stod(t);
+}
+void re(ld &d) {
+	str t;
+	re(t);
+	d = stold(t);
+}
+tcTUU > void re(T &t, U &...u) {
+	re(t);
+	re(u...);
+}
+
+tcT > void re(complex<T> &c) {
+	T a, b;
+	re(a, b);
+	c = {a, b};
+}
+tcTU > void re(pair<T, U> &p) { re(p.f, p.s); }
+tcT > void re(V<T> &x) { trav(a, x) re(a); }
+tcT, size_t SZ > void re(AR<T, SZ> &x) { trav(a, x) re(a); }
+tcT > void rv(int n, V<T> &x) {
+	x.rsz(n);
+	re(x);
+}
+
+// TO_STRING
+#define ts to_string
+str ts(char c) { return str(1, c); }
+str ts(const char *s) { return (str)s; }
+str ts(str s) { return s; }
+str ts(bool b) {
+#ifdef LOCAL
+	return b ? "true" : "false";
+#else
+	return ts((int)b);
+#endif
+}
+tcT > str ts(complex<T> c) {
+	stringstream ss;
+	ss << c;
+	return ss.str();
+}
+str ts(V<bool> v) {
+	str res = "{";
+	F0R(i, sz(v)) res += char('0' + v[i]);
+	res += "}";
+	return res;
+}
+template <size_t SZ> str ts(bitset<SZ> b) {
+	str res = "";
+	F0R(i, SZ) res += char('0' + b[i]);
+	return res;
+}
+tcTU > str ts(pair<T, U> p);
+tcT > str ts(T v) {  // containers with begin(), end()
+#ifdef LOCAL
+	bool fst = 1;
+	str res = "{";
+	for (const auto &x : v) {
+		if (!fst) res += ", ";
+		fst = 0;
+		res += ts(x);
+	}
+	res += "}";
+	return res;
+#else
+	bool fst = 1;
+	str res = "";
+	for (const auto &x : v) {
+		if (!fst) res += " ";
+		fst = 0;
+		res += ts(x);
+	}
+	return res;
+
+#endif
+}
+tcTU > str ts(pair<T, U> p) {
+#ifdef LOCAL
+	return "(" + ts(p.f) + ", " + ts(p.s) + ")";
+#else
+	return ts(p.f) + " " + ts(p.s);
+#endif
+}
+
+// OUTPUT
+tcT > void pr(T x) { cout << ts(x); }
+tcTUU > void pr(const T &t, const U &...u) {
+	pr(t);
+	pr(u...);
+}
+void ps() { pr("\n"); }  // print w/ spaces
+tcTUU > void ps(const T &t, const U &...u) {
+	pr(t);
+	if (sizeof...(u)) pr(" ");
+	ps(u...);
+}
+
+// DEBUG
+void DBG() { cerr << "]" << endl; }
+tcTUU > void DBG(const T &t, const U &...u) {
+	cerr << ts(t);
+	if (sizeof...(u)) cerr << ", ";
+	DBG(u...);
+}
+#ifdef LOCAL  // compile with -DLOCAL, chk -> fake assert
+#define dbg(...)                                                               \
+	cerr << "Line(" << __LINE__ << ") -> [" << #__VA_ARGS__ << "]: [",         \
+	    DBG(__VA_ARGS__)
+#define chk(...)                                                               \
+	if (!(__VA_ARGS__))                                                        \
+		cerr << "Line(" << __LINE__ << ") -> function(" << __FUNCTION__        \
+		     << ") -> CHK FAILED: (" << #__VA_ARGS__ << ")" << "\n",           \
+		    exit(0);
+#else
+#define dbg(...) 0
+#define chk(...) 0
+#endif
+
+void setPrec() { cout << fixed << setprecision(15); }
+void unsyncIO() { cin.tie(0)->sync_with_stdio(0); }
+// FILE I/O
+void setIn(str s) { freopen(s.c_str(), "r", stdin); }
+void setOut(str s) { freopen(s.c_str(), "w", stdout); }
+void setIO(str s = "") {
+	unsyncIO();
+	setPrec();
+	// cin.exceptions(cin.failbit);
+	// throws exception when do smth illegal
+	// ex. try to read letter into int
+	if (sz(s)) setIn(s + ".in"), setOut(s + ".out");  // for USACO
+}
+
+template <int SZ> struct Wavelet {
+	vi nex[2 * SZ][2];
+	void build(vi &a, int ind, int L, int R) {
+		if (L == R) return;
+		F0R(i, 2) nex[ind][i] = {0};
+		vi A[2];
+		int M = (L + R) / 2;
+		trav(t, a) {
+			A[t > M].pb(t);
+			F0R(i, 2) nex[ind][i].pb(sz(A[i]));
+		}
+		build(A[0], 2 * ind, L, M);
+		build(A[1], 2 * ind + 1, M + 1, R);
+	}
+	pi lef(int lo, int hi, int u, int v, int ind, int L, int R) {
+		if (L == R) return {L, min(v, hi - lo) - u};
+		int M = (L + R) / 2, t = nex[ind][0][hi] - nex[ind][0][lo];
+		if (t > u)
+			return lef(nex[ind][0][lo], nex[ind][0][hi], u, v, 2 * ind, L, M);
+		return lef(nex[ind][1][lo], nex[ind][1][hi], u - t, v - t, 2 * ind + 1,
+		           M + 1, R);
+	}
+	pi rig(int lo, int hi, int u, int v, int ind, int L, int R) {
+		if (L == R) return {L, v - max(u, 0)};
+		int M = (L + R) / 2, t = nex[ind][0][hi] - nex[ind][0][lo];
+		if (t >= v)
+			return rig(nex[ind][0][lo], nex[ind][0][hi], u, v, 2 * ind, L, M);
+		return rig(nex[ind][1][lo], nex[ind][1][hi], u - t, v - t, 2 * ind + 1,
+		           M + 1, R);
+	}
+};
+
+Wavelet<1 << 18> W;
+typedef array<int, 30> T;
+T ID;
+
+T comb(T a, T b) {
+	F0R(i, 30) ckmin(a[i], b[i]);
+	return a;
+}
+
+struct Seg {
+	int n;
+	vector<T> seg;
+	void init(int _n) {
+		n = _n;
+		seg = vector<T>(2 * n, ID);
+	}
+	void pull(int p) { seg[p] = comb(seg[2 * p], seg[2 * p + 1]); }
+	void upd(int p, T value) {  // set value at position p
+		seg[p += n] = value;
+		for (p /= 2; p; p /= 2) pull(p);
+	}
+	T query(int l, int r) {  // sum on interval [l, r]
+		T ra = ID, rb = ID;
+		for (l += n, r += n + 1; l < r; l /= 2, r /= 2) {
+			if (l & 1) ra = comb(ra, seg[l++]);
+			if (r & 1) rb = comb(seg[--r], rb);
+		}
+		return comb(ra, rb);
+	}
+};
+
+Seg dat[4];
+int n, q, ans[MX][4];
+vector<array<int, 4>> todo[MX];
+vi a;
+map<int, int> m;
+vi rm;
+vi oc[MX];
+
+void upd(int ind) {
+	int pos = m[a[ind]];
+	oc[pos].pb(ind);
+	FOR(i, 1, 4) if (i <= sz(oc[pos])) {
+		T val;
+		F0R(j, 30) {
+			if (a[ind] & (1 << j)) val[j] = oc[pos][sz(oc[pos]) - i];
+			else val[j] = MOD;
+		}
+		dat[i].upd(pos, val);
+	}
+}
+
+void solve() {
+	re(n, q);
+	a.rsz(n);
+	re(a);
+	m.clear();
+	rm.clear();
+	trav(t, a) m[t] = 0;
+	int co = 0;
+	trav(t, m) {
+		rm.pb(t.f);
+		t.s = co++;
+	}
+	vi A;
+	trav(t, a) A.pb(m[t]);
+	W.build(A, 1, 0, sz(m) - 1);
+	F0R(i, n) todo[i].clear(), oc[i].clear();
+	F0R(i, q) FOR(j, 1, 4) ans[i][j] = 0;
+	F0R(i, q) {
+		int l, r, u, v;
+		re(l, r, u, v);
+		l--, r--;
+		u--, v--;
+		// get s_u and # of occurrences
+		pi a = W.lef(l, r + 1, u, v + 1, 1, 0, sz(m) - 1);
+		a.f = rm[a.f];
+		// get s_v and # of occurrences
+		pi b = W.rig(l, r + 1, u, v + 1, 1, 0, sz(m) - 1);
+		b.f = rm[b.f];
+		FOR(j, 1, min(a.s, 3) + 1) ans[i][j] |= a.f;
+		FOR(j, 1, min(b.s, 3) + 1) ans[i][j] |= b.f;
+		todo[l].pb({r, a.f, b.f, i});
+	}
+	FOR(j, 1, 4) dat[j].init(n);
+	R0F(i, n) {
+		upd(i);
+		trav(t, todo[i]) {
+			FOR(j, 1, 4) {
+				auto a = dat[j].query(m[t[1]] + 1, m[t[2]] - 1);
+				F0R(k, 30) if (a[k] <= t[0]) ans[t[3]][j] |= 1 << k;
+			}
+		}
+	}
+	F0R(i, q) {
+		ll ret = 0;
+		FOR(j, 1, 4) ret += ans[i][j];
+		ps(ret);
+	}
+}
+
+int main() {
+	cin.sync_with_stdio(0);
+	cin.tie(0);
+	F0R(i, 30) ID[i] = MOD;
+	int t;
+	re(t);
+	F0R(i, t) solve();
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+typedef long long ll;
+using namespace std;
+
+int n, a, b;
+ll w, pw[200001], dp[200001][2][2];
+vector<pair<int, ll>> graph[200001];
+
+void dfs(int node, int par) {
+	if (graph[node].size() == 1 && par != -1) return;
+
+	ll tot = 0, best_mid = INT_MIN, best_unuse_mid = INT_MIN,
+	   best_unuse_mid2 = INT_MIN, best_unuse_nomid = INT_MIN,
+	   best_unuse_nomid2 = INT_MIN;
+
+	int best_unuse_mid_child, best_unuse_mid_child2, best_unuse_nomid_child,
+	    best_unuse_nomid_child2;
+
+	for (int i = 0; i < graph[node].size(); i++) {
+		if (graph[node][i].first != par) {
+			int child = graph[node][i].first;
+			ll edge = graph[node][i].second;
+
+			pw[child] = edge;
+
+			dfs(child, node);
+
+			ll normsc = max(dp[child][0][0], dp[child][1][0]);
+			tot += normsc;
+			ll midsc = max(dp[child][0][1], dp[child][1][1]) - normsc;
+
+			if (midsc > best_mid) best_mid = midsc;
+
+			ll unuse_midsc = dp[child][0][1] + edge - normsc;
+
+			if (unuse_midsc > best_unuse_mid) {
+				best_unuse_mid2 = best_unuse_mid;
+				best_unuse_mid_child2 = best_unuse_mid_child;
+				best_unuse_mid = unuse_midsc;
+				best_unuse_mid_child = child;
+			} else if (unuse_midsc > best_unuse_mid2) {
+				best_unuse_mid2 = unuse_midsc;
+				best_unuse_mid_child2 = child;
+			}
+
+			ll unuse_nomidsc = dp[child][0][0] + edge - normsc;
+
+			if (unuse_nomidsc > best_unuse_nomid) {
+				best_unuse_nomid2 = best_unuse_nomid;
+				best_unuse_nomid_child2 = best_unuse_nomid_child;
+				best_unuse_nomid = unuse_nomidsc;
+				best_unuse_nomid_child = child;
+			} else if (unuse_nomidsc > best_unuse_nomid2) {
+				best_unuse_nomid2 = unuse_nomidsc;
+				best_unuse_nomid_child2 = child;
+			}
+		}
+	}
+
+	dp[node][0][0] = tot;
+	dp[node][0][1] = tot + max(0LL, best_mid);
+	dp[node][0][1] =
+	    max(dp[node][0][1], tot + best_unuse_nomid + best_unuse_nomid2);
+
+	if (best_unuse_mid_child != best_unuse_nomid_child) {
+		dp[node][0][1] =
+		    max(dp[node][0][1], tot + best_unuse_nomid + best_unuse_mid);
+	} else {
+		dp[node][0][1] =
+		    max(dp[node][0][1], tot + best_unuse_nomid2 + best_unuse_mid);
+		dp[node][0][1] =
+		    max(dp[node][0][1], tot + best_unuse_nomid + best_unuse_mid2);
+	}
+
+	dp[node][1][0] = tot + pw[node] + best_unuse_nomid;
+	dp[node][1][1] = tot + pw[node] + best_unuse_mid;
+}
+
+int main() {
+	cin >> n;
+	for (int i = 0; i < n - 1; i++) {
+		cin >> a >> b >> w;
+		graph[a].push_back({b, w});
+		graph[b].push_back({a, w});
+	}
+	dfs(1, -1);
+
+	cout << max(dp[1][0][1], dp[1][0][0]) << '\n';
+	return 0;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+#define FOR(i, x, y) for (int i = x; i < y; i++)
+typedef long long ll;
+using namespace std;
+
+const int MOD = 1e9;
+
+int x[100001], y[100001], cmp[400001];
+
+int find(int A) {
+	while (A != cmp[A]) cmp[A] = cmp[cmp[A]], A = cmp[A];
+	return A;
+}
+void onion(int A, int B) { cmp[find(A)] = cmp[find(B)]; }
+
+int main() {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	int n, m, k;
+	cin >> n >> m >> k;
+	FOR(i, 0, 2 * (n + m)) cmp[i] = i;
+
+	FOR(i, 0, k) {
+		int c;
+		cin >> x[i] >> y[i] >> c;
+		c ^= (x[i] & 1) && (y[i] & 1);
+
+		if (c) {
+			onion(x[i], y[i] + n);
+			onion(x[i] + m + n, y[i] + 2 * n + m);
+		} else {
+			onion(x[i] + m + n, y[i] + n);
+			onion(x[i], y[i] + 2 * n + m);
+		}
+	}
+
+	int cnt = -1;
+	FOR(i, 0, n + m) {
+		if (find(i) == find(i + n + m)) return cout << "0", 0;
+		if (find(i) == i) cnt++;
+	}
+
+	int ans = 1;
+	FOR(i, 0, cnt) ans = (ans * 2) % MOD;
+	cout << ans;
+	return 0;
+}
+
+New Solution
+
+#include "rainbow.h"
+#include <bits/stdc++.h>
+#define FOR(i, x, y) for (int i = x; i < y; i++)
+using namespace std;
+
+const int MAXN = 2e5, MAXSEG = (6e5 + 9) * 19 + 1;
+
+int cnt = 1, segtree[MAXSEG], left_c[MAXSEG], right_c[MAXSEG];
+
+struct Segtree {
+	set<int> data[MAXN + 1];
+	int roots[MAXN + 2];
+
+	void add(int x, int y) { data[x].insert(y); }
+
+	void build() {
+		FOR(i, 1, MAXN + 1) {
+			roots[i + 1] = roots[i];
+			for (int j : data[i]) update(j, roots[i + 1]);
+		}
+	}
+
+	void update(int pos, int &node, int l = 1, int r = MAXN) {
+		segtree[cnt] = segtree[node] + 1;
+		left_c[cnt] = left_c[node];
+		right_c[cnt] = right_c[node];
+		node = cnt++;
+
+		if (l == r) return;
+		int mid = (l + r) / 2;
+		if (pos > mid) update(pos, right_c[node], mid + 1, r);
+		else update(pos, left_c[node], l, mid);
+	}
+
+	int query(int l1, int r1, int l2, int r2) {
+		if (l2 > r2) return 0;
+		return query(l2, r2, roots[r1 + 1], 1, MAXN) -
+		       query(l2, r2, roots[l1], 1, MAXN);
+	}
+	int query(int a, int b, int node, int l, int r) {
+		if (a > r || b < l) return 0;
+		if (a <= l && b >= r) return segtree[node];
+		int mid = (l + r) / 2;
+		return query(a, b, left_c[node], l, mid) +
+		       query(a, b, right_c[node], mid + 1, r);
+	}
+} vertices, edges_horiz, edges_vert, rivers;
+
+int mx_r, mn_r, mx_c, mn_c;
+
+void add_river(int x, int y) {
+	vertices.add(x, y);
+	vertices.add(x + 1, y);
+	vertices.add(x, y + 1);
+	vertices.add(x + 1, y + 1);
+	edges_horiz.add(x, y);
+	edges_horiz.add(x + 1, y);
+	edges_vert.add(x, y);
+	edges_vert.add(x, y + 1);
+	rivers.add(x, y);
+}
+
+void init(int R, int C, int sr, int sc, int M, char *S) {
+	add_river(sr, sc);
+	mx_r = mn_r = sr;
+	mx_c = mn_c = sc;
+	FOR(i, 0, M) {
+		if (S[i] == 'N') sr--;
+		if (S[i] == 'E') sc++;
+		if (S[i] == 'S') sr++;
+		if (S[i] == 'W') sc--;
+		add_river(sr, sc);
+		mx_r = max(mx_r, sr);
+		mn_r = min(mn_r, sr);
+		mx_c = max(mx_c, sc);
+		mn_c = min(mn_c, sc);
+	}
+	vertices.build();
+	edges_horiz.build();
+	edges_vert.build();
+	rivers.build();
+}
+
+int colour(int ar, int ac, int br, int bc) {
+	int E = edges_horiz.query(ar + 1, br, ac, bc) +
+	        edges_vert.query(ar, br, ac + 1, bc);
+	int V = vertices.query(ar + 1, br, ac + 1, bc);
+	int R = rivers.query(ar, br, ac, bc);
+	int C = (ar >= mn_r || br <= mx_r || ac >= mn_c || bc <= mx_c ? 1 : 2);
+	return E - V + C - R;
+}
+
+New Solution
+
+#include <cstring>
+#include <iostream>
+using namespace std;
+const int N = 18;
+const int M = 998244353;
+int a[N];
+bool indepset[1 << N];
+int popcount[1 << N];
+int arg[1 << N];
+int nodeid[1 << N];
+long long f[1 << N];
+int main() {
+	int n, m;
+	cin >> n >> m;
+	for (int i = 1; i <= m; i++) {
+		int u, v;
+		cin >> u >> v;
+		u--;
+		v--;
+		a[u] |= 1 << v;
+		a[v] |= 1 << u;
+	}
+	for (int i = 0; i < n; i++) { nodeid[1 << i] = i; }
+	for (int i = 0; i < (1 << n); i++) {
+		popcount[i] = popcount[i >> 1] + (i & 1);
+		arg[i] = (popcount[i] % 2) * 2 - 1;
+	}
+	indepset[0] = 1;
+	for (int i = 1; i < (1 << n); i++) {
+		if (indepset[i & (i - 1)] &&
+		    (a[nodeid[i & (-i)]] & (i & (i - 1))) == 0) {
+			indepset[i] = true;
+		}
+	}
+	f[0] = 1;
+	for (int i = 1; i < (1 << n); i++) {
+		for (int j = i; j; j = (j - 1) & i) {
+			if (indepset[j]) { f[i] = (f[i] + arg[j] * f[i ^ j]) % M; }
+		}
+	}
+	f[(1 << n) - 1] = (f[(1 << n) - 1] + M) % M;
+	cout << f[(1 << n) - 1] * m % M * ((M + 1) / 2) % M;
+	return 0;
+}
+
+New Solution
+
+#include <algorithm>
+#include <iostream>
+#include <random>
+#include <unordered_map>
+#include <vector>
+
+using std::cout;
+using std::endl;
+using std::vector;
+using ll = long long;
+
+struct Hash {
+	static const ll MOD1 = 1e9 + 7;
+	static const ll MOD2 = 1e9 + 9;
+
+	ll h1, h2;
+	Hash(ll h1, ll h2) : h1(h1 % MOD1), h2(h2 % MOD2) {}
+	Hash() : h1(0), h2(0) {}
+
+	Hash operator+(const Hash &o) {
+		return Hash((h1 + o.h1) % MOD1, (h2 + o.h2) % MOD2);
+	}
+
+	Hash operator-(const Hash &o) {
+		return Hash((h1 - o.h1 + MOD1) % MOD1, (h2 - o.h2 + MOD2) % MOD2);
+	}
+
+	Hash exp(const ll &n) { return Hash(h1 * n % MOD1, h2 * n % MOD2); }
+
+	inline vector<Hash> zero_pairs() {
+		return {
+		    Hash(MOD1 - h1, MOD2 - h2),
+		    Hash(-h1, -h2),
+		    Hash(-h1, MOD2 - h2),
+		    Hash(MOD1 - h1, -h2),
+		};
+	}
+
+	ll hash() const { return 1LL * h1 * MOD2 + h2; }
+};
+
+bool operator==(const Hash &h1, const Hash &h2) {
+	return h1.h1 == h2.h1 && h1.h2 == h2.h2;
+}
+
+bool operator!=(const Hash &h1, const Hash &h2) { return !(h1 == h2); }
+
+struct HashFn {
+	std::size_t operator()(const Hash &h) const { return h.hash(); }
+};
+
+class DominikArray {
+  private:
+	vector<int> arr;
+	vector<int> sorted;
+
+	vector<int> parent;
+	vector<int> size;
+	int bad_num = 0;  // # of bad components (used for type 3)
+
+	std::unordered_map<int, Hash> elem_val;  // each element's random number
+	// the current hash of a component
+	vector<Hash> hash;
+	// the needed hash for a component to be able to be sorted
+	vector<Hash> req_hash;
+	// the hash differences of the bad components
+	std::unordered_map<Hash, ll, HashFn> bad_diff;
+	ll cloud_pairs = 0;  // # of valid component pairs (used for type 4)
+
+	int get_top(int n) {
+		return parent[n] == n ? n : (parent[n] = get_top(parent[n]));
+	}
+
+	/** checks if a component is unsortable (n is a top node) */
+	inline bool is_unsortable(int n) { return hash[n] != req_hash[n]; }
+
+	/** add a bad component to the log & update data accordingly */
+	void add_if_bad(int n) {
+		if (is_unsortable(n)) {
+			// one more bad component
+			bad_num++;
+			Hash diff = req_hash[n] - hash[n];
+			bad_diff[diff] += size[n];
+			for (const Hash &zp : diff.zero_pairs()) {
+				cloud_pairs += bad_diff[zp] * size[n];
+			}
+		}
+	}
+
+	void remove_if_bad(int n) {
+		if (is_unsortable(n)) {
+			bad_num--;
+			Hash diff = req_hash[n] - hash[n];
+			bad_diff[diff] -= size[n];
+			for (const Hash &zp : diff.zero_pairs()) {
+				cloud_pairs -= bad_diff[zp] * size[n];
+			}
+		}
+	}
+
+  public:
+	DominikArray(vector<int> arr)
+	    : arr(arr), parent(arr.size()), size(arr.size(), 1), hash(arr.size()),
+	      req_hash(arr.size()) {
+		sorted = arr;
+		std::sort(sorted.begin(), sorted.end());
+
+		std::random_device rd;
+		std::mt19937 gen(42069);
+		std::uniform_int_distribution<long long> distr(1, INT64_MAX);
+		for (int i : sorted) {
+			if (!elem_val.count(i)) {
+				elem_val[i] = Hash(distr(gen), distr(gen));
+			}
+		}
+
+		// set up DSU and the hashes
+		for (int i = 0; i < arr.size(); i++) {
+			parent[i] = i;
+			hash[i] = elem_val[arr[i]];
+			req_hash[i] = elem_val[sorted[i]];
+			add_if_bad(i);
+		}
+	}
+
+	void swap(int a, int b) {
+		int top_a = get_top(a);
+		int top_b = get_top(b);
+
+		// temporarily take them out of the bad log (if applicable)
+		remove_if_bad(top_a);
+		remove_if_bad(top_b);
+
+		// change the hashes of the two components
+		hash[top_a] = hash[top_a] + elem_val[arr[b]] - elem_val[arr[a]];
+		hash[top_b] = hash[top_b] + elem_val[arr[a]] - elem_val[arr[b]];
+
+		// add them back (if applicable)
+		add_if_bad(top_a);
+		add_if_bad(top_b);
+
+		std::swap(arr[a], arr[b]);
+	}
+
+	void link(int a, int b) {
+		a = get_top(a);
+		b = get_top(b);
+		if (a == b) { return; }
+
+		if (size[a] < size[b]) { return link(b, a); }
+
+		remove_if_bad(a);
+		remove_if_bad(b);
+
+		// standard dsu operations
+		size[a] += size[b];
+		parent[b] = a;
+
+		// add the hash of the smaller component to the bigger one
+		hash[a] = hash[a] + hash[b];
+		req_hash[a] = req_hash[a] + req_hash[b];
+
+		// since b's merged into a, we just add a back (if applicable)
+		add_if_bad(a);
+	}
+
+	bool sortable() {
+		// for everything to be sortable, there can't be any bad components
+		return bad_num == 0;
+	}
+
+	ll needed_pair_num() { return cloud_pairs; }
+};
+
+int main() {
+	std::ios::sync_with_stdio(false);
+	std::cin.tie(NULL);
+
+	int arr_len;
+	int query_num;
+	std::cin >> arr_len >> query_num;
+	vector<int> arr(arr_len);
+	for (int &i : arr) { std::cin >> i; }
+
+	DominikArray array(arr);
+	for (int q = 0; q < query_num; q++) {
+		int type;
+		std::cin >> type;
+		int a, b;  // not necessarily used (queries of type 3 & 4)
+		switch (type) {
+		case 1:
+			std::cin >> a >> b;
+			array.swap(--a, --b);
+			break;
+		case 2:
+			std::cin >> a >> b;
+			array.link(--a, --b);
+			break;
+		case 3:
+			cout << (array.sortable() ? "DA" : "NE") << '\n';
+			break;
+		case 4:
+			cout << array.needed_pair_num() << '\n';
+			break;
+		};
+	}
+}
+
+New Solution
+
+#include <algorithm>
+#include <cassert>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <vector>
+
+using namespace std;
+
+// BeginCodeSnip{String Hashing}
+/** source: https://usaco.guide/gold/modular */
+long long pow_mod(long long x, long long n, long long mod) {
+	assert(n >= 0);
+	x %= mod;
+	long long res = 1;
+	while (n > 0) {
+		if (n % 2 == 1) { res = res * x % mod; }
+		x = x * x % mod;
+		n /= 2;
+	}
+	return res;
+}
+
+class HashedString {
+  private:
+	static const long long MOD = 1e9 + 9;
+	static const long long POW = 101;
+
+	static vector<long long> pow;
+	static vector<long long> mod_inv;
+
+	const string &s;
+	vector<long long> p_hash;
+
+  public:
+	HashedString(const string &s) : s(s), p_hash(s.size() + 1) {
+		while (pow.size() < s.size()) {
+			pow.push_back((pow.back() * POW) % MOD);
+			mod_inv.push_back(pow_mod(pow.back(), MOD - 2, MOD));
+		}
+
+		p_hash[0] = 0;
+		for (int i = 0; i < s.size(); i++) {
+			p_hash[i + 1] = (p_hash[i] + s[i] * pow[i] % MOD) % MOD;
+		}
+	}
+
+	long long hash(int from, int to) {
+		long long pref = (p_hash[to + 1] - p_hash[from] + MOD) % MOD;
+		return pref * mod_inv[from] % MOD;
+	}
+
+	/** @return substring hash with a given character replaced */
+	long long hash(int from, int to, const pair<int, char> &rep) {
+		long long pref = p_hash[to + 1] - p_hash[from];
+		if (from <= rep.first && rep.first <= to) {
+			pref += rep.second * pow[rep.first] - s[rep.first] * pow[rep.first];
+		}
+		return (pref % MOD + MOD) * mod_inv[from] % MOD;
+	}
+};
+vector<long long> HashedString::pow = {1};
+vector<long long> HashedString::mod_inv = {1};
+// EndCodeSnip
+
+/**
+ * @return the largest number in [lo, hi] such that check is satisfied.
+ * if no number in the range works, -1 is returned
+ */
+int last_true(int lo, int hi, function<bool(int)> check) {
+	int valid = -1;
+	while (lo <= hi) {
+		int mid = (lo + hi) / 2;
+		if (check(mid)) {
+			lo = mid + 1;
+			valid = mid;
+		} else {
+			hi = mid - 1;
+		}
+	}
+	return valid;
+}
+
+/**
+ * @return the resulting array when the operations in the ranges are performend
+ * @param ranges in each of the ranges in this variable, consecutive numbers
+ * starting from 1 are added to the subarray. for example, [0, 3] would add
+ * the numbers 1, 2, 3, and 4 to the first 4 elements to the range [0, 3].
+ */
+vector<long long> range_res(int size, const vector<pair<int, int>> &ranges) {
+	vector<long long> arr(size + 1);
+	for (const auto &[a, b] : ranges) {
+		arr[a]++;
+		arr[b + 1]--;
+	}
+	for (int i = 1; i < size; i++) { arr[i] += arr[i - 1]; }
+	for (const auto &[a, b] : ranges) { arr[b + 1] -= b - a + 1; }
+	for (int i = 1; i < size; i++) { arr[i] += arr[i - 1]; }
+	arr.pop_back();
+	return arr;
+}
+
+int main() {
+	string str;
+	cin >> str;
+	int len = str.size();  // shorthand
+
+	string rev_str = str;
+	reverse(rev_str.begin(), rev_str.end());
+	HashedString h_str(str), h_rev_str(rev_str);
+
+	// checks if a substring is a palindrome
+	auto is_pal = [&](int from, int to) {
+		return h_str.hash(from, to) ==
+		       h_rev_str.hash(len - to - 1, len - from - 1);
+	};
+	// checks if a substring is a palindrome with a replaced character
+	auto is_pal_rep = [&](int from, int to, pair<int, char> rep) {
+		pair<int, char> r_rep{len - rep.first - 1, rep.second};
+		return h_str.hash(from, to, rep) ==
+		       h_rev_str.hash(len - to - 1, len - from - 1, r_rep);
+	};
+
+	function<bool(int)> check;
+	vector<map<char, long long>> good(len);
+	// the ranges we have to add to our bad array
+	vector<pair<int, int>> removal1, removal2;
+	long long init_amt = 0;  // the initial amount of palindromes
+	for (int c = 0; c < len; c++) {
+		// first check the odd-length palindromes relative to c
+		int most =
+		    min(c, len - c - 1);  // the most we can extend from position c
+		check = [&](int d) { return is_pal(c - d, c + d); };
+		int raw_pal = last_true(0, most, check);
+		init_amt += raw_pal + 1;
+		if (raw_pal > 0) {
+			removal1.push_back({c - raw_pal, c - 1});
+			removal2.push_back({c + 1, c + raw_pal});
+		}
+
+		pair<int, char> rep = {c + raw_pal + 1, str[c - raw_pal - 1]};
+		check = [&](int d) { return is_pal_rep(c - d, c + d, rep); };
+		int rep_pal = last_true(raw_pal + 1, most, check);
+		if (rep_pal != -1) {
+			good[rep.first][rep.second] += rep_pal - raw_pal;
+			good[c - raw_pal - 1][str[c + raw_pal + 1]] += rep_pal - raw_pal;
+		}
+
+		// and then the even-length palindromes
+		if (c < len - 1) {
+			int most = min(c + 1, len - c - 1);
+			check = [&](int d) { return is_pal(c - d + 1, c + d); };
+			int raw_pal = last_true(0, most, check);
+			init_amt += raw_pal;
+			if (raw_pal > 0) {
+				removal1.push_back({c - raw_pal + 1, c});
+				removal2.push_back({c + 1, c + raw_pal});
+			}
+
+			pair<int, char> rep = {c + raw_pal + 1, str[c - raw_pal]};
+			check = [&](int d) { return is_pal_rep(c - d + 1, c + d, rep); };
+			int rep_pal = last_true(raw_pal + 1, most, check);
+			if (rep_pal != -1) {
+				good[rep.first][rep.second] += rep_pal - raw_pal;
+				good[c - raw_pal][str[c + raw_pal + 1]] += rep_pal - raw_pal;
+			}
+		}
+	}
+
+	for (pair<int, int> &r : removal2) {
+		r = {len - r.second - 1, len - r.first - 1};
+	}
+	// these two combined give the bad array stated in the analysis
+	vector<long long> bad1 = range_res(len, removal1);
+	vector<long long> bad2 = range_res(len, removal2);
+	std::reverse(bad2.begin(), bad2.end());
+
+	long long max_weight = init_amt;
+	for (int i = 0; i < len; i++) {
+		long long max_inc = 0;
+		for (const auto &[_, i] : good[i]) { max_inc = max(max_inc, i); }
+		max_weight = max(max_weight, init_amt + max_inc - bad1[i] - bad2[i]);
+	}
+
+	cout << max_weight << endl;
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+using ld = long double;
+using db = double;
+using str = string;  // yay python!
+
+using pi = pair<int, int>;
+using pl = pair<ll, ll>;
+using pd = pair<db, db>;
+
+using vi = vector<int>;
+using vb = vector<bool>;
+using vl = vector<ll>;
+using vd = vector<db>;
+using vs = vector<str>;
+using vpi = vector<pi>;
+using vpl = vector<pl>;
+using vpd = vector<pd>;
+
+#define tcT template <class T
+#define tcTU tcT, class U
+// ^ lol this makes everything look weird but I'll try it
+tcT > using V = vector<T>;
+tcT, size_t SZ > using AR = array<T, SZ>;
+tcT > using PR = pair<T, T>;
+
+// pairs
+#define mp make_pair
+#define f first
+#define s second
+
+// vectors
+// oops size(x), rbegin(x), rend(x) need C++17
+#define sz(x) int((x).size())
+#define bg(x) begin(x)
+#define all(x) bg(x), end(x)
+#define rall(x) x.rbegin(), x.rend()
+#define sor(x) sort(all(x))
+#define rsz resize
+#define ins insert
+#define ft front()
+#define bk back()
+#define pb push_back
+#define eb emplace_back
+#define pf push_front
+
+#define lb lower_bound
+#define ub upper_bound
+tcT > int lwb(V<T> &a, const T &b) { return int(lb(all(a), b) - bg(a)); }
+
+// loops
+#define FOR(i, a, b) for (int i = (a); i < (b); ++i)
+#define F0R(i, a) FOR(i, 0, a)
+#define ROF(i, a, b) for (int i = (b) - 1; i >= (a); --i)
+#define R0F(i, a) ROF(i, 0, a)
+#define trav(a, x) for (auto &a : x)
+
+const int MOD = 1e9 + 7;  // 998244353;
+const int MX = 2e5 + 5;
+const ll INF = 1e18;  // not too close to LLONG_MAX
+const ld PI = acos((ld)-1);
+const int dx[4] = {1, 0, -1, 0},
+          dy[4] = {0, 1, 0, -1};  // for every grid problem!!
+mt19937 rng((uint32_t)chrono::steady_clock::now().time_since_epoch().count());
+template <class T> using pqg = priority_queue<T, vector<T>, greater<T>>;
+
+// bitwise ops
+// also see https://gcc.gnu.org/onlinedocs/gcc/Other-Builtins.html
+constexpr int pct(int x) { return __builtin_popcount(x); }  // # of bits set
+constexpr int bits(int x) {  // assert(x >= 0); // make C++11 compatible until
+	                         // USACO updates ...
+	return x == 0 ? 0 : 31 - __builtin_clz(x);
+}  // floor(log2(x))
+constexpr int p2(int x) { return 1 << x; }
+constexpr int msk2(int x) { return p2(x) - 1; }
+
+ll cdiv(ll a, ll b) {
+	return a / b + ((a ^ b) > 0 && a % b);
+}  // divide a by b rounded up
+ll fdiv(ll a, ll b) {
+	return a / b - ((a ^ b) < 0 && a % b);
+}  // divide a by b rounded down
+
+tcT > bool ckmin(T &a, const T &b) {
+	return b < a ? a = b, 1 : 0;
+}  // set a = min(a,b)
+tcT > bool ckmax(T &a, const T &b) { return a < b ? a = b, 1 : 0; }
+
+tcTU > T fstTrue(T lo, T hi, U f) {
+	hi++;
+	assert(lo <= hi);  // assuming f is increasing
+	while (lo < hi) {  // find first index such that f is true
+		T mid = lo + (hi - lo) / 2;
+		f(mid) ? hi = mid : lo = mid + 1;
+	}
+	return lo;
+}
+tcTU > T lstTrue(T lo, T hi, U f) {
+	lo--;
+	assert(lo <= hi);  // assuming f is decreasing
+	while (lo < hi) {  // find first index such that f is true
+		T mid = lo + (hi - lo + 1) / 2;
+		f(mid) ? lo = mid : hi = mid - 1;
+	}
+	return lo;
+}
+tcT > void remDup(vector<T> &v) {  // sort and remove duplicates
+	sort(all(v));
+	v.erase(unique(all(v)), end(v));
+}
+tcTU > void erase(T &t, const U &u) {  // don't erase
+	auto it = t.find(u);
+	assert(it != end(t));
+	t.erase(it);
+}  // element that doesn't exist from (multi)set
+
+// INPUT
+#define tcTUU tcT, class... U
+tcT > void re(complex<T> &c);
+tcTU > void re(pair<T, U> &p);
+tcT > void re(V<T> &v);
+tcT, size_t SZ > void re(AR<T, SZ> &a);
+
+tcT > void re(T &x) { cin >> x; }
+void re(db &d) {
+	str t;
+	re(t);
+	d = stod(t);
+}
+void re(ld &d) {
+	str t;
+	re(t);
+	d = stold(t);
+}
+tcTUU > void re(T &t, U &...u) {
+	re(t);
+	re(u...);
+}
+
+tcT > void re(complex<T> &c) {
+	T a, b;
+	re(a, b);
+	c = {a, b};
+}
+tcTU > void re(pair<T, U> &p) { re(p.f, p.s); }
+tcT > void re(V<T> &x) { trav(a, x) re(a); }
+tcT, size_t SZ > void re(AR<T, SZ> &x) { trav(a, x) re(a); }
+tcT > void rv(int n, V<T> &x) {
+	x.rsz(n);
+	re(x);
+}
+
+// TO_STRING
+#define ts to_string
+str ts(char c) { return str(1, c); }
+str ts(const char *s) { return (str)s; }
+str ts(str s) { return s; }
+str ts(bool b) {
+#ifdef LOCAL
+	return b ? "true" : "false";
+#else
+	return ts((int)b);
+#endif
+}
+tcT > str ts(complex<T> c) {
+	stringstream ss;
+	ss << c;
+	return ss.str();
+}
+str ts(V<bool> v) {
+	str res = "{";
+	F0R(i, sz(v)) res += char('0' + v[i]);
+	res += "}";
+	return res;
+}
+template <size_t SZ> str ts(bitset<SZ> b) {
+	str res = "";
+	F0R(i, SZ) res += char('0' + b[i]);
+	return res;
+}
+tcTU > str ts(pair<T, U> p);
+tcT > str ts(T v) {  // containers with begin(), end()
+#ifdef LOCAL
+	bool fst = 1;
+	str res = "{";
+	for (const auto &x : v) {
+		if (!fst) res += ", ";
+		fst = 0;
+		res += ts(x);
+	}
+	res += "}";
+	return res;
+#else
+	bool fst = 1;
+	str res = "";
+	for (const auto &x : v) {
+		if (!fst) res += " ";
+		fst = 0;
+		res += ts(x);
+	}
+	return res;
+
+#endif
+}
+tcTU > str ts(pair<T, U> p) {
+#ifdef LOCAL
+	return "(" + ts(p.f) + ", " + ts(p.s) + ")";
+#else
+	return ts(p.f) + " " + ts(p.s);
+#endif
+}
+
+// OUTPUT
+tcT > void pr(T x) { cout << ts(x); }
+tcTUU > void pr(const T &t, const U &...u) {
+	pr(t);
+	pr(u...);
+}
+void ps() { pr("\n"); }  // print w/ spaces
+tcTUU > void ps(const T &t, const U &...u) {
+	pr(t);
+	if (sizeof...(u)) pr(" ");
+	ps(u...);
+}
+
+// DEBUG
+void DBG() { cerr << "]" << endl; }
+tcTUU > void DBG(const T &t, const U &...u) {
+	cerr << ts(t);
+	if (sizeof...(u)) cerr << ", ";
+	DBG(u...);
+}
+#ifdef LOCAL  // compile with -DLOCAL, chk -> fake assert
+#define dbg(...)                                                               \
+	cerr << "Line(" << __LINE__ << ") -> [" << #__VA_ARGS__ << "]: [",         \
+	    DBG(__VA_ARGS__)
+#define chk(...)                                                               \
+	if (!(__VA_ARGS__))                                                        \
+		cerr << "Line(" << __LINE__ << ") -> function(" << __FUNCTION__        \
+		     << ") -> CHK FAILED: (" << #__VA_ARGS__ << ")" << "\n",           \
+		    exit(0);
+#else
+#define dbg(...) 0
+#define chk(...) 0
+#endif
+
+void setPrec() { cout << fixed << setprecision(15); }
+void unsyncIO() { cin.tie(0)->sync_with_stdio(0); }
+// FILE I/O
+void setIn(str s) { freopen(s.c_str(), "r", stdin); }
+void setOut(str s) { freopen(s.c_str(), "w", stdout); }
+void setIO(str s = "") {
+	unsyncIO();
+	setPrec();
+	// cin.exceptions(cin.failbit);
+	// throws exception when do smth illegal
+	// ex. try to read letter into int
+	if (sz(s)) setIn(s + ".in"), setOut(s + ".out");  // for USACO
+}
+
+#pragma GCC optimize("Ofast")
+#pragma GCC target("avx2")
+
+// template code
+
+const int BLOCK = 2000;
+
+int N, Q;
+ll W;
+
+typedef pl P;
+typedef vector<P> vP;
+vP fluid;
+
+ll CROSS(const P &a, const P &b) { return a.f * b.s - a.s * b.f; }
+ll CROSS(const P &p, const P &a, const P &b) {
+	return (a.f - p.f) * (b.s - p.s) - (a.s - p.s) * (b.f - p.f);
+}
+ll cross(int a, int b, int c) { return CROSS(fluid[a], fluid[b], fluid[c]); }
+ll dif(int a, int x) {
+	return fluid[x].f * fluid[a].s - fluid[x].s * fluid[a].f;
+}
+
+ll bs(int *v, const P &p, int lo, int hi) {
+	auto eval = [&](int x) { return fluid[x].f * p.f + fluid[x].s * p.s; };
+	while (lo < hi) {
+		int mid = (lo + hi) / 2;
+		if (eval(v[mid]) < eval(v[mid + 1])) hi = mid;
+		else lo = mid + 1;
+	}
+	return eval(v[lo]);
+}
+
+bool cmp(int a, int b) { return fluid[a] < fluid[b]; }
+
+struct Hull {
+	int dat[BLOCK], lower[BLOCK];
+	int dsz = 0, usz = 0, lsz = 0;
+	ll minDif(int x) {  // get min of
+		pl p = {-fluid[x].s, fluid[x].f};
+		return bs(lower, p, 0, lsz - 1);
+	}
+	bool bad(int x) { return minDif(x) >= W; }
+	void build() {
+		vi xord;
+		F0R(i, dsz) xord.pb(dat[i]);
+		sort(all(xord), cmp);
+		usz = lsz = 0;
+		for (int i : xord) {
+			while (lsz > 1 && cross(lower[lsz - 2], lower[lsz - 1], i) <= 0)
+				lsz--;
+			lower[lsz++] = i;
+		}
+	}
+	void prin(int *a, int &b) {
+		F0R(i, b) dbg(a[i]);
+		dbg("----");
+	}
+	void INS(int *a, int &b, int pos, int label) {
+		ROF(i, pos + 1, b + 1) a[i] = a[i - 1];
+		a[pos] = label;
+		b++;
+	}
+	void ERASE(int *a, int &b, int l, int r) {
+		int dif = r - l;
+		if (dif <= 0) return;
+		FOR(i, r, b) a[i - dif] = a[i];
+		b -= dif;
+	}
+	void insLower(int label) {
+		int pos = lb(lower, lower + lsz, label, cmp) - lower;
+		if (pos && pos < lsz) {
+			if (cross(lower[pos - 1], lower[pos], label) >= 0) return;
+		}
+		INS(lower, lsz, pos, label);
+		{
+			int nex = pos + 1;
+			while (nex + 1 < lsz &&
+			       cross(lower[pos], lower[nex], lower[nex + 1]) <= 0)
+				nex++;
+			ERASE(lower, lsz, pos + 1, nex);
+		}
+		{
+			int nex = pos - 1;
+			while (nex > 0 &&
+			       cross(lower[nex - 1], lower[nex], lower[pos]) <= 0)
+				nex--;
+			ERASE(lower, lsz, nex + 1, pos);
+		}
+	}
+	void ins(int label) {
+		int i = dsz;
+		while (i && dif(dat[i - 1], label) >= W) i--;
+		INS(dat, dsz, i, label);
+		insLower(label);
+	}
+};
+
+vector<Hull> hull;
+vi NEX, PRE;
+int lst = -1;
+
+int num;
+
+int ad() {
+	hull.pb(Hull());
+	NEX.pb(-1), PRE.pb(-1);
+	return sz(hull) - 1;
+}
+
+void link(int a, int b) {
+	NEX[a] = b;
+	if (b == -1) lst = a;
+	else PRE[b] = a;
+}
+
+int ti = 0;
+
+void split(int cur) {
+	int SZ = hull[cur].dsz;
+	assert(SZ <= BLOCK);
+	if (SZ != BLOCK) return;
+	int CUR = ad();
+	int aft = NEX[cur];
+	link(cur, CUR);
+	link(CUR, aft);
+	int *v = hull[cur].dat;
+	int m = SZ / 2;
+	++ti;
+	assert(hull[CUR].dsz == 0);
+	FOR(i, m, SZ) {
+		int t = v[i];
+		hull[CUR].dat[hull[CUR].dsz++] = t;
+	}
+	hull[cur].dsz = m;
+	assert(hull[CUR].dsz == m);
+	hull[cur].build();
+	hull[CUR].build();  // split block into two
+}
+
+void ins(int v, int c) {
+	num++;
+	int label = sz(fluid);
+	fluid.pb({v, c});
+	int cur = lst, pre = -1;
+	while (cur != -1 && hull[cur].bad(label)) {
+		pre = cur;
+		cur = PRE[cur];
+	}
+	if (cur == -1) {
+		if (pre == -1) {
+			assert(sz(fluid) == 1);
+			lst = pre = ad();
+		}
+		cur = pre;
+	}
+	hull[cur].ins(label);
+	split(cur);
+}
+
+int get(int k) {
+	k = num + 1 - k;
+	assert(k);
+	for (int cur = lst;; cur = PRE[cur]) {
+		assert(cur != -1);
+		int *v = hull[cur].dat, SZ = hull[cur].dsz;
+		if (SZ >= k) return v[SZ - k];
+		k -= SZ;
+	}
+	exit(5);
+}
+
+int main() {
+	clock_t beg = clock();
+	setIO();
+	re(N, Q, W);
+	F0R(i, N) {
+		int v, c;
+		re(v, c);
+		ins(v, c);
+	}
+	dbg("DONE WITH INSERTS", (db)(clock() - beg) / CLOCKS_PER_SEC);
+	F0R(i, Q) {
+		str s;
+		re(s);
+		if (s == "INSERT") {
+			int v, c;
+			re(v, c);
+			ins(v, c);
+		} else {
+			int k;
+			re(k);
+			int p = get(k);
+			ps(fluid[p].f, fluid[p].s);
+		}
+	}
+	dbg((db)(clock() - beg) / CLOCKS_PER_SEC);
+}
+
+New Solution
+
+#include <bits/stdc++.h>
+#define FOR(i, x, y) for (int i = x; i < y; i++)
+typedef long long ll;
+using namespace std;
+
+ll ans = 0, bit[100001];
+int n, a[100001], b[100001];
+vector<int> cand;
+
+void update(int pos, ll val) {
+	for (; pos <= n; pos += pos & (-pos)) bit[pos] += val;
+}
+
+ll query(int x, int y) {
+	ll ans = 0;
+	for (; y; y -= y & (-y)) ans += bit[y];
+	for (x--; x; x -= x & (-x)) ans -= bit[x];
+	return ans;
+}
+
+void divide_conquer(int l = 0, int r = cand.size() - 1, int l_opt = 0,
+                    int r_opt = n - 1) {
+	int mid = (l + r) / 2, opt = -1;
+	ll best_delta = 1;
+	FOR(i, max(l_opt, cand[mid]), r_opt + 1) {
+		update(a[i], 1);
+		int inv =
+		    1 - query(a[i] + 1, a[cand[mid]] - 1) - query(a[i], a[cand[mid]]);
+		if (inv <= best_delta) best_delta = inv, opt = i;
+	}
+	ans = min(ans, best_delta);
+
+	if (mid != r) {
+		FOR(i, cand[mid], cand[(mid + r + 1) / 2]) update(a[i], -1);
+		FOR(i, max(opt, cand[(mid + r + 1) / 2]), r_opt + 1) update(a[i], -1);
+		divide_conquer(mid + 1, r, opt, r_opt);
+		FOR(i, cand[mid], cand[(mid + r + 1) / 2]) update(a[i], 1);
+		FOR(i, max(opt, cand[(mid + r + 1) / 2]), r_opt + 1) update(a[i], 1);
+	}
+
+	if (mid != l) {
+		FOR(i, cand[(mid + l - 1) / 2], min(l_opt, cand[mid])) update(a[i], 1);
+		FOR(i, max(l_opt, cand[mid]), r_opt + 1) update(a[i], -1);
+		divide_conquer(l, mid - 1, l_opt, opt);
+		FOR(i, cand[(mid + l - 1) / 2], min(l_opt, cand[mid])) update(a[i], -1);
+		FOR(i, max(l_opt, cand[mid]), r_opt + 1) update(a[i], 1);
+	}
+
+	FOR(i, max(l_opt, cand[mid]), r_opt + 1) update(a[i], -1);
+}
+
+int main() {
+	ios_base::sync_with_stdio(0);
+	cin.tie(0);
+	cin >> n;
+	bool sorted = true, distinct = true;
+	FOR(i, 0, n) {
+		cin >> a[i];
+		b[i] = a[i];
+		if (i) sorted &= (a[i] >= a[i - 1]), distinct &= (a[i] != a[i - 1]);
+	}
+	if (sorted) return cout << distinct << '\n', 0;
+
+	sort(b, b + n);
+	FOR(i, 0, n) {
+		a[i] = lower_bound(b, b + n, a[i]) - b + 1;
+		if (!i || a[i] > a[cand.back()]) cand.push_back(i);
+	}
+
+	divide_conquer();
+	for (int i = n - 1; ~i; i--) {
+		update(a[i], 1);
+		ans += query(1, a[i] - 1);
+	}
+	cout << ans << '\n';
+	return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <numeric>
+#include <utility>
+#include <vector>
+#include <queue>
+#include <tuple>
+using namespace std;
+ 
+int n, t, cmp[2001 * 2001];
+pair<int, int> vert[2001], horiz[2001];
+vector<int> graph[2001 * 2001];
+bool visited[2001 * 2001];
+ 
+int find(int A) { return cmp[A] = A == cmp[A] ? A : find(cmp[A]); }
+void onion(int A, int B) { cmp[find(A)] = find(B); }
+int flat(int x, int y) { return x * (2 * n + 1) + y; }
+bool inside(int x, int y) { return x >= 0 && x <= 2 * n && y >= 0 && y <= 2 * n; }
+ 
+int main() {
+    cin.tie(0)->sync_with_stdio(0);
+    cin >> n >> t;
+    iota(cmp, cmp + (2 * n + 1) * (2 * n + 1), 0);
+    for (int i = 0; i < n; i++) {
+        int x1, y1, x2, y2;
+        cin >> x1 >> y1 >> x2 >> y2;
+        vert[x1] = vert[x2] = {y1, y2 - 1};
+        horiz[y1] = horiz[y2] = {x1, x2 - 1};
+    }
+    for (int x = 0; x <= 2 * n; x++) {
+        for (int y = 0; y <= 2 * n; y++) {
+            if (inside(x + 1, y) && (y < vert[x + 1].first || y > vert[x + 1].second))
+                onion(flat(x, y), flat(x + 1, y));
+            if (inside(x - 1, y) && (y < vert[x].first || y > vert[x].second))
+                onion(flat(x, y), flat(x - 1, y));
+            if (inside(x, y + 1) && (x < horiz[y + 1].first || x > horiz[y + 1].second))
+                onion(flat(x, y), flat(x, y + 1));
+            if (inside(x, y - 1) && (x < horiz[y].first || x > horiz[y].second))
+                onion(flat(x, y), flat(x, y - 1));
+        }
+    }
+    for (int x = 0; x <= 2 * n; x++) {
+        for (int y = 0; y <= 2 * n; y++) {
+            if (inside(x + 1, y) && find(flat(x, y)) != find(flat(x + 1, y))) {
+                graph[find(flat(x, y))].push_back(find(flat(x + 1, y)));
+                graph[find(flat(x + 1, y))].push_back(find(flat(x, y)));
+            }
+            if (inside(x - 1, y) && find(flat(x, y)) != find(flat(x - 1, y))) {
+                graph[find(flat(x, y))].push_back(find(flat(x - 1, y)));
+                graph[find(flat(x - 1, y))].push_back(find(flat(x, y)));
+            }
+            if (inside(x, y + 1) && find(flat(x, y)) != find(flat(x, y + 1))) {
+                graph[find(flat(x, y))].push_back(find(flat(x, y + 1)));
+                graph[find(flat(x, y + 1))].push_back(find(flat(x, y)));
+            }
+            if (inside(x, y - 1) && find(flat(x, y)) != find(flat(x, y - 1))) {
+                graph[find(flat(x, y))].push_back(find(flat(x, y - 1)));
+                graph[find(flat(x, y - 1))].push_back(find(flat(x, y)));
+            }
+        }
+    }
+    queue<pair<int, bool>> q;
+    int black = 0, white = 0;
+    q.push({find(0), false});
+    visited[find(0)] = true;
+    while (q.size()) {
+        int curr, colour;
+        tie(curr, colour) = q.front();
+        if (colour) black++; else white++;
+        q.pop();
+        for (int i : graph[curr]) if (!visited[i]) {
+            visited[i] = true;
+            q.push({i, !colour});
+        }
+    }
+    if (t == 2) cout << white << ' ' << black << '\n';
+    else cout << white + black << '\n';
+}
+
+New Solution
+
+#include "grader.h"
+#define BLOCK 1000
+#define DIF 4050
+
+// VARIABLE - LOCATION IN BESSIE'S NOTEBOOK
+// back index - 0
+// top index - 1
+// queue (2,3) (4,5) ...
+//       (index, value)
+// current block's endpoint index (divided by BLOCK) - DIF-1
+// current block's global low - DIF-2
+// number of minima output - DIF-3
+
+void helpBessie(int v)
+{
+	int N = getTrainLength();
+	int K = getWindowLength();
+	int i = getCurrentCarIndex();
+	int p = getCurrentPassIndex();
+	if(p==0)
+	{
+		if(i==0)
+		{
+			set(0,0);
+			set(1,-1);
+		}
+		int top = get(1);
+		int back = get(0);
+		if(i%BLOCK == 0 || (i>=K && (i-K)%BLOCK == 0))  // reached boundary of some window
+		{						// need to make new entry in monotonic queue
+			while(top >= back && get(2*top+3) >= v)
+				top--;
+			top++;
+			set(2*top+2,i);
+			set(2*top+3,v);
+		}
+		else	//still part of same subarray; just update the top entry of monotonic queue
+		{
+			int curTopValue = get(2*top+3);
+			if(v <= curTopValue)
+			{
+				top--;
+				while(top >= back && get(2*top+3) >= v)
+					top--;
+				top++;
+				set(2*top+2,i);
+				set(2*top+3,v);
+			}
+		}
+		if(i >= K-1 && (i+1-K)%BLOCK == 0)	// at endpoint of some window; need to store location of minimum
+		{
+			while(top >= back && get(2*back+2) <= i-K)	// pop from back end up queue until queue contains only
+				back++;					// elements in desired window
+			set(DIF + (i+1-K)/BLOCK, get(2*back+2));	// store location of minimum
+		}
+		set(0,back);
+		set(1,top);
+	}
+	else
+	{
+		if(i < get(DIF))
+			return;
+		if(i == get(DIF))
+		{
+			set(0,0);
+			set(1,-1);
+			set(DIF-1, 1);
+			set(DIF-2,1000000000);
+			set(DIF-3, 0);
+		}
+		int bc = get(DIF-1);
+		int top = get(1);
+		int back = get(0);
+		int outputs = get(DIF-3);
+		if(i - get(DIF+bc-1) <= BLOCK)  // element may not be contained in all relevant windows
+		{				// so add to monotonic queue
+			while(top >= back && get(2*top+3) >= v)
+				top--;
+			top++;
+			set(2*top+2,i);
+			set(2*top+3,v);
+		}
+		else 	// element is contained in all relevant windows
+		{	// so we can update a global minimum
+			int globalLow = get(DIF-2);
+			if(v < globalLow)
+				set(DIF-2,v);
+		}
+		if(outputs + K - 1 == i)	//need to output a minimum
+		{
+			while(top >= back && get(2*back+2) < outputs)
+				back++;
+			shoutMinimum(min(get(DIF-2),get(2*back+3)));
+			outputs++;
+		}
+		while(BLOCK*bc + K-1 < N && get(DIF+bc) == i) // reached boundary of current subarray
+		{
+			while(outputs <= BLOCK*bc) // output minimums for all remaining windows in current block
+			{
+				while(top >= back && get(2*back+2) < outputs)
+					back++;
+				shoutMinimum(min(get(DIF-2),get(2*back+3)));
+				outputs++;
+			}
+			bc++;
+			set(DIF-2,1000000000);
+			top = back = 0;
+			set(2*top+2,i);
+			set(2*top+3,v);
+		}
+		set(DIF-3,outputs);
+		set(DIF-1,bc);
+		set(1,top);
+		set(0,back);
+	}
+}

@@ -1,0 +1,1857 @@
+#include <iostream>
+using namespace std;
+
+typedef long long ll;
+
+ll N, K, M;
+
+// Function to simulate the repayment process with a given X
+bool canRepay(ll X) {
+    ll days = 0, milkGiven = 0;
+    while (days < K && milkGiven < N) {
+        ll remainingMilk = N - milkGiven;
+        ll Y = remainingMilk / X;
+        if (Y < M) Y = M;
+        milkGiven += Y;
+        days++;
+        if (Y == M) {
+            ll remainingDays = (N - milkGiven + M - 1) / M;
+            return days + remainingDays <= K;
+        }
+    }
+    return milkGiven >= N;
+}
+
+int main() {
+    cin >> N >> K >> M;
+
+    ll low = 1, high = N, ans = 1;
+
+    // Binary search for the largest X
+    while (low <= high) {
+        ll mid = (low + high) / 2;
+        if (canRepay(mid)) {
+            ans = mid;
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    cout << ans << endl;
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <cmath>
+using namespace std;
+
+typedef long long ll;
+
+// Function to calculate the minimum time to finish the race for a given X
+ll minTime(ll K, ll X) {
+    ll low = 0, high = 2 * K, mid, ans = 2 * K;
+
+    // Binary search to find the minimum time
+    while (low <= high) {
+        mid = (low + high) / 2;
+        ll speed = X;
+        ll dist = 0;
+        ll time = mid;
+
+        // Calculate the distance we can cover with this time
+        for (ll i = 1; i <= mid; i++) {
+            if (i <= X) {
+                dist += i;
+            } else {
+                dist += X;
+            }
+        }
+
+        // If distance is enough to cover K, try smaller times
+        if (dist >= K) {
+            ans = mid;
+            high = mid - 1;
+        } else {
+            low = mid + 1;
+        }
+    }
+
+    return ans;
+}
+
+int main() {
+    ll K, N;
+    cin >> K >> N;
+
+    // Process each value of X
+    for (ll i = 0; i < N; i++) {
+        ll X;
+        cin >> X;
+        cout << minTime(K, X) << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Cow {
+    int w, x, d; // weight, position, direction
+};
+
+int main() {
+    int N, L;
+    cin >> N >> L;
+    
+    vector<Cow> cows(N);
+    vector<int> left_times, right_times; // times to reach barns for left and right moving cows
+    int total_weight = 0;
+    
+    for (int i = 0; i < N; i++) {
+        cin >> cows[i].w >> cows[i].x >> cows[i].d;
+        total_weight += cows[i].w;
+        if (cows[i].d == -1) {
+            left_times.push_back(cows[i].x);  // Time to reach barn 0
+        } else {
+            right_times.push_back(L - cows[i].x); // Time to reach barn L
+        }
+    }
+    
+    // Sort the times to reach barns
+    sort(left_times.begin(), left_times.end());
+    sort(right_times.begin(), right_times.end());
+    
+    // Determine T: the earliest time when at least half the total weight has reached a barn
+    int half_weight = (total_weight + 1) / 2;
+    int stopped_weight = 0;
+    int T = 0;
+    
+    int i = 0, j = 0;
+    while (stopped_weight < half_weight) {
+        if (i < left_times.size() && (j >= right_times.size() || left_times[i] <= right_times[j])) {
+            stopped_weight += cows[i].w;
+            T = left_times[i];
+            i++;
+        } else {
+            stopped_weight += cows[j].w;
+            T = right_times[j];
+            j++;
+        }
+    }
+
+    // Count meetings between cows before time T
+    int meetings = 0;
+    
+    for (int i = 0; i < N; i++) {
+        for (int j = i + 1; j < N; j++) {
+            if ((cows[i].d == 1 && cows[j].d == -1 && cows[i].x < cows[j].x) ||
+                (cows[i].d == -1 && cows[j].d == 1 && cows[i].x > cows[j].x)) {
+                // They can meet
+                double meet_time = (double)(cows[j].x - cows[i].x) / 2.0;
+                if (meet_time <= T) {
+                    meetings++;
+                }
+            }
+        }
+    }
+    
+    cout << meetings << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+using namespace std;
+
+const int MAXN = 750;
+const int INF = 1e9;
+
+int N;
+int grid[MAXN][MAXN];
+bool visited[MAXN][MAXN];
+
+int dx[] = {0, 0, 1, -1}; // directions for row movement (up, down, left, right)
+int dy[] = {1, -1, 0, 0}; // directions for column movement
+
+bool is_in_bounds(int x, int y) {
+    return x >= 0 && x < N && y >= 0 && y < N;
+}
+
+bool bfs(int sx, int sy, int h) {
+    // BFS to find the size of the valley, returns false if the region is not a valley
+    queue<pair<int, int>> q;
+    vector<pair<int, int>> region;
+    bool is_valley = true;
+    
+    q.push({sx, sy});
+    visited[sx][sy] = true;
+    
+    while (!q.empty()) {
+        int x = q.front().first;
+        int y = q.front().second;
+        q.pop();
+        region.push_back({x, y});
+        
+        for (int d = 0; d < 4; d++) {
+            int nx = x + dx[d];
+            int ny = y + dy[d];
+            
+            if (!is_in_bounds(nx, ny)) {
+                is_valley = false; // A valley cannot border the outside of the grid
+            } else if (grid[nx][ny] > h) {
+                continue; // Valid border
+            } else if (!visited[nx][ny] && grid[nx][ny] == h) {
+                visited[nx][ny] = true;
+                q.push({nx, ny});
+            }
+        }
+    }
+    
+    return is_valley ? region.size() : 0;
+}
+
+int main() {
+    cin >> N;
+    
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            cin >> grid[i][j];
+        }
+    }
+    
+    vector<pair<int, pair<int, int>>> cells;
+    
+    // Collect all cells sorted by height
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            cells.push_back({grid[i][j], {i, j}});
+        }
+    }
+    
+    // Sort cells by height in ascending order
+    sort(cells.begin(), cells.end());
+    
+    int total_size = 0;
+    
+    // Process each cell
+    for (auto &cell : cells) {
+        int x = cell.second.first;
+        int y = cell.second.second;
+        int h = cell.first;
+        
+        if (!visited[x][y]) {
+            total_size += bfs(x, y, h);
+        }
+    }
+    
+    cout << total_size << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+#include <string>
+using namespace std;
+
+int N;
+vector<set<string>> subpopulations;
+
+// Function to check if a proper evolutionary tree can be formed
+bool checkProperTree() {
+    for (int i = 0; i < N; i++) {
+        for (int j = i + 1; j < N; j++) {
+            set<string> intersection, difference_i, difference_j;
+
+            // Find the intersection of subpopulation i and j
+            for (auto &trait : subpopulations[i]) {
+                if (subpopulations[j].count(trait)) {
+                    intersection.insert(trait);
+                } else {
+                    difference_i.insert(trait);
+                }
+            }
+
+            // Find the difference for subpopulation j
+            for (auto &trait : subpopulations[j]) {
+                if (!subpopulations[i].count(trait)) {
+                    difference_j.insert(trait);
+                }
+            }
+
+            // If there are traits both in difference_i and difference_j, it's invalid
+            if (!intersection.empty() && !difference_i.empty() && !difference_j.empty()) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+int main() {
+    cin >> N;
+    subpopulations.resize(N);
+
+    // Read the subpopulations and their characteristics
+    for (int i = 0; i < N; i++) {
+        int K;
+        cin >> K;
+        for (int j = 0; j < K; j++) {
+            string trait;
+            cin >> trait;
+            subpopulations[i].insert(trait);
+        }
+    }
+
+    // Check if a proper evolutionary tree can be formed
+    if (checkProperTree()) {
+        cout << "yes" << endl;
+    } else {
+        cout << "no" << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+typedef pair<int, int> pii;
+
+int N, T;
+vector<pii> flowers;
+
+int main() {
+    cin >> N >> T;
+
+    flowers.resize(N);
+    for (int i = 0; i < N; i++) {
+        cin >> flowers[i].first >> flowers[i].second;
+    }
+
+    // Sort flowers by x-coordinate, and for the same x, sort by y-coordinate
+    sort(flowers.begin(), flowers.end());
+
+    // LIS on the y-coordinates
+    vector<int> lis;
+    for (int i = 0; i < N; i++) {
+        int y = flowers[i].second;
+        auto it = lower_bound(lis.begin(), lis.end(), y);
+        if (it == lis.end()) {
+            lis.push_back(y);
+        } else {
+            *it = y;
+        }
+    }
+
+    // The length of the LIS is the maximum size of the subset of flowers we can visit
+    int max_subset_size = lis.size();
+
+    // The total area of the grid is T*T
+    // The area of the uncut grass is the area of the maximum possible rectangle
+    // Therefore, the total cut grass area is the total grid area minus the largest uncut rectangle
+    int total_grass_area = T * T;
+    int max_uncut_area = (max_subset_size + 1) * (max_subset_size + 1);
+    int min_cut_grass = total_grass_area - max_uncut_area;
+
+    cout << min_cut_grass << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <queue>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int INF = 1e9 + 7;
+
+int N, M, X, Y;
+vector<pair<int, int>> adj[1501]; // adjacency list: (neighbor, distance)
+vector<int> component_size;
+vector<int> component_cost;
+
+vector<bool> visited(1501, false);
+
+void dfs(int node, int& size, int& total_cost) {
+    visited[node] = true;
+    size++;
+    for (auto& edge : adj[node]) {
+        int neighbor = edge.first;
+        int distance = edge.second;
+        total_cost += distance;
+        if (!visited[neighbor]) {
+            dfs(neighbor, size, total_cost);
+        }
+    }
+}
+
+// Calculate factorial mod
+long long factorial(int n) {
+    long long result = 1;
+    for (int i = 1; i <= n; i++) {
+        result = (result * i) % MOD;
+    }
+    return result;
+}
+
+int main() {
+    cin >> N >> M >> X >> Y;
+    
+    for (int i = 0; i < M; i++) {
+        int A, B, D;
+        cin >> A >> B >> D;
+        adj[A].push_back({B, D});
+        adj[B].push_back({A, D});
+    }
+
+    // Find all connected components (i.e., farms)
+    for (int i = 1; i <= N; i++) {
+        if (!visited[i]) {
+            int size = 0, total_cost = 0;
+            dfs(i, size, total_cost);
+            component_size.push_back(size);
+            component_cost.push_back(total_cost / 2); // Divide by 2 because every edge is counted twice
+        }
+    }
+
+    int K = component_size.size(); // Number of farms
+
+    // Sum over all interesting tracks
+    long long total_sum = 0;
+    
+    // For each subset of the K farms, check if the total length is at least Y
+    vector<long long> dp(Y + 1, 0);
+    dp[0] = 1;
+    
+    for (int i = 0; i < K; i++) {
+        vector<long long> new_dp(Y + 1, 0);
+        for (int j = 0; j <= Y; j++) {
+            if (dp[j] > 0) {
+                if (j + component_cost[i] + X * (K - 1) <= Y) {
+                    new_dp[j + component_cost[i] + X * (K - 1)] = (new_dp[j + component_cost[i] + X * (K - 1)] + dp[j]) % MOD;
+                }
+            }
+        }
+        dp = new_dp;
+    }
+
+    // Sum all valid track lengths
+    for (int i = Y; i <= N * X; i++) {
+        total_sum = (total_sum + dp[i]) % MOD;
+    }
+
+    total_sum = (total_sum * factorial(K)) % MOD;
+
+    cout << total_sum << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int MAXN = 200005;
+
+int N, M;
+vector<int> adj[MAXN]; // adjacency list for the graph
+vector<pair<int, int>> non_standard_trails;
+vector<int> parent(MAXN), size(MAXN);
+int non_standard_trail_count = 0;
+
+int find(int x) {
+    if (parent[x] == x) return x;
+    return parent[x] = find(parent[x]);
+}
+
+void unite(int x, int y) {
+    int root_x = find(x);
+    int root_y = find(y);
+    if (root_x != root_y) {
+        if (size[root_x] < size[root_y]) swap(root_x, root_y);
+        parent[root_y] = root_x;
+        size[root_x] += size[root_y];
+    }
+}
+
+int main() {
+    cin >> N >> M;
+    
+    // Initialize union-find structures
+    for (int i = 1; i <= N; i++) {
+        parent[i] = i;
+        size[i] = 1;
+    }
+
+    // Reading the trails
+    for (int i = 1; i <= M; i++) {
+        int a, b;
+        cin >> a >> b;
+        if (i <= N - 1) {
+            // Standard trail
+            unite(a, b);
+        } else {
+            // Non-standard trail
+            non_standard_trails.push_back({a, b});
+        }
+    }
+
+    // Counting the valid routes with exactly two non-standard trails
+    int valid_routes = 0;
+
+    for (int i = 0; i < non_standard_trails.size(); i++) {
+        for (int j = i + 1; j < non_standard_trails.size(); j++) {
+            int u1 = non_standard_trails[i].first;
+            int v1 = non_standard_trails[i].second;
+            int u2 = non_standard_trails[j].first;
+            int v2 = non_standard_trails[j].second;
+
+            // Check if both non-standard trails connect distinct components
+            if (find(u1) != find(v1) && find(u2) != find(v2)) {
+                valid_routes++;
+            }
+        }
+    }
+
+    cout << valid_routes << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <set>
+using namespace std;
+
+const long long MAXK = 1e18;
+
+int N;
+long long K;
+vector<int> cows;
+vector<int> LIS_size;
+vector<vector<int>> LIS_sequences;
+set<vector<int>> subsets;
+
+vector<int> findLIS(const vector<int>& arr) {
+    vector<int> dp, predecessor(arr.size(), -1), result;
+    vector<int> last_index;
+    for (int i = 0; i < arr.size(); i++) {
+        auto it = lower_bound(dp.begin(), dp.end(), arr[i]);
+        int pos = it - dp.begin();
+        if (it == dp.end()) {
+            dp.push_back(arr[i]);
+            last_index.push_back(i);
+        } else {
+            *it = arr[i];
+            last_index[pos] = i;
+        }
+        if (pos > 0) {
+            predecessor[i] = last_index[pos - 1];
+        }
+    }
+    int index = last_index.back();
+    while (index != -1) {
+        result.push_back(arr[index]);
+        index = predecessor[index];
+    }
+    reverse(result.begin(), result.end());
+    return result;
+}
+
+void findValidSubsets(const vector<int>& arr, int max_len, vector<int>& current_subset, int index, long long& count) {
+    if (count >= K || current_subset.size() > max_len) return;
+    if (index >= N) {
+        if (current_subset.size() == max_len) {
+            count++;
+            if (count == K) {
+                subsets.insert(current_subset);
+            }
+        }
+        return;
+    }
+    // Include current element
+    current_subset.push_back(arr[index]);
+    findValidSubsets(arr, max_len, current_subset, index + 1, count);
+    current_subset.pop_back();
+    // Exclude current element
+    findValidSubsets(arr, max_len, current_subset, index + 1, count);
+}
+
+int main() {
+    cin >> N >> K;
+    cows.resize(N);
+    for (int i = 0; i < N; i++) {
+        cin >> cows[i];
+    }
+
+    // Step 1: Find the LIS (Longest Increasing Subsequence)
+    vector<int> lis = findLIS(cows);
+    int max_lis_length = lis.size();
+
+    // Step 2: Try to find the K-th lexicographically smallest subset
+    long long count = 0;
+    vector<int> current_subset;
+    findValidSubsets(cows, max_lis_length, current_subset, 0, count);
+
+    // Output the result
+    auto it = subsets.begin();
+    if (it != subsets.end()) {
+        cout << it->size() << endl;
+        for (int cow : *it) {
+            cout << cow << endl;
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <unordered_map>
+#include <vector>
+#include <string>
+using namespace std;
+
+unordered_map<string, string> mother_of;
+unordered_map<string, int> depth;
+
+// Function to compute the ancestors of a cow and their depths
+vector<string> get_ancestors(const string &cow) {
+    vector<string> ancestors;
+    string current = cow;
+    while (mother_of.find(current) != mother_of.end()) {
+        ancestors.push_back(mother_of[current]);
+        current = mother_of[current];
+    }
+    return ancestors;
+}
+
+int main() {
+    int N;
+    string BESSIE, ELSIE;
+    cin >> N >> BESSIE >> ELSIE;
+
+    // Read the mother-child pairs
+    for (int i = 0; i < N; i++) {
+        string mother, child;
+        cin >> mother >> child;
+        mother_of[child] = mother;
+    }
+
+    // Get ancestors of BESSIE and ELSIE
+    vector<string> bessie_ancestors = get_ancestors(BESSIE);
+    vector<string> elsie_ancestors = get_ancestors(ELSIE);
+
+    // Case 1: Check if they are siblings
+    if (mother_of.find(BESSIE) != mother_of.end() && mother_of.find(ELSIE) != mother_of.end() && mother_of[BESSIE] == mother_of[ELSIE]) {
+        cout << "SIBLINGS" << endl;
+        return 0;
+    }
+
+    // Case 2: Check if BESSIE is a descendant of ELSIE
+    int bessie_depth = 0;
+    for (const string &ancestor : bessie_ancestors) {
+        if (ancestor == ELSIE) {
+            string relation = "mother";
+            for (int i = 0; i < bessie_depth; i++) {
+                relation = "great-" + relation;
+            }
+            cout << ELSIE << " is the " << relation << " of " << BESSIE << endl;
+            return 0;
+        }
+        bessie_depth++;
+    }
+
+    // Case 3: Check if ELSIE is a descendant of BESSIE
+    int elsie_depth = 0;
+    for (const string &ancestor : elsie_ancestors) {
+        if (ancestor == BESSIE) {
+            string relation = "mother";
+            for (int i = 0; i < elsie_depth; i++) {
+                relation = "great-" + relation;
+            }
+            cout << BESSIE << " is the " << relation << " of " << ELSIE << endl;
+            return 0;
+        }
+        elsie_depth++;
+    }
+
+    // Case 4: Check if ELSIE is an aunt of BESSIE
+    bessie_depth = 0;
+    for (const string &bessie_ancestor : bessie_ancestors) {
+        elsie_depth = 0;
+        for (const string &elsie_ancestor : elsie_ancestors) {
+            if (bessie_ancestor == elsie_ancestor && elsie_depth == 1) {
+                string relation = "aunt";
+                for (int i = 0; i < bessie_depth - 1; i++) {
+                    relation = "great-" + relation;
+                }
+                cout << ELSIE << " is the " << relation << " of " << BESSIE << endl;
+                return 0;
+            }
+            elsie_depth++;
+        }
+        bessie_depth++;
+    }
+
+    // Case 5: Check if they are cousins (share common ancestor)
+    bessie_depth = 0;
+    for (const string &bessie_ancestor : bessie_ancestors) {
+        elsie_depth = 0;
+        for (const string &elsie_ancestor : elsie_ancestors) {
+            if (bessie_ancestor == elsie_ancestor) {
+                cout << "COUSINS" << endl;
+                return 0;
+            }
+            elsie_depth++;
+        }
+        bessie_depth++;
+    }
+
+    // Case 6: They are not related
+    cout << "NOT RELATED" << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <climits>
+using namespace std;
+
+const int MAXN = 70005;
+
+int N;
+vector<int> adj[MAXN];         // adjacency list for barns
+int dist_from_exit[MAXN];       // distance from nearest exit
+int dist_from_bessie[MAXN];     // distance from Bessie's start point
+bool is_exit[MAXN];             // true if the barn is an exit
+int farmers_needed[MAXN];       // result: minimum farmers needed for each barn
+
+void bfs_from_exits() {
+    // BFS from all exit barns to calculate the minimum distance to exits
+    queue<int> q;
+    for (int i = 1; i <= N; i++) {
+        if (is_exit[i]) {
+            dist_from_exit[i] = 0;
+            q.push(i);
+        }
+    }
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+        for (int v : adj[u]) {
+            if (dist_from_exit[v] == -1) {
+                dist_from_exit[v] = dist_from_exit[u] + 1;
+                q.push(v);
+            }
+        }
+    }
+}
+
+void bfs_from_bessie(int start) {
+    // BFS from Bessie’s starting barn to calculate minimum farmers needed
+    queue<int> q;
+    q.push(start);
+    dist_from_bessie[start] = 0;
+    
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+        for (int v : adj[u]) {
+            if (dist_from_bessie[v] == -1) {
+                dist_from_bessie[v] = dist_from_bessie[u] + 1;
+                q.push(v);
+            }
+        }
+    }
+}
+
+int main() {
+    cin >> N;
+
+    // Initialize adjacency list and arrays
+    for (int i = 0; i < N - 1; i++) {
+        int a, b;
+        cin >> a >> b;
+        adj[a].push_back(b);
+        adj[b].push_back(a);
+    }
+
+    // Initialize distances to -1 (meaning unvisited)
+    fill(dist_from_exit, dist_from_exit + N + 1, -1);
+    fill(dist_from_bessie, dist_from_bessie + N + 1, -1);
+    fill(is_exit, is_exit + N + 1, false);
+
+    // Identify exit barns
+    for (int i = 1; i <= N; i++) {
+        if (adj[i].size() == 1) { // exits are barns with only one tunnel
+            is_exit[i] = true;
+        }
+    }
+
+    // Calculate the minimum distance from each barn to the nearest exit
+    bfs_from_exits();
+
+    // Calculate the minimum number of farmers needed for each barn
+    for (int i = 1; i <= N; i++) {
+        bfs_from_bessie(i); // BFS from current barn
+        int farmers_needed = 0;
+        
+        // Check if Bessie can escape before farmers catch her
+        for (int j = 1; j <= N; j++) {
+            if (dist_from_bessie[j] <= dist_from_exit[j]) {
+                farmers_needed++;
+            }
+        }
+
+        cout << farmers_needed << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+int main() {
+    int N, M, K;
+    cin >> N >> M >> K;
+
+    // dp[i] stores the number of ways to paint the first i units of the canvas
+    vector<long long> dp(N + 1, 0);
+    vector<long long> prefix_sum(N + 1, 0);
+
+    dp[0] = 1;  // Base case: 1 way to paint 0 units (nothing to paint)
+    prefix_sum[0] = 1;
+
+    for (int i = 1; i <= N; i++) {
+        // If we have at least K units, subtract the number of ways to paint i-K units
+        if (i >= K) {
+            dp[i] = (prefix_sum[i - 1] - prefix_sum[i - K] + MOD) % MOD * M % MOD;
+        } else {
+            dp[i] = prefix_sum[i - 1] * M % MOD;
+        }
+        // Update prefix_sum for future use
+        prefix_sum[i] = (prefix_sum[i - 1] + dp[i]) % MOD;
+    }
+
+    // Calculate the number of ways to paint the whole canvas where not all units are covered
+    long long result = 1;
+    for (int i = 0; i < N; i++) {
+        result = result * M % MOD;
+    }
+
+    // Subtract the number of invalid ways (i.e., ways where some part of the canvas is unpainted)
+    result = (result - dp[N] + MOD) % MOD;
+
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+int N, K;
+
+// Function to shift a grid piece
+vector<string> shift(const vector<string>& piece, int dx, int dy) {
+    vector<string> shifted(N, string(N, '.'));
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            if (piece[i][j] == '#') {
+                int ni = i + dx;
+                int nj = j + dy;
+                if (ni >= 0 && ni < N && nj >= 0 && nj < N) {
+                    shifted[ni][nj] = '#';
+                }
+            }
+        }
+    }
+    return shifted;
+}
+
+// Function to merge two grids and check if it matches the original
+bool can_merge(const vector<string>& grid1, const vector<string>& grid2, const vector<string>& original) {
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            if ((grid1[i][j] == '#' && grid2[i][j] == '#') || (grid1[i][j] == '#' && original[i][j] == '.') || (grid2[i][j] == '#' && original[i][j] == '.')) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+int main() {
+    cin >> N >> K;
+
+    // Read the original grid
+    vector<string> original(N);
+    for (int i = 0; i < N; ++i) {
+        cin >> original[i];
+    }
+
+    // Read the pieces
+    vector<vector<string>> pieces(K, vector<string>(N));
+    for (int k = 0; k < K; ++k) {
+        for (int i = 0; i < N; ++i) {
+            cin >> pieces[k][i];
+        }
+    }
+
+    // Try all pairs of pieces
+    for (int i = 0; i < K; ++i) {
+        for (int j = i + 1; j < K; ++j) {
+            // Try all shifts for the first piece
+            for (int dx1 = -N + 1; dx1 < N; ++dx1) {
+                for (int dy1 = -N + 1; dy1 < N; ++dy1) {
+                    vector<string> shifted_piece1 = shift(pieces[i], dx1, dy1);
+
+                    // Try all shifts for the second piece
+                    for (int dx2 = -N + 1; dx2 < N; ++dx2) {
+                        for (int dy2 = -N + 1; dy2 < N; ++dy2) {
+                            vector<string> shifted_piece2 = shift(pieces[j], dx2, dy2);
+
+                            // Check if the merged grid matches the original
+                            if (can_merge(shifted_piece1, shifted_piece2, original)) {
+                                cout << i + 1 << " " << j + 1 << endl;
+                                return 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Cow {
+    int x, y;
+};
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<Cow> cows(N);
+    vector<int> x_coords, y_coords;
+
+    for (int i = 0; i < N; i++) {
+        cin >> cows[i].x >> cows[i].y;
+        x_coords.push_back(cows[i].x);
+        y_coords.push_back(cows[i].y);
+    }
+
+    // Sort the x and y coordinates for iterating over potential fence positions
+    sort(x_coords.begin(), x_coords.end());
+    sort(y_coords.begin(), y_coords.end());
+
+    // To ensure no cow lies on a fence, we try fences just after even x or y positions
+    int result = N; // Initialize result to the worst case (all cows in one quadrant)
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            int a = x_coords[i] + 1;  // Fence just after x_coords[i]
+            int b = y_coords[j] + 1;  // Fence just after y_coords[j]
+
+            int top_left = 0, top_right = 0, bottom_left = 0, bottom_right = 0;
+
+            // Count cows in each region
+            for (int k = 0; k < N; k++) {
+                if (cows[k].x < a && cows[k].y > b) {
+                    top_left++;
+                } else if (cows[k].x > a && cows[k].y > b) {
+                    top_right++;
+                } else if (cows[k].x < a && cows[k].y < b) {
+                    bottom_left++;
+                } else if (cows[k].x > a && cows[k].y < b) {
+                    bottom_right++;
+                }
+            }
+
+            // Calculate the maximum number of cows in any region
+            int M = max({top_left, top_right, bottom_left, bottom_right});
+
+            // Update the result to the minimum possible value of M
+            result = min(result, M);
+        }
+    }
+
+    cout << result << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <set>
+using namespace std;
+
+struct Drink {
+    int person;
+    int milk;
+    int time;
+};
+
+struct Sick {
+    int person;
+    int time;
+};
+
+int main() {
+    int N, M, D, S;
+    cin >> N >> M >> D >> S;
+
+    vector<Drink> drinks(D);
+    vector<Sick> sick(S);
+
+    // Reading in the drinks data
+    for (int i = 0; i < D; i++) {
+        cin >> drinks[i].person >> drinks[i].milk >> drinks[i].time;
+    }
+
+    // Reading in the sickness data
+    for (int i = 0; i < S; i++) {
+        cin >> sick[i].person >> sick[i].time;
+    }
+
+    // Potential bad milks: those which were drunk by all sick people before they got sick
+    vector<bool> possible_bad_milk(M + 1, true);
+
+    for (int i = 0; i < S; i++) {
+        int sick_person = sick[i].person;
+        int sick_time = sick[i].time;
+
+        vector<bool> drank_before(M + 1, false);
+        for (int j = 0; j < D; j++) {
+            if (drinks[j].person == sick_person && drinks[j].time < sick_time) {
+                drank_before[drinks[j].milk] = true;
+            }
+        }
+
+        // If a milk wasn't consumed before this person got sick, mark it as not possible
+        for (int m = 1; m <= M; m++) {
+            if (!drank_before[m]) {
+                possible_bad_milk[m] = false;
+            }
+        }
+    }
+
+    // Now calculate the maximum number of people that could be affected if any of the possible bad milks is the bad one
+    int max_sick = 0;
+    for (int m = 1; m <= M; m++) {
+        if (possible_bad_milk[m]) {
+            set<int> affected_people;
+            for (int j = 0; j < D; j++) {
+                if (drinks[j].milk == m) {
+                    affected_people.insert(drinks[j].person);
+                }
+            }
+            max_sick = max(max_sick, (int)affected_people.size());
+        }
+    }
+
+    cout << max_sick << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+
+using namespace std;
+
+int main() {
+    int T;
+    cin >> T;
+    
+    while (T--) {
+        int N, C, P;
+        cin >> N >> C >> P;
+
+        map<string, int> nouns, transitive_verbs, intransitive_verbs, conjunctions;
+        
+        for (int i = 0; i < N; i++) {
+            string word, type;
+            cin >> word >> type;
+            
+            if (type == "noun") nouns[word]++;
+            else if (type == "transitive-verb") transitive_verbs[word]++;
+            else if (type == "intransitive-verb") intransitive_verbs[word]++;
+            else if (type == "conjunction") conjunctions[word]++;
+        }
+
+        vector<string> sentences;
+        int total_words = 0;
+
+        // Use intransitive-verb sentences first (Type 1: noun + intransitive verb)
+        while (!nouns.empty() && !intransitive_verbs.empty() && P > 0) {
+            auto noun_it = nouns.begin();
+            auto intransitive_it = intransitive_verbs.begin();
+
+            string sentence = noun_it->first + " " + intransitive_it->first + ".";
+            sentences.push_back(sentence);
+
+            total_words += 2;
+            P--; // Used a period
+
+            // Decrease the count of the used noun and intransitive verb
+            if (--noun_it->second == 0) nouns.erase(noun_it);
+            if (--intransitive_it->second == 0) intransitive_verbs.erase(intransitive_it);
+        }
+
+        // Use transitive-verb sentences (Type 2: noun + transitive verb + list of nouns)
+        while (!nouns.empty() && !transitive_verbs.empty() && P > 0) {
+            auto noun_it1 = nouns.begin();
+            auto transitive_it = transitive_verbs.begin();
+
+            string sentence = noun_it1->first + " " + transitive_it->first;
+
+            nouns.erase(noun_it1); // First noun is used up
+
+            vector<string> remaining_nouns;
+            for (auto it = nouns.begin(); it != nouns.end(); ++it) {
+                remaining_nouns.push_back(it->first);
+            }
+
+            if (!remaining_nouns.empty()) {
+                sentence += " " + remaining_nouns[0];
+                nouns.erase(remaining_nouns[0]);
+                total_words += 3;
+
+                // If we have more nouns and commas, we can continue adding them
+                for (int i = 1; i < remaining_nouns.size() && C > 0; i++) {
+                    sentence += ", " + remaining_nouns[i];
+                    nouns.erase(remaining_nouns[i]);
+                    total_words += 2; // Added noun and comma
+                    C--;
+                }
+            }
+
+            sentence += ".";
+            sentences.push_back(sentence);
+            P--; // Used a period
+
+            // Decrease the count of the transitive verb
+            if (--transitive_it->second == 0) transitive_verbs.erase(transitive_it);
+        }
+
+        // Output the result
+        cout << total_words << endl;
+        for (const string &sentence : sentences) {
+            cout << sentence << " ";
+        }
+        cout << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+int main() {
+    int N, A, B;
+    cin >> N >> A >> B;
+
+    vector<int> P(N), C(N), X(N);
+    for (int i = 0; i < N; i++) {
+        cin >> P[i] >> C[i] >> X[i];
+    }
+
+    // dp[i][j] will store the maximum popularity sum we can get using `i` mooneys and `j` ice cream cones
+    vector<vector<int>> dp(A + 1, vector<int>(B + 1, 0));
+
+    for (int i = 0; i < N; i++) {
+        // Process friends in reverse to avoid over-counting
+        for (int mooney = A; mooney >= 0; mooney--) {
+            for (int iceCream = B; iceCream >= 0; iceCream--) {
+                // Calculate the actual mooney required after applying ice cream discounts
+                for (int usedIceCream = 0; usedIceCream <= iceCream && mooney - max(0, C[i] - usedIceCream / X[i]) >= 0; usedIceCream++) {
+                    int requiredMooney = max(0, C[i] - usedIceCream / X[i]);
+                    if (mooney >= requiredMooney) {
+                        dp[mooney][iceCream] = max(dp[mooney][iceCream], dp[mooney - requiredMooney][iceCream - usedIceCream] + P[i]);
+                    }
+                }
+            }
+        }
+    }
+
+    // Find the maximum popularity
+    int maxPopularity = 0;
+    for (int mooney = 0; mooney <= A; mooney++) {
+        for (int iceCream = 0; iceCream <= B; iceCream++) {
+            maxPopularity = max(maxPopularity, dp[mooney][iceCream]);
+        }
+    }
+
+    cout << maxPopularity << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+using namespace std;
+
+struct Event {
+    int type, time, x, count;
+};
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<Event> events;
+
+    // Read all the events
+    for (int i = 0; i < N; ++i) {
+        int q, t, x, n;
+        cin >> q >> t >> x >> n;
+        events.push_back({q, t, x, n});
+    }
+
+    // Sort events by time, breaking ties arbitrarily since the exact order at the same time doesn't matter
+    sort(events.begin(), events.end(), [](const Event& a, const Event& b) {
+        return a.time < b.time;
+    });
+
+    // Priority queues for cows and apples based on absolute positions and times.
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> cows;
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> apples;
+
+    int apples_caught = 0;
+
+    // Process the events in time order
+    for (const Event& e : events) {
+        if (e.type == 1) {
+            // Cows arrive: add them to the cows priority queue
+            for (int i = 0; i < e.count; ++i) {
+                cows.push({e.x, e.time});
+            }
+        } else {
+            // Apples arrive: add them to the apples priority queue
+            for (int i = 0; i < e.count; ++i) {
+                apples.push({e.x, e.time});
+            }
+        }
+
+        // Try to match cows with apples optimally
+        while (!cows.empty() && !apples.empty()) {
+            int cow_x = cows.top().first;
+            int cow_t = cows.top().second;
+            int apple_x = apples.top().first;
+            int apple_t = apples.top().second;
+
+            int time_needed = abs(cow_x - apple_x) + cow_t;
+
+            if (time_needed <= apple_t) {
+                // The cow can catch the apple
+                apples_caught++;
+                cows.pop();
+                apples.pop();
+            } else {
+                // The cow cannot catch the apple yet
+                break;
+            }
+        }
+    }
+
+    cout << apples_caught << endl;
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+const int MOD = 1e9 + 7;
+
+int factorial(int n) {
+    if (n == 0 || n == 1) return 1;
+    return n * factorial(n - 1);
+}
+
+int main() {
+    // Define the adjacency for pairs and quads
+    unordered_map<char, vector<string>> adjacent_groups = {
+        {'1', {"12", "14", "1245"}},
+        {'2', {"12", "23", "25", "1245", "2356"}},
+        {'3', {"23", "36", "2356"}},
+        {'4', {"14", "45", "47", "1245", "4578"}},
+        {'5', {"25", "45", "56", "58", "1245", "2356", "4578", "5689"}},
+        {'6', {"36", "56", "69", "2356", "5689"}},
+        {'7', {"47", "78", "4578"}},
+        {'8', {"58", "78", "89", "4578", "5689"}},
+        {'9', {"69", "89", "5689"}}
+    };
+
+    int T;
+    cin >> T;
+    
+    while (T--) {
+        string input;
+        cin >> input;
+        
+        unordered_map<string, int> count_combinations;
+        int total_combinations = 1;
+        
+        // Analyze the input and count the groups
+        for (char digit : input) {
+            // For each character in the input, check how many groups it belongs to
+            vector<string> groups = adjacent_groups[digit];
+            for (const string& group : groups) {
+                count_combinations[group]++;
+            }
+        }
+        
+        // Now calculate the total possible permutations
+        for (auto& comb : count_combinations) {
+            int count = comb.second;
+            if (count == 1) {
+                total_combinations *= factorial(count);
+            }
+        }
+        
+        cout << total_combinations % MOD << endl;
+    }
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+const int MAXN = 200010;
+int N, T;
+vector<vector<bool>> grid(2 * MAXN, vector<bool>(2 * MAXN, false));
+vector<vector<bool>> visited(2 * MAXN, vector<bool>(2 * MAXN, false));
+
+// Directions for moving in the grid (up, down, left, right)
+int dx[] = {1, -1, 0, 0};
+int dy[] = {0, 0, 1, -1};
+
+// BFS to explore and count connected regions
+void bfs(int x, int y, bool &color, int &white, int &black) {
+    queue<pair<int, int>> q;
+    q.push({x, y});
+    visited[x][y] = true;
+    
+    bool isWhite = color;
+    if (isWhite) white++;
+    else black++;
+    
+    while (!q.empty()) {
+        auto [cx, cy] = q.front();
+        q.pop();
+
+        for (int i = 0; i < 4; i++) {
+            int nx = cx + dx[i];
+            int ny = cy + dy[i];
+            
+            // Check bounds and visit conditions
+            if (nx >= 0 && ny >= 0 && nx <= 2 * N && ny <= 2 * N && !visited[nx][ny] && !grid[nx][ny]) {
+                visited[nx][ny] = true;
+                q.push({nx, ny});
+                // Alternate colors as we explore
+                if (isWhite) black++;
+                else white++;
+            }
+        }
+    }
+}
+
+int main() {
+    cin >> N >> T;
+
+    // Reading the rectangles and marking their boundaries
+    for (int i = 0; i < N; i++) {
+        int x1, y1, x2, y2;
+        cin >> x1 >> y1 >> x2 >> y2;
+
+        // Marking the boundary edges
+        for (int x = x1; x < x2; x++) {
+            grid[x][y1] = true;
+            grid[x][y2] = true;
+        }
+        for (int y = y1; y < y2; y++) {
+            grid[x1][y] = true;
+            grid[x2][y] = true;
+        }
+    }
+
+    int totalRegions = 0;
+    int white = 0, black = 0;
+
+    // BFS/DFS to count the regions
+    for (int i = 0; i <= 2 * N; i++) {
+        for (int j = 0; j <= 2 * N; j++) {
+            if (!visited[i][j] && !grid[i][j]) {
+                // New region found, initiate BFS/DFS
+                totalRegions++;
+                bool color = (i + j) % 2 == 0; // Use checkerboard pattern for coloring
+                bfs(i, j, color, white, black);
+            }
+        }
+    }
+
+    if (T == 1) {
+        cout << totalRegions << endl;
+    } else {
+        cout << white << " " << black << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int N, M;
+    cin >> N >> M;
+
+    vector<pair<int, int>> cows(N + 1); // cows[i] = (favorite, second_favorite)
+    vector<int> assigned_cereal(M + 1, 0); // assigned_cereal[c] = which cow has taken cereal c
+    vector<int> result;
+
+    // Read in the favorite and second favorite cereals for each cow
+    for (int i = 1; i <= N; i++) {
+        int f, s;
+        cin >> f >> s;
+        cows[i] = {f, s};
+    }
+
+    int hungry_cows = 0;
+
+    // Process the cows in reverse order and try to assign cereals
+    for (int i = N; i >= 1; i--) {
+        int f = cows[i].first, s = cows[i].second;
+
+        // Try to assign the favorite cereal
+        if (assigned_cereal[f] == 0) {
+            assigned_cereal[f] = i;  // Assign this cow to its favorite cereal
+            result.push_back(i);
+        } 
+        // If favorite is taken, try the second favorite
+        else if (assigned_cereal[s] == 0) {
+            assigned_cereal[s] = i;  // Assign this cow to its second favorite cereal
+            result.push_back(i);
+        } 
+        // If both favorite and second favorite are taken, this cow goes hungry
+        else {
+            hungry_cows++;
+            result.push_back(i);  // Still keep this cow in the result order
+        }
+    }
+
+    // Output the number of hungry cows
+    cout << hungry_cows << endl;
+
+    // Reverse the result to get the correct order
+    for (int i = result.size() - 1; i >= 0; i--) {
+        cout << result[i] << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int N;
+    cin >> N;
+    
+    vector<vector<int>> beauty(N, vector<int>(N));
+    
+    // Reading the beauty values of each cell
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            cin >> beauty[i][j];
+        }
+    }
+    
+    int totalBeautyPattern1 = 0, totalBeautyPattern2 = 0;
+    
+    // Check two possible placements: 
+    // Pattern 1: Cows on top-left and bottom-right of each 2x2 block
+    // Pattern 2: Cows on top-right and bottom-left of each 2x2 block
+    
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            if ((i + j) % 2 == 0) {
+                totalBeautyPattern1 += beauty[i][j];
+            } else {
+                totalBeautyPattern2 += beauty[i][j];
+            }
+        }
+    }
+    
+    // Output the maximum beauty achievable
+    cout << max(totalBeautyPattern1, totalBeautyPattern2) << endl;
+    
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+struct Cow {
+    char direction; // 'N' for north, 'E' for east
+    int x, y;       // Coordinates of the cow's initial position
+    int index;      // Original index in input
+};
+
+// To compare cows for east-moving and north-moving to find their interactions
+bool compareEast(const Cow &a, const Cow &b) {
+    return a.y < b.y;
+}
+
+bool compareNorth(const Cow &a, const Cow &b) {
+    return a.x < b.x;
+}
+
+int main() {
+    int N;
+    cin >> N;
+
+    vector<Cow> cows(N);
+    vector<int> result(N, -1); // -1 means the cow eats an infinite amount of grass
+
+    for (int i = 0; i < N; i++) {
+        cin >> cows[i].direction >> cows[i].x >> cows[i].y;
+        cows[i].index = i;
+    }
+
+    vector<Cow> northCows, eastCows;
+
+    // Separate cows into north-facing and east-facing groups
+    for (const auto &cow : cows) {
+        if (cow.direction == 'N') {
+            northCows.push_back(cow);
+        } else {
+            eastCows.push_back(cow);
+        }
+    }
+
+    // Sort east-moving cows by their y-coordinate
+    sort(eastCows.begin(), eastCows.end(), compareEast);
+    
+    // Sort north-moving cows by their x-coordinate
+    sort(northCows.begin(), northCows.end(), compareNorth);
+
+    // Process each east-moving cow and see if it gets stopped by a north-moving cow
+    for (auto &eCow : eastCows) {
+        for (auto &nCow : northCows) {
+            if (eCow.x > nCow.x && eCow.y < nCow.y) {
+                // Both cows can potentially collide
+                int eastDist = nCow.y - eCow.y;
+                int northDist = eCow.x - nCow.x;
+
+                if (eastDist == northDist) {
+                    // Both would stop at the same time
+                    continue;
+                } else if (eastDist < northDist) {
+                    // North-moving cow will stop first
+                    if (result[nCow.index] == -1 || result[nCow.index] > eastDist) {
+                        result[nCow.index] = eastDist;
+                    }
+                } else {
+                    // East-moving cow will stop first
+                    if (result[eCow.index] == -1 || result[eCow.index] > northDist) {
+                        result[eCow.index] = northDist;
+                    }
+                }
+            }
+        }
+    }
+
+    // Output results
+    for (int i = 0; i < N; i++) {
+        if (result[i] == -1) {
+            cout << "Infinity" << endl;
+        } else {
+            cout << result[i] << endl;
+        }
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+using namespace std;
+
+struct Interaction {
+    int time, cow1, cow2;
+};
+
+// Function to simulate the infection process
+bool simulate(int patient_zero, int K, const vector<Interaction>& interactions, const string& final_state, int N) {
+    vector<int> infected(N + 1, 0);  // 0 = not infected, 1 = infected
+    vector<int> transmission_count(N + 1, 0);  // Keeps track of remaining transmissions
+
+    infected[patient_zero] = 1;  // Start with patient zero infected
+    transmission_count[patient_zero] = K;  // Patient zero has K transmissions available
+
+    for (const auto& interaction : interactions) {
+        int t = interaction.time, x = interaction.cow1, y = interaction.cow2;
+
+        // Check if cow x can infect cow y or cow y can infect cow x
+        if (infected[x] && transmission_count[x] > 0 && !infected[y]) {
+            infected[y] = 1;
+            transmission_count[x]--;
+            transmission_count[y] = K;  // Newly infected cow can transmit up to K times
+        } else if (infected[y] && transmission_count[y] > 0 && !infected[x]) {
+            infected[x] = 1;
+            transmission_count[y]--;
+            transmission_count[x] = K;  // Newly infected cow can transmit up to K times
+        }
+    }
+
+    // Compare the simulated infection state with the final state
+    for (int i = 1; i <= N; i++) {
+        if (infected[i] != (final_state[i - 1] - '0')) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int main() {
+    int N, T;
+    cin >> N >> T;
+
+    string final_state;
+    cin >> final_state;
+
+    vector<Interaction> interactions(T);
+    for (int i = 0; i < T; i++) {
+        cin >> interactions[i].time >> interactions[i].cow1 >> interactions[i].cow2;
+    }
+
+    // Sort interactions by time
+    sort(interactions.begin(), interactions.end(), [](const Interaction& a, const Interaction& b) {
+        return a.time < b.time;
+    });
+
+    int possible_patient_zeros = 0;
+    int minK = T + 1;  // Set to maximum possible K initially
+    int maxK = 0;
+    bool infiniteK = false;
+
+    // Try each cow as patient zero
+    for (int i = 1; i <= N; i++) {
+        bool found_valid_K = false;
+        int minK_for_this_cow = T + 1;
+        int maxK_for_this_cow = 0;
+
+        for (int K = 0; K <= T; K++) {
+            if (simulate(i, K, interactions, final_state, N)) {
+                found_valid_K = true;
+                minK_for_this_cow = min(minK_for_this_cow, K);
+                maxK_for_this_cow = max(maxK_for_this_cow, K);
+            }
+        }
+
+        if (found_valid_K) {
+            possible_patient_zeros++;
+            minK = min(minK, minK_for_this_cow);
+            maxK = max(maxK, maxK_for_this_cow);
+            if (maxK_for_this_cow == T) {
+                infiniteK = true;  // No upper bound on K
+            }
+        }
+    }
+
+    cout << possible_patient_zeros << " " << minK << " ";
+    if (infiniteK) {
+        cout << "Infinity" << endl;
+    } else {
+        cout << maxK << endl;
+    }
+
+    return 0;
+}
+
+New Solution
+
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+const int MOD = 1e9 + 7;
+const int MAXN = 100005;
+vector<int> fact(MAXN), inv_fact(MAXN);
+vector<vector<int>> tree;
+int N;
+
+// Function to calculate power modulo MOD
+int mod_pow(int base, int exp, int mod) {
+    int result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) result = (1LL * result * base) % mod;
+        base = (1LL * base * base) % mod;
+        exp /= 2;
+    }
+    return result;
+}
+
+// Function to compute factorials and their modular inverses
+void precompute_factorials(int n) {
+    fact[0] = inv_fact[0] = 1;
+    for (int i = 1; i <= n; i++) {
+        fact[i] = (1LL * fact[i-1] * i) % MOD;
+    }
+    inv_fact[n] = mod_pow(fact[n], MOD - 2, MOD); // Fermat's Little Theorem for modular inverse
+    for (int i = n - 1; i >= 1; i--) {
+        inv_fact[i] = (1LL * inv_fact[i + 1] * (i + 1)) % MOD;
+    }
+}
+
+// DFS to traverse the tree and calculate the results
+void dfs(int node, int parent, vector<int>& subtree_size, vector<long long>& dp) {
+    subtree_size[node] = 1;
+    dp[node] = 1;
+
+    for (int neighbor : tree[node]) {
+        if (neighbor == parent) continue;
+        dfs(neighbor, node, subtree_size, dp);
+
+        // Combine the results from the subtree
+        subtree_size[node] += subtree_size[neighbor];
+        dp[node] = (dp[node] * dp[neighbor]) % MOD;
+        dp[node] = (dp[node] * inv_fact[subtree_size[neighbor]]) % MOD;
+    }
+
+    dp[node] = (dp[node] * fact[subtree_size[node] - 1]) % MOD;
+}
+
+int main() {
+    cin >> N;
+
+    tree.resize(N + 1);
+    for (int i = 0; i < N - 1; i++) {
+        int a, b;
+        cin >> a >> b;
+        tree[a].push_back(b);
+        tree[b].push_back(a);
+    }
+
+    // Precompute factorials and modular inverses
+    precompute_factorials(N);
+
+    vector<int> subtree_size(N + 1);
+    vector<long long> dp(N + 1);
+
+    // Start DFS from node 1 (or any arbitrary node since the tree is connected)
+    dfs(1, -1, subtree_size, dp);
+
+    // Output the number of distinct states for each K
+    for (int K = 1; K <= N; K++) {
+        cout << dp[1] * inv_fact[N - K] % MOD << endl;
+    }
+
+    return 0;
+}
